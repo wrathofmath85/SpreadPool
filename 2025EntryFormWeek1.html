@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" /> <title>Spread Pool — Selections</title>
+
+<!-- PapaParse for CSV -->
+<script src="https://nam04.safelinks.protection.outlook.com/?url=https%3A%2F%2Fcdn.jsdelivr.net%2Fnpm%2Fpapaparse%405.4.1%2Fpapaparse.min.js&data=05%7C02%7Cdan.fox%40brighthousefinancial.com%7C6438f4abcaa749f1a2ae08dddf5cf1dd%7C2658e698ac384347a56f3f96a6bfa8ff%7C0%7C0%7C638912312491999552%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=YXgnkDFHcJWsI516C9f5%2B9SeDmp5Z7mG6O4VWVEclEE%3D&reserved=0"></script>
+<!-- EmailJS -->
+<script src="https://nam04.safelinks.protection.outlook.com/?url=https%3A%2F%2Fcdn.jsdelivr.net%2Fnpm%2F%40emailjs%2Fbrowser%404%2Fdist%2Femail.min.js&data=05%7C02%7Cdan.fox%40brighthousefinancial.com%7C6438f4abcaa749f1a2ae08dddf5cf1dd%7C2658e698ac384347a56f3f96a6bfa8ff%7C0%7C0%7C638912312492029434%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=HuJb6jflyzWfb3KBIyBAlLfaXpb2hxcO2%2FNPoy%2FXO%2FM%3D&reserved=0"></script>
+
+<style>
+  :root{
+    --bg:#0f172a; --panel:#111827; --text:#e5e7eb; --muted:#94a3b8; --rule:#1f2937;
+    --blue:#2563eb; --red:#ef4444; --green:#16a34a; --amber:#f59e0b;
+  }
+  html,body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:1000px;margin:20px auto;padding:0 16px 80px}
+  h1{margin:4px 0 14px}
+  .panel{background:var(--panel);border:1px solid var(--rule);border-radius:12px;padding:14px;margin:10px 0 18px}
+  label{display:block;margin:6px 0 8px}
+  select, input[type="text"], input[type="email"]{
+    width:100%;padding:10px 12px;border-radius:10px;border:1px solid #334155;background:#0b1220;color:var(--text)
+  }
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media (max-width: 800px){ .grid{grid-template-columns:1fr} }
+
+  /* game blocks */
+  .game{border-top:1px dashed #334155;padding:10px 0}
+  .game:first-child{border-top:0}
+  .qid{font-size:12px;color:var(--muted)}
+  .title{font-weight:800;margin:2px 0 6px}
+  .choices{display:flex;gap:14px;flex-wrap:wrap}
+  .muted{color:var(--muted);font-size:12px}
+
+  .req{display:inline-block;font-size:12px;background:#1e293b;border:1px solid #334155;padding:2px 8px;border-radius:999px;margin-left:8px}
+
+  /* status */
+  #errors{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:10px;margin-top:10px;color:#eab308}
+  .ok{background:#052e1b;border:1px solid #0b4d2f;color:#a7f3d0}
+
+  /* submit */
+  .actions{display:flex;gap:10px;align-items:center;margin-top:14px}
+  button{
+    background:var(--blue);border:0;color:#fff;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer
+  }
+  button:disabled{opacity:.5;cursor:not-allowed}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Spread Pool — Selections</h1>
+
+  <!-- PARTICIPANT -->
+  <div class="panel">
+    <div class="grid">
+      <div>
+        <label for="nameSel">Your name</label>
+        <select id="nameSel">
+          <option value="">— Select your name —</option>
+        </select>
+      </div>
+      <div>
+        <label for="emailInp">Your email</label>
+        <input id="emailInp" type="email" placeholder="auto-fills from roster…" />
+      </div>
+    </div>
+    <div class="muted" style="margin-top:6px">Roster is loaded from Google Sheets (CSV).</div>
+  </div>
+
+  <!-- SECTION A (e.g., NFL) -->
+  <div class="panel" id="secA">
+    <h2 style="margin:0 0 8px">Section A <span class="muted" id="aNote"></span></h2>
+    <div id="aList"></div>
+  </div>
+
+  <!-- SECTION B (e.g., NCAA) -->
+  <div class="panel" id="secB">
+    <h2 style="margin:0 0 8px">Section B <span class="muted" id="bNote"></span></h2>
+    <div id="bList"></div>
+  </div>
+
+  <!-- STATUS + SUBMIT -->
+  <div id="errors" class="panel"></div>
+  <div class="actions">
+    <button id="submitBtn">Submit Picks</button>
+    <div class="muted">Sends to pool inbox and CCs you.</div>
+  </div>
+</div>
+
+<script>
+/* ===================== CONFIG ===================== */
+/* Paste your three “Publish to web → CSV” URLs here */ 
+const CSV_URL_PARTICIPANTS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTfQ7a2weK5Got7LTe3yVxqhcPR6pa-nPg73PdOMk8rrHwqlr3UeTcPprlgVbFjhFIVpifmMKnb_Tss/pub?gid=0&single=true&output=csv"; // headers: Name,Email
+const CSV_URL_SECTION_A    = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSu8cw2ymTbcJGMmBkbcJTNzvxVsl4wh3XH7pbQJ3_pbSz42LFo0HKQHVLcJtHiOqtEDt37-hSegjDK/pub?gid=2109553148&single=true&output=csv";    // headers: Away Team,Home Team,Date,Time,TV,Location,Spread,Required
+const CSV_URL_SECTION_B    = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSu8cw2ymTbcJGMmBkbcJTNzvxVsl4wh3XH7pbQJ3_pbSz42LFo0HKQHVLcJtHiOqtEDt37-hSegjDK/pub?gid=0&single=true&output=csv";    // same headers as above
+
+/* Validation rules */
+const MIN_PICKS = 7;
+const MAX_PICKS = 12;
+
+/* EmailJS settings (replace!) */
+    const EMAILJS_SERVICE_ID  = "service_txqdfck";
+    	   const EMAILJS_TEMPLATE_ID = "template_o8du7pt"; // this template sends to you and CCs the participant
+    	   const EMAILJS_PUBLIC_KEY  = "w4UC6ofDTC0VdRI44";
+/* The template should accept: name, email, week, timestamp, selections (plain text). We CC the user via template or reply_to. */
+
+/* =============== UTILITIES =============== */ function fetchCSV(url){
+  const bust = (url.includes('?') ? '&' : '?') + 'cb=' + Date.now();
+  return new Promise((resolve,reject)=>{
+    Papa.parse(url + bust, {
+      download:true, header:true, dynamicTyping:false, skipEmptyLines:true,
+      complete: res => resolve(res.data),
+      error: err => reject(err)
+    });
+  });
+}
+const esc = s => String(s??"");
+
+/* Simple QID generator so your email lines stay like A1/A2… and B1/B2… */ 
+function makeQIDs(list, prefix){
+  return list.map((row,i)=> ({...row, QID: `${prefix}${i+1}`})); }
+
+/* Compose a nice line to show */
+function buildLine(row){
+  const away = esc(row["Away Team"]||row["Away"]||row["away"]);
+  const home = esc(row["Home Team"]||row["Home"]||row["home"]);
+  const spread = esc(row["Spread"]||row["spread"]);
+  const date = esc(row["Date"]||row["date"]);
+  const time = esc(row["Time"]||row["time"]);
+  const tv = esc(row["TV"]||row["tv"]);
+  const loc = esc(row["Location"]||row["location"]);
+  const parts = [];
+  parts.push(`${away} @ ${home}${spread?` (${spread})`:``}`);
+  if (date||time) parts.push(`${date} ${time}`.trim());
+  if (tv) parts.push(tv);
+  if (loc) parts.push(loc);
+  return parts.join(" — ");
+}
+
+/* =============== PAGE STATE =============== */
+let roster = [];         // [{name,email}]
+let secA = [];           // [{QID, line, away, home, required}]
+let secB = [];
+let nameToEmail = new Map();
+
+/* =============== LOAD & RENDER =============== */ async function init(){
+  // Init EmailJS
+  if (EMAILJS_PUBLIC_KEY) emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+
+  const [people, aRows, bRows] = await Promise.all([
+    fetchCSV(CSV_URL_PARTICIPANTS),
+    fetchCSV(CSV_URL_SECTION_A),
+    fetchCSV(CSV_URL_SECTION_B)
+  ]);
+
+  // Roster
+  roster = people
+    .map(r => ({ name: esc(r["Name"]||r["name"]), email: esc(r["Email"]||r["email"]) }))
+    .filter(r => r.name);
+  roster.sort((a,b)=> a.name.localeCompare(b.name, undefined, {sensitivity:'base'}));
+  roster.forEach(r => nameToEmail.set(r.name, r.email||""));
+
+  const nameSel = document.getElementById("nameSel");
+  nameSel.innerHTML = '<option value="">— Select your name —</option>' +
+    roster.map(p => `<option value="${p.name}">${p.name}${p.email?` — ${p.email}`:``}</option>`).join("");
+  nameSel.addEventListener('change', () => {
+    const email = nameToEmail.get(nameSel.value) || "";
+    document.getElementById('emailInp').value = email;
+    validate();
+  });
+
+  // Sections (filter to rows with a Spread, split into required first (Y), then others in original order)
+  function normalizeSection(rows, prefix){
+    const filtered = rows.filter(r => String(r["Spread"]||r["spread"]||"").trim() !== "");
+    const req = filtered.filter(r => /^y$/i.test(String(r["Required"]||r["required"]).trim()));
+    const opt = filtered.filter(r => !/^y$/i.test(String(r["Required"]||r["required"]).trim()));
+    const ordered = [...req, ...opt];
+    const withQID = makeQIDs(ordered, prefix).map(r => ({
+      ...r,
+      __required: /^y$/i.test(String(r["Required"]||r["required"]).trim()),
+      __line: buildLine(r),
+      __away: esc(r["Away Team"]||r["Away"]||r["away"]),
+      __home: esc(r["Home Team"]||r["Home"]||r["home"])
+    }));
+    return withQID;
+  }
+
+  secA = normalizeSection(aRows, "A");
+  secB = normalizeSection(bRows, "B");
+
+  document.getElementById('aNote').textContent = secA.some(x=>x.__required) ? '(first item(s) required)' : '';
+  document.getElementById('bNote').textContent = secB.some(x=>x.__required) ? '(first item(s) required)' : '';
+
+  renderSection('aList', secA);
+  renderSection('bList', secB);
+
+  validate();
+}
+
+function renderSection(containerId, rows){
+  const wrap = document.getElementById(containerId);
+  wrap.innerHTML = rows.map(r => `
+    <div class="game">
+      <div class="qid">${r.QID}${r.__required?` <span class="req">Required</span>`:``}</div>
+      <div class="title">${r.__line}</div>
+      <div class="choices" role="radiogroup" aria-label="${r.QID}">
+        <label><input type="radio" name="${r.QID}" value="${r.__away}"> ${r.__away}</label>
+        <label><input type="radio" name="${r.QID}" value="${r.__home}"> ${r.__home}</label>
+        <label class="muted"><input type="radio" name="${r.QID}" value="" checked> (no pick)</label>
+      </div>
+    </div>
+  `).join('');
+
+  // add listeners to validate live
+  wrap.querySelectorAll('input[type="radio"]').forEach(inp=>{
+    inp.addEventListener('change', validate);
+  });
+}
+
+/* =============== VALIDATION & SUMMARY =============== */ function gatherPicks(){
+  function picksFrom(rows){
+    const out = [];
+    rows.forEach(r=>{
+      const selected = document.querySelector(`input[name="${r.QID}"]:checked`);
+      const val = selected ? String(selected.value) : "";
+      if (val) out.push({ qid:r.QID, choice:val, line:r.__line });
+    });
+    return out;
+  }
+  return [...picksFrom(secA), ...picksFrom(secB)]; }
+
+function validate(){
+  const name = document.getElementById('nameSel').value.trim();
+  const email = document.getElementById('emailInp').value.trim();
+  const errs = [];
+
+  if (!name) errs.push("Select your name.");
+  if (!email) errs.push("Email is required (auto-fills from roster).");
+
+  // required first items in each section
+  function checkRequired(rows, label){
+    rows.forEach(r=>{
+      if (r.__required){
+        const val = document.querySelector(`input[name="${r.QID}"]:checked`)?.value || "";
+        if (!val) errs.push(`You must pick the required game in ${label}: ${r.QID}.`);
+      }
+    });
+  }
+  checkRequired(secA, "Section A");
+  checkRequired(secB, "Section B");
+
+  const picks = gatherPicks();
+  if (picks.length < MIN_PICKS) errs.push(`Pick at least ${MIN_PICKS} games total.`);
+  if (picks.length > MAX_PICKS) errs.push(`Pick no more than ${MAX_PICKS} games total.`);
+
+  const box = document.getElementById('errors');
+  if (errs.length){
+    box.classList.remove('ok');
+    box.innerHTML = errs.map(e=>`• ${e}`).join('<br>');
+    document.getElementById('submitBtn').disabled = true;
+  } else {
+    box.classList.add('ok');
+    box.innerHTML = "BEAR DOWN — ready to submit.";
+    document.getElementById('submitBtn').disabled = false;
+  }
+}
+
+/* =============== SUBMIT (EmailJS) =============== */ async function sendEmail(){
+  const name = document.getElementById('nameSel').value.trim();
+  const email = document.getElementById('emailInp').value.trim();
+  const picks = gatherPicks();
+
+  const week = "1"; // if you keep week per page, adjust here or read from URL/Sheet
+  const ts = new Date().toISOString();
+
+  const selectionsText =
+    picks.map(p => `${p.qid}:${p.choice}`).join("\n") || "(none)";
+
+  const params = {
+    name,
+    email,
+    week,
+    timestamp: ts,
+    selections: selectionsText,
+    reply_to: email // many templates use this to CC the user
+  };
+
+  try{
+    const resp = await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, params);
+    alert("Submitted! Check your inbox for a copy.");
+  }catch(err){
+    console.error(err);
+    alert("Could not send email. Check console for details.");
+  }
+}
+
+/* =============== EVENTS =============== */ document.getElementById('submitBtn').addEventListener('click', (e)=>{
+  e.preventDefault();
+  validate();
+  if (!document.getElementById('submitBtn').disabled){
+    sendEmail();
+  }
+});
+
+/* =============== GO =============== */ init(); </script> </body> </html>
+
