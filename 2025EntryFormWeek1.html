@@ -329,7 +329,7 @@ function refreshDouble(){
 
   const dbl=doubleSel.value;
   if(dbl){ if(m.has(dbl)) checks.push(`✅ Double valid (${dbl})`); else { checks.push('❌ Double not among selections'); errs.push('Double must be one of your selected answers.'); } }
-  else checks.push(ℹ️ No double selected (optional)');
+  else checks.push('ℹ️ No double selected (optional)');
 
   // Render both in-panel and footer error list
   const ul1=$("#errorListPanel"); ul1.innerHTML='';
