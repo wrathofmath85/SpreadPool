@@ -112,7 +112,17 @@
       .chip.expired,
       .chip.mandatory{ align-self: flex-start; }
      }
-       </style>
+     /* Red chip for expired games (same shape as Required) */
+     .chip.expired{
+      background:#b91c1c;      /* red */
+      color:#fff;
+      font-weight:800;
+      border:1px solid #991b1b;
+     }
+     /* Subtle fade + no Clear button when expired */
+     .row.expired{opacity:.75}
+     .row.expired .answers .clear{display:none}
+ </style>
      </head>
      <body>
        <div class="wrap">
@@ -325,16 +335,37 @@ function allRows(){ return Array.from(document.querySelectorAll('.row')); } func
   });
   return map;
 }
-function countAB(map){ let a=0,b=0; for(const k of map.keys()){ if(k.startsWith('A')) a++; else if(k.startsWith('B')) b++; } return {a,b,total:a+b}; } function refreshCounts(){ const m=answersMap(); const {a,b}=countAB(m); $("#countA").textContent=`Answered: ${a}`; $("#countB").textContent=`Answered: ${b}`; } function refreshExpiry(){
-  allRows().forEach(r=>{
-    const ex=isExpired(r.dataset.deadline);
-    r.classList.toggle('expired',ex);
-    r.querySelectorAll('input[type=radio]').forEach(i=> i.disabled=ex);
-    const has=r.querySelector('.chip.expired');
-    if(ex && !has){ const sp=document.createElement('span'); sp.className='chip expired'; sp.textContent='Expired'; r.children[1].insertAdjacentElement('afterend',sp); }
-    else if(!ex && has){ has.remove(); }
-  });
+function countAB(map){ let a=0,b=0; for(const k of map.keys()){ if(k.startsWith('A')) a++; else if(k.startsWith('B')) b++; } return {a,b,total:a+b}; } function refreshCounts(){ const m=answersMap(); const {a,b}=countAB(m); $("#countA").textContent=`Answered: ${a}`; $("#countB").textContent=`Answered: ${b}`; } 
+
+function refreshExpiry(){
+ allRows().forEach(r=>{
+   const expired = isExpired(r.dataset.deadline);
+   r.classList.toggle('expired', expired);
+   // disable radios if expired
+   r.querySelectorAll('input[type=radio]').forEach(i => i.disabled = expired);
+   // the second child div is the chip column (Required/Expired)
+   const chipCol = r.children[1];
+   if (!chipCol) return;
+   // preserve existing "Required" chip if present
+   const hasRequired = !!chipCol.querySelector('.mandatory');
+   // remove any existing expired chip
+   const oldExp = chipCol.querySelector('.expired');
+   if (oldExp) oldExp.remove();
+   if (expired) {
+     // insert Expired chip next to Required (or by itself)
+     const exp = document.createElement('span');
+     exp.className = 'chip expired';
+     exp.textContent = 'Expired';
+     if (hasRequired) {
+       chipCol.appendChild(document.createTextNode(' '));
+       chipCol.appendChild(exp);
+     } else {
+       chipCol.appendChild(exp);
+     }
+   }
+ });
 }
+
 function enforceMax(max=12){
   const m=answersMap(); if(m.size<max){
     allRows().forEach(r=>{
