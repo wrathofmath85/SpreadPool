@@ -5,8 +5,7 @@
   <title>2025 Entry Form – Week 1</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- Do NOT let Outlook rewrite these as SafeLinks -->
-<!-- PapaParse & EmailJS (CDN; do NOT let Outlook wrap these as SafeLinks) -->
+  <!-- Libraries -->
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
@@ -21,27 +20,28 @@
     body{
       margin:0; background:var(--bg); color:var(--text);
       font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-      padding-bottom:90px; /* room for fixed footer */
+      font-size:14px; line-height:1.35;
+      padding-bottom:88px; /* room for fixed footer */
     }
-    h1{margin:14px 16px}
+    h1{margin:12px 16px}
     .wrap{max-width:1100px;margin:0 auto;padding:0 16px 40px}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin:12px 0}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin:10px 0}
     .muted{color:var(--muted)} .small{font-size:.9rem}
-    input,select{background:transparent;color:var(--text);border:1px solid var(--border);border-radius:9px;padding:10px;width:100%}
+    input,select{background:transparent;color:var(--text);border:1px solid var(--border);border-radius:9px;padding:8px;width:100%}
 
     /* Two-column sections */
-    .grid2{display:grid;gap:16px;grid-template-columns:1fr}
+    .grid2{display:grid;gap:14px;grid-template-columns:1fr}
     @media (min-width:720px){ .grid2{grid-template-columns:1fr 1fr} }
 
     /* Question rows */
-    .row{display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center;padding:10px;border-radius:10px}
+    .row{display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center;padding:8px;border-radius:10px}
     .row:nth-child(odd){background:rgba(255,255,255,.03)}
     .label{font-weight:700}
-    .details{font-size:.92rem;line-height:1.25rem;margin-top:4px}
-    .details div{margin:2px 0}
+    .details{font-size:.9rem;line-height:1.25rem;margin-top:4px}
+    .details div{margin:1px 0}
     .answers{display:flex;gap:10px;flex-wrap:wrap}
     .answers label{display:inline-flex;gap:6px;align-items:center;cursor:pointer}
-    .clear{border:1px solid var(--border);background:transparent;color:var(--muted);border-radius:7px;padding:6px 10px;cursor:pointer}
+    .clear{border:1px solid var(--border);background:transparent;color:var(--muted);border-radius:7px;padding:5px 9px;cursor:pointer}
     .clear:hover{color:#fff;border-color:#334155}
 
     .chip{display:inline-block;background:var(--chip);border-radius:999px;padding:2px 10px;font-size:.8rem}
@@ -62,9 +62,8 @@
     #statusBox{font-weight:900;border:1px solid var(--border);border-radius:10px;padding:8px 12px}
     #statusBox.bad{background:#7f1d1d;color:#fff}
     #statusBox.good{background:#1e3a8a;color:#ffa500}
-    #errorList{margin:0;padding-left:1rem;display:flex;gap:1rem;list-style:none;flex-wrap:wrap}
     .footer-actions{display:flex;gap:8px;align-items:center}
-    .btn{background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}
+    .btn{background:var(--accent);color:#fff;border:none;border-radius:10px;padding:8px 12px;font-weight:700;cursor:pointer}
     .btn.ghost{background:transparent;border:1px solid var(--border);color:var(--muted)}
     .btn[disabled]{opacity:.6;cursor:not-allowed}
     #err{display:none;color:#fee;background:#3b0f0f;border-color:#7f1d1d}
@@ -96,7 +95,7 @@
     <div class="grid2">
       <section class="card">
         <div class="hdr">
-          <h2>NFL</h2>
+          <h2>NFL (Section A)</h2>
           <div class="counts"><span id="countA" class="chip">Answered: 0</span></div>
         </div>
         <div id="listA" class="qList"><p class="small muted">Loading NFL…</p></div>
@@ -104,7 +103,7 @@
 
       <section class="card">
         <div class="hdr">
-          <h2>College</h2>
+          <h2>College (Section B)</h2>
           <div class="counts"><span id="countB" class="chip">Answered: 0</span></div>
         </div>
         <div id="listB" class="qList"><p class="small muted">Loading NCAA…</p></div>
@@ -132,14 +131,13 @@
     </section>
   </div>
 
-  <!-- Sticky Footer with SUBMIT -->
+  <!-- Sticky Footer (no error list here) -->
   <footer>
     <div class="footer-actions">
       <button id="submitBtn" class="btn">Submit</button>
       <button id="resetBtn" class="btn ghost">Reset</button>
     </div>
     <div id="statusBox" class="bad">ERRORS DETECTED</div>
-    <ul id="errorList"></ul>
   </footer>
 
 <script>
@@ -155,7 +153,8 @@ const ORGANIZER_EMAIL     = "wrathofmath85@gmail.com";
 /* ===================== UTIL & DIAGNOSTICS ===================== */ const $ = s => document.querySelector(s); const escapeHtml = s => String(s ?? "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
 function showErr(msg){ const box=$("#err"); box.style.display=msg?"block":"none"; box.innerHTML=msg||""; } function setStatus(ok){ const box=$("#statusBox"); if(ok){box.textContent="BEAR DOWN!"; box.classList.remove('bad'); box.classList.add('good');} else {box.textContent="ERRORS DETECTED"; box.classList.remove('good'); box.classList.add('bad');} } function okStatus(resp){ return resp && (resp.status===200 || resp.ok); }
 
-/* Robust CSV fetch: shows exact failure inline if wrong link/permission */ async function fetchCSV(url){
+/* Robust CSV fetch */
+async function fetchCSV(url){
   const full = url + (url.includes('?') ? '&' : '?') + 'cb=' + Date.now();
   try{
     const resp = await fetch(full, { mode:'cors' });
@@ -166,7 +165,7 @@ function showErr(msg){ const box=$("#err"); box.style.display=msg?"block":"none"
     }
     const text = await resp.text();
     if(/<!doctype html>|<html/i.test(text)){
-      showErr(`Got HTML instead of CSV for:<br><code>${escapeHtml(full)}</code><br><br>Use <b>File → Share → Publish to the web</b> → CSV.<br><br>First bytes:<pre>${escapeHtml(text.slice(0,300))}</pre>`);
+      showErr(`Got HTML instead of CSV for:<br><code>${escapeHtml(full)}</code><br><br>Use <b>File → Share → Publish to the web</b> → CSV.`);
       throw new Error('HTML returned, not CSV');
     }
     const parsed = Papa.parse(text, { header:true, skipEmptyLines:true, dynamicTyping:false });
@@ -201,10 +200,12 @@ function dayName(dateStr){ const d=new Date(dateStr); return isNaN(+d)?'':d.toLo
   nameSel.innerHTML = `<option value="">— Select your name —</option>` + names.map(n=>`<option>${escapeHtml(n)}</option>`).join('');
   nameSel.onchange = ()=>{ const nm=nameSel.value.trim(); if(map[nm]) emailInp.value=map[nm]; onAnyChange(); }; }
 
-/* ===================== GAMES ===================== */ function spreadOn(team, spreadText){
+/* ===================== GAMES ===================== */
+/* Escape regex to safely embed team name */ function escRx(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
+/* Attach spread to the team ONLY if spread string starts with the FULL team name (word-boundary) */ function spreadOnExact(team, spreadText){
   if(!team || !spreadText) return team;
-  const s=spreadText.toLowerCase(), t=team.toLowerCase();
-  if(s.startsWith(t)){ const num=spreadText.slice(team.length).trim(); return `${team} ${num}`; }
+  const rx = new RegExp("^" + escRx(team) + "\\b", "i");  // e.g., ^Iowa\b won't match "Iowa State"
+  if(rx.test(spreadText)){ const rest = spreadText.slice(spreadText.match(rx)[0].length).trim(); return rest ? `${team} ${rest}` : team; }
   return team;
 }
 function favoriteFrom(awayChoice, homeChoice){
@@ -222,16 +223,21 @@ function normalizeGames(rows){
     const date=String(r["Date"]||"").trim();
     const time=String(r["Time"]||"").trim();
     const tv  =String(r["TV"]||"").trim();
+    const loc =String(r["Location"]||"").trim();
     const spread=String(r["Spread"]||"").trim();
     const req =String(r["Required"]||"").trim().toUpperCase()==='Y';
     if(!spread) return; // only show games that have spreads
     const iso = toISO(date,time);
     const day = dayName(date);
-    const awayChoice = spreadOn(away, spread);
-    const homeChoice = spreadOn(home, spread);
+    const awayChoice = spreadOnExact(away, spread);
+    const homeChoice = spreadOnExact(home, spread);
     const fav = favoriteFrom(awayChoice, homeChoice);
-    arr.push({ line:`${away} @ ${home}`, fav, day, time, tv, deadline:iso, req, choices:[awayChoice,homeChoice] });
+    arr.push({
+      line:`${away} @ ${home}`, fav, day, time, tv, loc,
+      deadline:iso, req, choices:[awayChoice,homeChoice]
+    });
   });
+  /* Required first, then the rest in sheet order */
   return [...arr.filter(x=>x.req), ...arr.filter(x=>!x.req)]; } function buildRow(q, qid){
   const el=document.createElement('div');
   el.className='row'; el.dataset.qid=qid; el.dataset.deadline=q.deadline||'';
@@ -244,6 +250,7 @@ function normalizeGames(rows){
         <div><strong>Day:</strong> ${escapeHtml(q.day || '—')}</div>
         <div><strong>Time:</strong> ${escapeHtml(q.time || '—')}</div>
         <div><strong>Channel:</strong> ${escapeHtml(q.tv || '—')}</div>
+        <div><strong>Location:</strong> ${escapeHtml(q.loc || '—')}</div>
       </div>
     </div>
     <div>${q.req?'<span class="chip mandatory">Required</span>':''}</div>
@@ -331,15 +338,12 @@ function refreshDouble(){
   if(dbl){ if(m.has(dbl)) checks.push(`✅ Double valid (${dbl})`); else { checks.push('❌ Double not among selections'); errs.push('Double must be one of your selected answers.'); } }
   else checks.push('ℹ️ No double selected (optional)');
 
-  // Render both in-panel and footer error list
+  // Render the panel checklist (footer list removed per request)
   const ul1=$("#errorListPanel"); ul1.innerHTML='';
-  const ul2=$("#errorList"); ul2.innerHTML='';
   checks.forEach(c=>{
     const li1=document.createElement('li'); li1.textContent=c;
     li1.style.color=c.startsWith('❌')?'var(--bad)':c.startsWith('✅')?'var(--ok)':'var(--muted)';
     ul1.appendChild(li1);
-    const li2=document.createElement('li'); li2.textContent=c.replace('✅ ','').replace('❌ ','');
-    ul2.appendChild(li2);
   });
 
   setStatus(errs.length===0);
@@ -389,7 +393,8 @@ $("#resetBtn").onclick=()=>{
 /* Footer SUBMIT button */
 $("#submitBtn").onclick = async ()=>{
   const s=validateAll();
-  if(!s.valid){ alert('Please fix the items shown in the footer.'); return; }
+  if(!s.valid){ alert('Please fix the items shown in the Checks & Errors card.'); return; }
+  $("#submitBtn").disabled = true;
   try{
     await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
       organizer_email: ORGANIZER_EMAIL,
@@ -398,5 +403,6 @@ $("#submitBtn").onclick = async ()=>{
       selections_text: buildEmailText(s.name,s.email,s.answers,s.doubleId)
     });
     alert('Submitted!');
-  }catch(err){ console.error('Email send failed', err); alert('Email send failed. Please try again.'); } }; </script> </body> </html>
+  }catch(err){ console.error('Email send failed', err); alert('Email send failed. Please try again.'); }
+  finally{ $("#submitBtn").disabled = false; } }; </script> </body> </html>
 
