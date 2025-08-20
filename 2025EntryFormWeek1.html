@@ -376,18 +376,35 @@ $("#resetBtn").onclick=()=>{
   }
 });
 
-$("#submitBtn").onclick = async ()=>{
-  const s=validateAll();
-  if(!s.valid){ alert('Please fix the items shown in the Checks & Errors card.'); return; }
-  $("#submitBtn").disabled = true;
-  try{
-    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-      organizer_email: ORGANIZER_EMAIL,
-      participant_name: s.name,
-      participant_email: s.email,
-      selections_text: buildEmailText(s.name,s.email,s.answers,s.doubleId)
-    });
-    alert('Submitted!');
-  }catch(err){ console.error('Email send failed', err); alert('Email send failed. Please try again.'); }
-  finally{ $("#submitBtn").disabled = false; } }; </script> </body> </html> 
+// Footer SUBMIT button (with "no double" confirmation)
+$("#submitBtn").onclick = async () => {
+ const s = validateAll();
+ if (!s.valid) {
+   alert('Please fix the items shown in the Checks & Errors card.');
+   return;
+ }
+ // If valid but no Double, ask for confirmation
+ if (!s.doubleId) {
+   const ok = confirm(
+     "You did not select a Double.\n\nAre you sure you want to submit without a Double?"
+   );
+   if (!ok) return; // let them go back and choose one
+ }
+ $("#submitBtn").disabled = true;
+ try {
+   await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+     organizer_email: ORGANIZER_EMAIL,
+     participant_name: s.name,
+     participant_email: s.email,
+     selections_text: buildEmailText(s.name, s.email, s.answers, s.doubleId)
+   });
+   alert('Submitted!');
+ } catch (err) {
+   console.error('Email send failed', err);
+   alert('Email send failed. Please try again.');
+ } finally {
+   $("#submitBtn").disabled = false;
+ }
+};
+</script> </body> </html> 
 
