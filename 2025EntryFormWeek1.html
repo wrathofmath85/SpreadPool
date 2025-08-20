@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -19,7 +20,7 @@
   h1{margin:4px 0 12px}
   h2{margin:0 0 12px;font-size:1.15rem}
   .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin:12px 0}
-  .muted{color:var(--muted)} .small{font-size:.9rem}
+  .muted{color:var(--muted)} .small{font-size:.9rem)
 
   .two{display:grid;gap:12px;grid-template-columns:1fr}
   @media (min-width:720px){ .two{grid-template-columns:1fr 1fr} }
@@ -273,6 +274,43 @@ function refreshDouble(){
   if(a>=3) checks.push('✅ ≥3 NFL'); else { checks.push(`❌ Only ${a} NFL`); errs.push('Pick at least 3 NFL games.'); }
   if(b>=3) checks.push('✅ ≥3 College'); else { checks.push(`❌ Only ${b} College`); errs.push('Pick at least 3 College games.'); }
   if(total>=7 && total<=12) checks.push(`✅ Total 7–12 (now ${total})`);
-  else { if(total<7
+  else { if(total<7){ checks.push(`❌ Too few (${total}/7)`); errs.push('Pick at least 7 total.'); }
+         if(total>12){ checks.push(`❌ Too many (${total}/12)`); errs.push('Max 12 picks.'); } }
+  const dbl=doubleSel.value;
+  if(dbl){ if(m.has(dbl)) checks.push(`✅ Double valid (${dbl})`); else { checks.push('❌ Double not among selections'); errs.push('Double must be one of your selected answers.'); } }
+  else checks.push('ℹ️ No double selected (optional)');
+  const ul=$("#errorList"); ul.innerHTML=''; checks.forEach(c=>{ const li=document.createElement('li'); li.textContent=c; li.style.color=c.startsWith('❌')?'var(--bad)':c.startsWith('✅')?'var(--ok)':'var(--muted)'; ul.appendChild(li); });
+  setStatus(errs.length===0); return {valid:errs.length===0, name, email:em, answers:m, doubleId:dbl}; } function buildEmailText(name,email,m,did){
+  const ts=new Date().toISOString();
+  const keys=Array.from(m.keys()).sort((a,b)=>normQOrder(a)-normQOrder(b));
+  const lines=[`Name: ${name}`,`Email: ${email}`,`Week: ${CURRENT_WEEK}`,`Timestamp: ${ts}`,'','Selections:'];
+  keys.forEach(k=>{ const v=m.get(k).value; const dbl=(did&&did===k)?' [DOUBLE]':''; lines.push(`${k}:${v}${dbl}`); });
+  return lines.join('\n');
+}
+function onAnyChange(){ refreshExpiry(); refreshCounts(); enforceMax(12); refreshDouble(); updateSummary(); validateAll(); }
+
+/* ===================== WIRING ===================== */ document.addEventListener('change', e=>{
+  if(e.target.matches('#nameSel,#emailInp,input[type=radio],#doubleSel')) onAnyChange(); }); document.addEventListener('click', e=>{
+  if(e.target.matches('[data-clear]')){ const id=e.target.getAttribute('data-clear'); document.querySelectorAll(`input[name="${id}"]`).forEach(i=> i.checked=false); onAnyChange(); } }); $("#resetBtn").onclick=()=>{ nameSel.value=''; emailInp.value=''; doubleSel.value=''; document.querySelectorAll('input[type=radio]').forEach(i=> i.checked=false); onAnyChange(); window.scrollTo({top:0,behavior:'smooth'}); }; $("#submitBtn").onclick=async ev=>{
+  ev.preventDefault(); const s=validateAll(); if(!s.valid){ alert('Please fix the items in “Checks & Errors”.'); return; }
+  try{
+    if(EMAILJS_PUBLIC_KEY && window.emailjs){ emailjs.init({publicKey:EMAILJS_PUBLIC_KEY}); }
+    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+      organizer_email: ORGANIZER_EMAIL, participant_name: s.name, participant_email: s.email,
+      selections_text: buildEmailText(s.name,s.email,s.answers,s.doubleId)
+    });
+    alert('Submitted!');
+  }catch(err){ console.error(err); alert('Email send failed. Please try again.'); } };
+
+/* ===================== LOAD ===================== */ document.addEventListener('DOMContentLoaded', async ()=>{
+  $("#wkLbl").textContent = CURRENT_WEEK;
+  try{
+    const [parts,nfl,ncaa]=await Promise.all([fetchCSV(CSV_URL_PARTICIPANTS), fetchCSV(CSV_URL_NFL), fetchCSV(CSV_URL_NCAA)]);
+    populateParticipants(parts);
+    renderSection($("#listA"), nfl,  'A');  // NFL → A
+    renderSection($("#listB"), ncaa, 'B');  // NCAA → B
+    onAnyChange();
+    setInterval(onAnyChange, 60000);
+  }catch(e){ console.error(e); showErr("Couldn't load one or more CSVs. Make sure each sheet is published to Web as CSV."); } }); </script> </body> </html>
 
 
