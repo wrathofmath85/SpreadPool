@@ -28,7 +28,12 @@
     input,select{background:transparent;color:var(--text);border:1px solid var(--border);border-radius:9px;padding:8px;width:100%}
     .grid2{display:grid;gap:14px;grid-template-columns:1fr}
     @media (min-width:720px){ .grid2{grid-template-columns:1fr 1fr} }
-    .row{display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center;padding:8px;border-radius:10px}
+    /* AFTER: 3 columns (info | required | answers) */
+    .row{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:8px;border-radius:10px}
+    /* Keep picks vertical and put Clear below the options */
+    .answers{display:block}
+    .answers label{display:flex;gap:8px;align-items:center;margin:4px 0;cursor:pointer}
+    .answers .clear{display:block;margin-top:6px}
     .row:nth-child(odd){background:rgba(255,255,255,.03)}
     .label{font-weight:700}
     .details{font-size:.9rem;line-height:1.25rem;margin-top:4px}
@@ -246,22 +251,26 @@ function normalizeGames(rows){
 function buildRow(q, qid){
   const el=document.createElement('div');
   el.className='row'; el.dataset.qid=qid; el.dataset.deadline=q.deadline||'';
-  const answers=q.choices.map(c=>`<label><input type="radio" name="${qid}" value="${escapeHtml(c)}"> ${escapeHtml(c)}</label>`).join('');
-  el.innerHTML = `
-    <div>
-      <div class="label">${escapeHtml(q.line)}</div>
-      <div class="details">
-        <div><strong>Favorite:</strong> ${escapeHtml(q.fav || '—')}</div>
-        <div><strong>Day:</strong> ${escapeHtml(q.day || '—')}</div>
-        <div><strong>Time:</strong> ${escapeHtml(q.time || '—')}</div>
-        <div><strong>Channel:</strong> ${escapeHtml(q.tv || '—')}</div>
-        <div><strong>Location:</strong> ${escapeHtml(q.loc || '—')}</div>
-      </div>
-    </div>
-    <div>${q.req?'<span class="chip mandatory">Required</span>':''}</div>
-    <div class="answers">${answers}</div>
-    <div><button type="button" class="clear" data-clear="${qid}">Clear</button></div>
-  `;
+  const answers = q.choices
+     .map(c => `<label><input type="radio" name="${qid}" value="${escapeHtml(c)}"> ${escapeHtml(c)}</label>`)
+      .join('');
+    el.innerHTML = `
+     <div>
+     <div class="label">${escapeHtml(q.line)}</div>
+     <div class="details">
+     <div><strong>Favorite:</strong> ${escapeHtml(q.fav || '—')}</div>
+     <div><strong>Day:</strong> ${escapeHtml(q.day || '—')}</div>
+     <div><strong>Time:</strong> ${escapeHtml(q.time || '—')}</div>
+     <div><strong>Channel:</strong> ${escapeHtml(q.tv || '—')}</div>
+     <div><strong>Location:</strong> ${escapeHtml(q.loc || '—')}</div>
+     </div>
+     </div>
+     <div>${q.req ? '<span class="chip mandatory">Required</span>' : ''}</div>
+     <div class="answers">
+        ${answers}
+     <button type="button" class="clear" data-clear="${qid}">Clear</button>
+     </div>
+     `;
   return el;
 }
 function renderSection(container, rows, prefix){
