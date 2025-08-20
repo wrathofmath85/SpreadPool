@@ -2,315 +2,449 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" /> <title>Selections Form</title>
+<meta charset="UTF-8" />
+<title>2025 Entry Form – Week 1</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 
+<!-- PapaParse & EmailJS (CDN; do NOT let Outlook wrap these as SafeLinks) -->
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
 <style>
-  :root{
-    --maxw:1100px; --gap:14px; --radius:12px;
-    --bg:#0b1324; --card:#0f172a; --text:#e5e7eb; --muted:#93a1b1; --border:#1f2937;
-    --accent:#2563eb; --ok:#0ea250; --bad:#b00020; --chip:#1f2937;
-    --neonBlue:#1e3a8a; --neonOrange:#ffa500; --yellow:#facc15; --yellowText:#000;
-  }
-  html,body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0}
-  .wrap{max-width:var(--maxw);margin:28px auto;padding:0 16px 64px}
-  h1{margin:4px 0 12px}
-  h2{margin:0 0 12px;font-size:1.15rem}
-  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin:12px 0}
-  .muted{color:var(--muted)} .small{font-size:.9rem)
+:root{
+--bg:#0b1324; --card:#0f172a; --text:#e5e7eb; --muted:#93a1b1;
+--border:#1f2937; --chip:#1f2937; --accent:#2563eb;
+--ok:#0ea250; --bad:#b00020; --yellow:#facc15; --yellowText:#000;
+--footer-bg:rgba(11,19,36,.92);
+}
+*{box-sizing:border-box}
+body{
+margin:0; background:var(--bg); color:var(--text);
+font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+padding-bottom:90px; /* room for fixed footer */
+}
+h1{margin:14px 16px}
+.wrap{max-width:1100px;margin:0 auto;padding:0 16px 40px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin:12px 0}
+.muted{color:var(--muted)} .small{font-size:.9rem}
+input,select{background:transparent;color:var(--text);border:1px solid var(--border);border-radius:9px;padding:10px;width:100%}
 
-  .two{display:grid;gap:12px;grid-template-columns:1fr}
-  @media (min-width:720px){ .two{grid-template-columns:1fr 1fr} }
-  select,input{width:100%;background:transparent;border:1px solid var(--border);border-radius:9px;color:var(--text);padding:10px}
+/* Two-column sections */
+.grid2{display:grid;gap:16px;grid-template-columns:1fr}
+@media (min-width:720px){ .grid2{grid-template-columns:1fr 1fr} }
 
-  .grid2{display:grid;gap:16px;grid-template-columns:1fr}
-  @media (min-width:900px){ .grid2{grid-template-columns:1fr 1fr} }
+/* Question rows */
+.row{display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center;padding:10px;border-radius:10px}
+.row:nth-child(odd){background:rgba(255,255,255,.03)}
+.label{font-weight:700}
+.details{font-size:.92rem;line-height:1.25rem;margin-top:4px}
+.details div{margin:2px 0}
+.answers{display:flex;gap:10px;flex-wrap:wrap}
+.answers label{display:inline-flex;gap:6px;align-items:center;cursor:pointer}
+.clear{border:1px solid var(--border);background:transparent;color:var(--muted);border-radius:7px;padding:6px 10px;cursor:pointer}
+.clear:hover{color:#fff;border-color:#334155}
 
-  .row{display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center;padding:10px;border-radius:10px}
-  .row:nth-child(odd){background:rgba(255,255,255,.03)}
-  .label{font-weight:700}
-  .details{font-size:.92rem;line-height:1.25rem;margin-top:4px}
-  .details div{margin:2px 0}
-  .answers{display:flex;gap:10px;flex-wrap:wrap}
-  .answers label{display:inline-flex;gap:6px;align-items:center;cursor:pointer}
-  .clear{border:1px solid var(--border);background:transparent;color:var(--muted);border-radius:7px;padding:6px 10px;cursor:pointer}
-  .clear:hover{color:#fff;border-color:#334155}
-  .chip{display:inline-block;background:var(--chip);border-radius:999px;padding:2px 10px;font-size:.8rem}
-  .chip.expired{opacity:.7}
-  .chip.mandatory{background:var(--yellow);color:var(--yellowText);font-weight:800;border:1px solid #eab308}
-  .expired{opacity:.55}
-  .counts{display:inline-flex;gap:8px}
-  .hdr{display:flex;gap:10px;align-items:baseline;justify-content:space-between}
+.chip{display:inline-block;background:var(--chip);border-radius:999px;padding:2px 10px;font-size:.8rem}
+.chip.mandatory{background:var(--yellow);color:var(--yellowText);font-weight:800;border:1px solid #eab308}
+.chip.expired{opacity:.7}
+.expired{opacity:.55}
 
-  .summary-list{margin:.3rem 0 0;padding-left:18px}
+.hdr{display:flex;gap:10px;align-items:baseline;justify-content:space-between}
+.counts{display:inline-flex;gap:8px}
 
-  .footer{position:sticky;bottom:0;background:rgba(11,19,36,.92);backdrop-filter:blur(6px);border-top:1px solid var(--border);padding:12px 0;margin-top:16px}
-  .footRow{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
-  .btn{background:var(--accent);color:white;border:none;border-radius:10px;padding:10px 16px;cursor:pointer;font-weight:700}
-  .btn[disabled]{opacity:.5;cursor:not-allowed}
-  .ghost{background:transparent;border:1px solid var(--border);color:var(--muted)}
-  .status{display:inline-block;padding:10px 14px;border-radius:12px;border:1px solid var(--border);font-weight:900;letter-spacing:.3px}
-  .status.bad{background:#7f1d1d;color:#fff}
-  .status.good{background:var(--neonBlue);color:var(--neonOrange)}
+/* Footer (fixed) */
+footer{
+position:fixed; bottom:0; left:0; right:0; z-index:9999;
+background:var(--footer-bg); backdrop-filter:blur(6px);
+border-top:1px solid var(--border); padding:10px 14px;
+display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;
+}
+#statusBox{font-weight:900;border:1px solid var(--border);border-radius:10px;padding:8px 12px}
+#statusBox.bad{background:#7f1d1d;color:#fff}
+#statusBox.good{background:#1e3a8a;color:#ffa500}
+#errorList{margin:0;padding-left:1rem;display:flex;gap:1rem;list-style:none;flex-wrap:wrap}
+#err{display:none;color:#fee;background:#3b0f0f;border-color:#7f1d1d}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Spread Pool — Week <span id="wkLbl">1</span></h1>
+<h1>Spread Pool — Week <span id="wkLbl">1</span></h1>
 
-  <div id="err" class="card" style="display:none;color:#fee;background:#3b0f0f;border-color:#7f1d1d"></div>
+<div id="err" class="card"></div>
 
-  <!-- Participant -->
-  <section class="card">
-    <h2>Participant</h2>
-    <div class="two">
-      <div>
-        <div class="small muted">Choose your name</div>
-        <select id="nameSel"><option value="">— Loading names… —</option></select>
-      </div>
-      <div>
-        <div class="small muted">Your email (auto-filled; editable)</div>
-        <input id="emailInp" type="email" placeholder="you@example.com" />
-      </div>
-    </div>
-    <p class="small muted">One email is sent to the organizer and you’ll be CC’d.</p>
-  </section>
+<!-- Participant -->
+<section class="card">
+<h2>Participant</h2>
+<div class="grid2">
+<div>
+<div class="small muted">Choose your name</div>
+<select id="nameSel"><option value="">— Loading names… —</option></select>
+</div>
+<div>
+<div class="small muted">Your email (auto-filled; editable)</div>
+<input id="emailInp" type="email" placeholder="you@example.com" />
+</div>
+</div>
+<p class="small muted">One email is sent to the organizer and you’ll be CC’d.</p>
+</section>
 
-  <!-- Sections A & B -->
-  <div class="grid2">
-    <section class="card">
-      <div class="hdr">
-        <h2>NFL (Section A)</h2>
-        <div class="counts"><span id="countA" class="chip">Answered: 0</span></div>
-      </div>
-      <div id="listA" class="qList"><p class="small muted">Loading NFL…</p></div>
-    </section>
+<!-- Sections A & B (side by side) -->
+<div class="grid2">
+<section class="card">
+<div class="hdr">
+<h2>NFL (Section A)</h2>
+<div class="counts"><span id="countA" class="chip">Answered: 0</span></div>
+</div>
+<div id="listA" class="qList"><p class="small muted">Loading NFL…</p></div>
+</section>
 
-    <section class="card">
-      <div class="hdr">
-        <h2>College (Section B)</h2>
-        <div class="counts"><span id="countB" class="chip">Answered: 0</span></div>
-      </div>
-      <div id="listB" class="qList"><p class="small muted">Loading NCAA…</p></div>
-    </section>
-  </div>
-
-  <!-- Double -->
-  <section class="card">
-    <h2>Optional: Choose ONE “Double”</h2>
-    <select id="doubleSel"><option value="">— No double —</option></select>
-    <p class="small muted" id="doubleHint">Only your currently selected, unexpired games appear here.</p>
-  </section>
-
-  <!-- Checks & Errors -->
-  <section class="card">
-    <h2>Checks & Errors</h2>
-    <ul id="errorList" class="small"></ul>
-    <p class="small muted">Rules: select your name & valid email; answer all games marked <span class="chip mandatory">Required</span>; ≥3 in NFL and ≥3 in College; total 7–12 picks. If you choose a Double, it must be one of your selections.</p>
-  </section>
-
-  <!-- Summary -->
-  <section class="card">
-    <h2>Summary of Chosen Answers</h2>
-    <div id="summary"><p class="small muted">Your selections will appear here.</p></div>
-  </section>
-
-  <!-- Footer -->
-  <div class="footer">
-    <div class="footRow">
-      <div>
-        <button id="submitBtn" class="btn">Submit</button>
-        <button id="resetBtn" class="btn ghost">Reset all</button>
-      </div>
-      <div><span id="statusBox" class="status bad">ERRORS DETECTED</span></div>
-    </div>
-    <p class="small muted">Organizer: <strong>wrathofmath85@gmail.com</strong></p>
-  </div>
+<section class="card">
+<div class="hdr">
+<h2>College (Section B)</h2>
+<div class="counts"><span id="countB" class="chip">Answered: 0</span></div>
+</div>
+<div id="listB" class="qList"><p class="small muted">Loading NCAA…</p></div>
+</section>
 </div>
 
+<!-- Double (optional) -->
+<section class="card">
+<h2>Optional: Choose ONE “Double”</h2>
+<select id="doubleSel"><option value="">— No double —</option></select>
+<p class="small muted">Only your currently selected, unexpired games appear here.</p>
+</section>
+
+<!-- Checks & Errors -->
+<section class="card">
+<h2>Checks & Errors</h2>
+<ul id="errorListPanel" class="small"></ul>
+<p class="small muted">Rules: select your name & valid email; answer all games marked <span class="chip mandatory">Required</span> ≥3 NFL and ≥3 College; total 7–12 picks. If you choose a Double, it must be one of your selected answers.</p>
+</section>
+
+<!-- Summary -->
+<section class="card">
+<h2>Summary of Chosen Answers</h2>
+<div id="summary"><p class="small muted">Your selections will appear here.</p></div>
+</section>
+</div>
+
+<!-- Sticky Footer -->
+<footer>
+<div id="statusBox" class="bad">ERRORS DETECTED</div>
+<ul id="errorList"></ul>
+</footer>
+
 <script>
-/* ===================== CONFIG ===================== */ 
+/* ===================== CONFIG ===================== */
 const CSV_URL_PARTICIPANTS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTfQ7a2weK5Got7LTe3yVxqhcPR6pa-nPg73PdOMk8rrHwqlr3UeTcPprlgVbFjhFIVpifmMKnb_Tss/pub?gid=0&single=true&output=csv"; // Name, Email
 const CSV_URL_NFL          = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSu8cw2ymTbcJGMmBkbcJTNzvxVsl4wh3XH7pbQJ3_pbSz42LFo0HKQHVLcJtHiOqtEDt37-hSegjDK/pub?gid=2109553148&single=true&output=csv";          // Away Team, Home Team, Date, Time, TV, Location, Spread, Required
 const CSV_URL_NCAA         = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSu8cw2ymTbcJGMmBkbcJTNzvxVsl4wh3XH7pbQJ3_pbSz42LFo0HKQHVLcJtHiOqtEDt37-hSegjDK/pub?gid=0&single=true&output=csv";
 const CURRENT_WEEK = 1;
 
-const EMAILJS_SERVICE_ID  = "service_txqdfck"; 
-const EMAILJS_TEMPLATE_ID = "template_o8du7pt"; 
-const EMAILJS_PUBLIC_KEY  = "w4UC6ofDTC0VdRI44";
-const ORGANIZER_EMAIL     = "wrathofmath85@gmail.com";
+/* EmailJS (single email, CC to user) */
+const EMAILJS_SERVICE_ID = "service_txqdfck"
+const EMAILJS_TEMPLATE_ID = "template_o8du7pt"
+const EMAILJS_PUBLIC_KEY = "w4UC6ofDTC0VdRI44"
+const ORGANIZER_EMAIL = "wrathofmath85@gmail.com"
 
-/* ===================== HELPERS ===================== */ const $ = s => document.querySelector(s); const escapeHtml = s => String(s ?? "").replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
-function showErr(msg){ const b=$("#err"); b.style.display=msg?'block':'none'; b.textContent=msg||''; } function fetchCSV(url){ const bust=(url.includes('?')?'&':'?')+'cb='+Date.now();
-  return new Promise((res,rej)=>Papa.parse(url+bust,{download:true,header:true,skipEmptyLines:true,complete:r=>res(r.data||[]),error:rej}));
+/* ===================== UTIL & DIAGNOSTICS ===================== */
+const $ = s => document.querySelector(s);
+const escapeHtml = s => String(s ?? "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+
+function showErr(msg){
+const box = $("#err");
+box.style.display = msg ? "block" : "none"
+box.innerHTML = msg || ""
 }
-function toISO(dateStr,timeStr){ const s=[dateStr,timeStr].filter(Boolean).join(' '), d=new Date(s); if(isNaN(+d)) return "";
-  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), da=String(d.getDate()).padStart(2,'0'),
-        h=String(d.getHours()).padStart(2,'0'), mi=String(d.getMinutes()).padStart(2,'0');
-  return `${y}-${m}-${da}T${h}:${mi}`;}
-function dayName(dateStr){ const d=new Date(dateStr); return isNaN(+d)?'':d.toLocaleDateString(undefined,{weekday:'long'}); } function isExpired(iso){ if(!iso) return false; const d=new Date(iso); return !isNaN(+d) && (new Date()>d); } function setStatus(ok){ const box=$("#statusBox"); if(ok){box.textContent="BEAR DOWN!"; box.classList.remove('bad'); box.classList.add('good');} else {box.textContent="ERRORS DETECTED"; box.classList.remove('good'); box.classList.add('bad');} } function normQOrder(q){ if(!q) return 9999; const s=q[0], n=parseInt(q.slice(1),10); return (s==='A'?0:1)*1000 + (isFinite(n)?n:999); }
+function setStatus(ok){
+const box=$("#statusBox");
+if(ok){ box.textContent="BEAR DOWN!" box.classList.remove('bad'); box.classList.add('good'); }
+else { box.textContent="ERRORS DETECTED" box.classList.remove('good'); box.classList.add('bad'); }
+}
 
-/* ===================== PARTICIPANTS ===================== */ const nameSel=$("#nameSel"), emailInp=$("#emailInp"); function populateParticipants(rows){
-  const map={}, names=[];
-  rows.forEach(r=>{ const nm=String(r.Name||r.name||"").trim(); if(!nm) return; names.push(nm); const em=String(r.Email||r.email||"").trim(); if(em) map[nm]=em; });
-  names.sort((a,b)=>a.localeCompare(b,undefined,{sensitivity:'base'}));
-  nameSel.innerHTML=`<option value="">— Select your name —</option>`+names.map(n=>`<option>${escapeHtml(n)}</option>`).join('');
-  nameSel.onchange=()=>{ const nm=nameSel.value.trim(); if(map[nm]) emailInp.value=map[nm]; onAnyChange(); }; }
+function okStatus(resp){ return resp && (resp.status===200 || resp.ok); }
 
-/* ===================== GAMES ===================== */ function spreadOn(team, spreadText){
-  if(!team || !spreadText) return team;
-  const s=spreadText.toLowerCase(), t=team.toLowerCase();
-  if(s.startsWith(t)){ const num=spreadText.slice(team.length).trim(); return `${team} ${num}`; }
-  return team;
+/* Robust CSV fetch: shows exact failure inline if wrong link/permission */
+async function fetchCSV(url){
+const full = url + (url.includes('?') ? '&' : '?') + 'cb=' + Date.now();
+try{
+const resp = await fetch(full, { mode:'cors' });
+if(!okStatus(resp)){
+const t = await resp.text().catch(()=> '');
+showErr(`Bad HTTP status ${resp.status} for:<br><code>${escapeHtml(full)}</code><br><br>First bytes:<pre>${escapeHtml(t.slice(0,300))}</pre>`);
+throw new Error('Bad HTTP status '+resp.status);
+}
+const text = await resp.text();
+if(/<!doctype html>|<html/i.test(text)){
+showErr(`Got HTML instead of CSV for:<br><code>${escapeHtml(full)}</code><br><br>Use <b>File → Share → Publish to the web</b> → CSV.<br><br>First bytes:<pre>${escapeHtml(text.slice(0,300))}</pre>`);
+throw new Error('HTML returned, not CSV');
+}
+const parsed = Papa.parse(text, { header:true, skipEmptyLines:true, dynamicTyping:false });
+return parsed.data || [];
+}catch(e){
+console.error('[fetchCSV] error', e);
+if(!$("#err").innerHTML) showErr(`Network/parse error for:<br><code>${escapeHtml(full)}</code><br><br><b>${escapeHtml(e.message||e)}</b>`);
+throw e;
+}
+}
+
+/* Date helpers */
+function toISO(dateStr,timeStr){
+const s=[dateStr,timeStr].filter(Boolean).join(' ');
+const d=new Date(s); if(isNaN(+d)) return ""
+const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), da=String(d.getDate()).padStart(2,'0'),
+h=String(d.getHours()).padStart(2,'0'), mi=String(d.getMinutes()).padStart(2,'0');
+return `${y}-${m}-${da}T${h}:${mi}`;
+}
+function dayName(dateStr){ const d=new Date(dateStr); return isNaN(+d)?'':d.toLocaleDateString(undefined,{weekday:'long'}); }
+function isExpired(iso){ if(!iso) return false; const d=new Date(iso); return !isNaN(+d) && (new Date()>d); }
+function normQOrder(q){ if(!q) return 9999; const s=q[0], n=parseInt(q.slice(1),10); return (s==='A'?0:1)*1000 + (isFinite(n)?n:999); }
+
+/* ===================== PARTICIPANTS ===================== */
+const nameSel=$("#nameSel"), emailInp=$("#emailInp");
+function populateParticipants(rows){
+const map={}, names=[];
+rows.forEach(r=>{
+const nm = String(r.Name ?? r.name ?? "").trim();
+if(!nm) return;
+names.push(nm);
+const em = String(r.Email ?? r.email ?? "").trim();
+if(em) map[nm]=em;
+});
+names.sort((a,b)=>a.localeCompare(b,undefined,{sensitivity:'base'}));
+nameSel.innerHTML = `<option value="">— Select your name —</option>` + names.map(n=>`<option>${escapeHtml(n)}</option>`).join('');
+nameSel.onchange = ()=>{ const nm=nameSel.value.trim(); if(map[nm]) emailInp.value=map[nm]; onAnyChange(); };
+}
+
+/* ===================== GAMES ===================== */
+function spreadOn(team, spreadText){
+if(!team || !spreadText) return team;
+const s=spreadText.toLowerCase(), t=team.toLowerCase();
+if(s.startsWith(t)){ const num=spreadText.slice(team.length).trim(); return `${team} ${num}`; }
+return team;
 }
 function favoriteFrom(awayChoice, homeChoice){
-  // whichever contains a minus sign (negative spread) is the fav
-  const aFav = /(^|[ (])-\d/.test(awayChoice);
-  const hFav = /(^|[ (])-\d/.test(homeChoice);
-  if(aFav && !hFav) return awayChoice;
-  if(hFav && !aFav) return homeChoice;
-  return ""; // unknown / pick’em
+const aFav = /(^|[ (])-\d/.test(awayChoice);
+const hFav = /(^|[ (])-\d/.test(homeChoice);
+if(aFav && !hFav) return awayChoice;
+if(hFav && !aFav) return homeChoice;
+return ""
 }
 function normalizeGames(rows){
-  const arr=[];
-  rows.forEach(r=>{
-    const away=String(r["Away Team"]||r["Away"]||"").trim();
-    const home=String(r["Home Team"]||r["Home"]||"").trim();
-    const date=String(r["Date"]||"").trim();
-    const time=String(r["Time"]||"").trim();
-    const tv  =String(r["TV"]||"").trim();
-    const spread=String(r["Spread"]||"").trim();
-    const req =String(r["Required"]||"").trim().toUpperCase()==='Y';
-    if(!spread) return; // only games with spreads
-    const iso = toISO(date,time);
-    const day = dayName(date);
-    const awayChoice = spreadOn(away, spread);
-    const homeChoice = spreadOn(home, spread);
-    const fav = favoriteFrom(awayChoice, homeChoice);
-    arr.push({ line:`${away} @ ${home}`, fav, day, time, tv, deadline:iso, req, choices:[awayChoice,homeChoice] });
-  });
-  return [...arr.filter(x=>x.req), ...arr.filter(x=>!x.req)]; } function buildRow(q, qid){
-  const el=document.createElement('div');
-  el.className='row'; el.dataset.qid=qid; el.dataset.deadline=q.deadline||'';
-  const answers=q.choices.map(c=>`<label><input type="radio" name="${qid}" value="${escapeHtml(c)}"> ${escapeHtml(c)}</label>`).join('');
-  el.innerHTML = `
-    <div>
-      <div class="label">${escapeHtml(q.line)}</div>
-      <div class="details">
-        <div><strong>Favorite:</strong> ${escapeHtml(q.fav || '—')}</div>
-        <div><strong>Day:</strong> ${escapeHtml(q.day || '—')}</div>
-        <div><strong>Time:</strong> ${escapeHtml(q.time || '—')}</div>
-        <div><strong>Channel:</strong> ${escapeHtml(q.tv || '—')}</div>
-      </div>
-    </div>
-    <div>${q.req?'<span class="chip mandatory">Required</span>':''}</div>
-    <div class="answers">${answers}</div>
-    <div><button type="button" class="clear" data-clear="${qid}">Clear</button></div>
-  `;
-  return el;
+const arr=[];
+rows.forEach(r=>{
+const away=String(r["Away Team"]||r["Away"]||"").trim();
+const home=String(r["Home Team"]||r["Home"]||"").trim();
+const date=String(r["Date"]||"").trim();
+const time=String(r["Time"]||"").trim();
+const tv =String(r["TV"]||"").trim();
+const spread=String(r["Spread"]||"").trim();
+const req =String(r["Required"]||"").trim().toUpperCase()==='Y';
+if(!spread) return; // only show games that have spreads
+const iso = toISO(date,time);
+const day = dayName(date);
+const awayChoice = spreadOn(away, spread);
+const homeChoice = spreadOn(home, spread);
+const fav = favoriteFrom(awayChoice, homeChoice);
+arr.push({ line:`${away} @ ${home}`, fav, day, time, tv, deadline:iso, req, choices:[awayChoice,homeChoice] });
+});
+return [...arr.filter(x=>x.req), ...arr.filter(x=>!x.req)];
+}
+function buildRow(q, qid){
+const el=document.createElement('div');
+el.className='row'; el.dataset.qid=qid; el.dataset.deadline=q.deadline||'';
+const answers=q.choices.map(c=>`<label><input type="radio" name="${qid}" value="${escapeHtml(c)}"> ${escapeHtml(c)}</label>`).join('');
+el.innerHTML = `
+<div>
+<div class="label">${escapeHtml(q.line)}</div>
+<div class="details">
+<div><strong>Favorite:</strong> ${escapeHtml(q.fav || '—')}</div>
+<div><strong>Day:</strong> ${escapeHtml(q.day || '—')}</div>
+<div><strong>Time:</strong> ${escapeHtml(q.time || '—')}</div>
+<div><strong>Channel:</strong> ${escapeHtml(q.tv || '—')}</div>
+</div>
+</div>
+<div>${q.req?'<span class="chip mandatory">Required</span>':''}</div>
+<div class="answers">${answers}</div>
+<div><button type="button" class="clear" data-clear="${qid}">Clear</button></div>
+`;
+return el;
 }
 function renderSection(container, rows, prefix){
-  container.innerHTML='';
-  const games=normalizeGames(rows);
-  games.forEach((g,i)=> container.appendChild(buildRow(g, `${prefix}${i+1}`))); }
-
-/* ===================== STATE / UI ===================== */ const listA=$("#listA"), listB=$("#listB"), doubleSel=$("#doubleSel"); function allRows(){ return Array.from(document.querySelectorAll('.row')); } function answersMap(){
-  const map=new Map();
-  allRows().forEach(r=>{
-    const id=r.dataset.qid, chk=r.querySelector('input[type=radio]:checked');
-    if(chk) map.set(id,{label:r.querySelector('.label')?.textContent||id, value:chk.value, deadline:r.dataset.deadline||''});
-  });
-  return map;
+container.innerHTML='';
+const games=normalizeGames(rows);
+if(!games.length){
+container.innerHTML = `<p class="small muted">No games found (check sheet headers and “Spread” column).</p>`;
+return;
 }
-function countAB(map){ let a=0,b=0; for(const k of map.keys()){ if(k.startsWith('A')) a++; else if(k.startsWith('B')) b++; } return {a,b,total:a+b}; } function refreshCounts(){ const m=answersMap(); const {a,b}=countAB(m); $("#countA").textContent=`Answered: ${a}`; $("#countB").textContent=`Answered: ${b}`; } function refreshExpiry(){
-  allRows().forEach(r=>{
-    const ex=isExpired(r.dataset.deadline);
-    r.classList.toggle('expired',ex);
-    r.querySelectorAll('input[type=radio]').forEach(i=> i.disabled=ex);
-    const has=r.querySelector('.chip.expired');
-    if(ex && !has){ const sp=document.createElement('span'); sp.className='chip expired'; sp.textContent='Expired'; r.children[1].insertAdjacentElement('afterend',sp); }
-    else if(!ex && has){ has.remove(); }
-  });
+games.forEach((g,i)=> container.appendChild(buildRow(g, `${prefix}${i+1}`)));
+}
+
+/* ===================== STATE / UI ===================== */
+const listA=$("#listA"), listB=$("#listB"), doubleSel=$("#doubleSel");
+
+function allRows(){ return Array.from(document.querySelectorAll('.row')); }
+function answersMap(){
+const map=new Map();
+allRows().forEach(r=>{
+const id=r.dataset.qid, chk=r.querySelector('input[type=radio]:checked');
+if(chk) map.set(id,{label:r.querySelector('.label')?.textContent||id, value:chk.value, deadline:r.dataset.deadline||''});
+});
+return map;
+}
+function countAB(map){ let a=0,b=0; for(const k of map.keys()){ if(k.startsWith('A')) a++; else if(k.startsWith('B')) b++; } return {a,b,total:a+b}; }
+function refreshCounts(){ const m=answersMap(); const {a,b}=countAB(m); $("#countA").textContent=`Answered: ${a}`; $("#countB").textContent=`Answered: ${b}`; }
+function refreshExpiry(){
+allRows().forEach(r=>{
+const ex=isExpired(r.dataset.deadline);
+r.classList.toggle('expired',ex);
+r.querySelectorAll('input[type=radio]').forEach(i=> i.disabled=ex);
+const has=r.querySelector('.chip.expired');
+if(ex && !has){ const sp=document.createElement('span'); sp.className='chip expired'; sp.textContent='Expired'; r.children[1].insertAdjacentElement('afterend',sp); }
+else if(!ex && has){ has.remove(); }
+});
 }
 function enforceMax(max=12){
-  const m=answersMap(); if(m.size<max){
-    allRows().forEach(r=>{
-      const ex=r.classList.contains('expired');
-      r.querySelectorAll('input[type=radio]').forEach(i=> i.disabled=ex);
-    }); return;
-  }
-  allRows().forEach(r=>{
-    const id=r.dataset.qid, selected=m.has(id);
-    r.querySelectorAll('input[type=radio]').forEach(i=>{ if(!selected && !i.checked) i.disabled=true; });
-  });
+const m=answersMap(); if(m.size<max){
+allRows().forEach(r=>{
+const ex=r.classList.contains('expired');
+r.querySelectorAll('input[type=radio]').forEach(i=> i.disabled=ex);
+}); return;
+}
+allRows().forEach(r=>{
+const id=r.dataset.qid, selected=m.has(id);
+r.querySelectorAll('input[type=radio]').forEach(i=>{ if(!selected && !i.checked) i.disabled=true; });
+});
 }
 function refreshDouble(){
-  const m=answersMap(); const keep=doubleSel.value;
-  doubleSel.innerHTML='<option value="">— No double —</option>';
-  const ids=Array.from(m.keys()).sort((a,b)=>normQOrder(a)-normQOrder(b));
-  ids.forEach(id=>{
-    if(isExpired(m.get(id).deadline)) return;
-    const opt=document.createElement('option'); opt.value=id; opt.textContent=`${id} — ${m.get(id).label}`; doubleSel.appendChild(opt);
-  });
-  if(keep && m.has(keep)) doubleSel.value=keep; else doubleSel.value=''; } function updateSummary(){
-  const m=answersMap(); if(m.size===0){ $("#summary").innerHTML='<p class="small muted">Your selections will appear here.</p>'; return; }
-  const A=[],B=[]; for(const [id,o] of m) (id.startsWith('A')?A:B).push({id, ...o});
-  A.sort((x,y)=>normQOrder(x.id)-normQOrder(y.id)); B.sort((x,y)=>normQOrder(x.id)-normQOrder(y.id));
-  const dbl = doubleSel.value;
-  const ul = (t,arr)=>`<h3>${t}</h3>${arr.length?`<ol class="summary-list">${arr.map(x=>`<li><strong>${escapeHtml(x.label)}</strong>: ${escapeHtml(x.value)}${dbl===x.id?' <span class="chip">[DOUBLE]</span>':''}</li>`).join('')}</ol>`:'<p class="small muted">None selected.</p>'}`;
-  $("#summary").innerHTML = ul('NFL',A) + ul('College',B); } function validateAll(){
-  const errs=[]; const name=nameSel.value.trim(); const em=emailInp.value.trim();
-  const m=answersMap(); const {a,b,total}=countAB(m);
-  const mandA=$("#listA .row .mandatory")?.closest('.row')?.dataset.qid||null;
-  const mandB=$("#listB .row .mandatory")?.closest('.row')?.dataset.qid||null;
-  const checks=[];
-  if(name) checks.push('✅ Name selected'); else { checks.push('❌ Name not selected'); errs.push('Choose your name.'); }
-  if(em && /\S+@\S+\.\S+/.test(em)) checks.push('✅ Valid email'); else { checks.push('❌ Email missing/invalid'); errs.push('Enter a valid email.'); }
-  if(!mandA || m.has(mandA)) checks.push('✅ Required NFL picked'); else { checks.push('❌ Required NFL not picked'); errs.push('Pick the required NFL game.'); }
-  if(!mandB || m.has(mandB)) checks.push('✅ Required College picked'); else { checks.push('❌ Required College not picked'); errs.push('Pick the required College game.'); }
-  if(a>=3) checks.push('✅ ≥3 NFL'); else { checks.push(`❌ Only ${a} NFL`); errs.push('Pick at least 3 NFL games.'); }
-  if(b>=3) checks.push('✅ ≥3 College'); else { checks.push(`❌ Only ${b} College`); errs.push('Pick at least 3 College games.'); }
-  if(total>=7 && total<=12) checks.push(`✅ Total 7–12 (now ${total})`);
-  else { if(total<7){ checks.push(`❌ Too few (${total}/7)`); errs.push('Pick at least 7 total.'); }
-         if(total>12){ checks.push(`❌ Too many (${total}/12)`); errs.push('Max 12 picks.'); } }
-  const dbl=doubleSel.value;
-  if(dbl){ if(m.has(dbl)) checks.push(`✅ Double valid (${dbl})`); else { checks.push('❌ Double not among selections'); errs.push('Double must be one of your selected answers.'); } }
-  else checks.push('ℹ️ No double selected (optional)');
-  const ul=$("#errorList"); ul.innerHTML=''; checks.forEach(c=>{ const li=document.createElement('li'); li.textContent=c; li.style.color=c.startsWith('❌')?'var(--bad)':c.startsWith('✅')?'var(--ok)':'var(--muted)'; ul.appendChild(li); });
-  setStatus(errs.length===0); return {valid:errs.length===0, name, email:em, answers:m, doubleId:dbl}; } function buildEmailText(name,email,m,did){
-  const ts=new Date().toISOString();
-  const keys=Array.from(m.keys()).sort((a,b)=>normQOrder(a)-normQOrder(b));
-  const lines=[`Name: ${name}`,`Email: ${email}`,`Week: ${CURRENT_WEEK}`,`Timestamp: ${ts}`,'','Selections:'];
-  keys.forEach(k=>{ const v=m.get(k).value; const dbl=(did&&did===k)?' [DOUBLE]':''; lines.push(`${k}:${v}${dbl}`); });
-  return lines.join('\n');
+const m=answersMap(); const keep=doubleSel.value;
+doubleSel.innerHTML='<option value="">— No double —</option>';
+const ids=Array.from(m.keys()).sort((a,b)=>normQOrder(a)-normQOrder(b));
+ids.forEach(id=>{
+if(isExpired(m.get(id).deadline)) return;
+const opt=document.createElement('option'); opt.value=id; opt.textContent=`${id} — ${m.get(id).label}`; doubleSel.appendChild(opt);
+});
+if(keep && m.has(keep)) doubleSel.value=keep; else doubleSel.value='';
+}
+function updateSummary(){
+const m=answersMap(); if(m.size===0){ $("#summary").innerHTML='<p class="small muted">Your selections will appear here.</p>'; return; }
+const A=[],B=[]; for(const [id,o] of m) (id.startsWith('A')?A:B).push({id, ...o});
+A.sort((x,y)=>normQOrder(x.id)-normQOrder(y.id)); B.sort((x,y)=>normQOrder(x.id)-normQOrder(y.id));
+const dbl = doubleSel.value;
+const ul = (t,arr)=>`<h3>${t}</h3>${arr.length?`<ol style="margin:.3rem 0 0;padding-left:18px">${arr.map(x=>`<li><strong>${escapeHtml(x.label)}</strong>: ${escapeHtml(x.value)}${dbl===x.id?' <span class="chip">[DOUBLE]</span>':''}</li>`).join('')}</ol>`:'<p class="small muted">None selected.</p>'}`;
+$("#summary").innerHTML = ul('NFL',A) + ul('College',B);
+}
+function validateAll(){
+const errs=[]; const name=nameSel.value.trim(); const em=emailInp.value.trim();
+const m=answersMap(); const {a,b,total}=countAB(m);
+const mandA=$("#listA .row .mandatory")?.closest('.row')?.dataset.qid||null;
+const mandB=$("#listB .row .mandatory")?.closest('.row')?.dataset.qid||null;
+const checks=[];
+
+if(name) checks.push('✅ Name selected'); else { checks.push('❌ Name not selected'); errs.push('Choose your name.'); }
+if(em && /\S+@\S+\.\S+/.test(em)) checks.push('✅ Valid email'); else { checks.push('❌ Email missing/invalid'); errs.push('Enter a valid email.'); }
+
+if(!mandA || m.has(mandA)) checks.push('✅ Required NFL picked'); else { checks.push('❌ Required NFL not picked'); errs.push('Pick the required NFL game.'); }
+if(!mandB || m.has(mandB)) checks.push('✅ Required College picked'); else { checks.push('❌ Required College not picked'); errs.push('Pick the required College game.'); }
+
+if(a>=3) checks.push('✅ ≥3 NFL'); else { checks.push(`❌ Only ${a} NFL`); errs.push('Pick at least 3 NFL games.'); }
+if(b>=3) checks.push('✅ ≥3 College'); else { checks.push(`❌ Only ${b} College`); errs.push('Pick at least 3 College games.'); }
+
+if(total>=7 && total<=12) checks.push(`✅ Total 7–12 (now ${total})`);
+else { if(total<7){ checks.push(`❌ Too few (${total}/7)`); errs.push('Pick at least 7 total.'); }
+if(total>12){ checks.push(`❌ Too many (${total}/12)`); errs.push('Max 12 picks.'); } }
+
+const dbl=doubleSel.value;
+if(dbl){ if(m.has(dbl)) checks.push(`✅ Double valid (${dbl})`); else { checks.push('❌ Double not among selections'); errs.push('Double must be one of your selected answers.'); } }
+else checks.push('ℹ️ No double selected (optional)');
+
+// Render both in-panel and footer error list
+const ul1=$("#errorListPanel"); ul1.innerHTML='';
+const ul2=$("#errorList"); ul2.innerHTML='';
+checks.forEach(c=>{
+const li1=document.createElement('li'); li1.textContent=c;
+li1.style.color=c.startsWith('❌')?'var(--bad)':c.startsWith('✅')?'var(--ok)':'var(--muted)';
+ul1.appendChild(li1);
+const li2=document.createElement('li'); li2.textContent=c.replace('✅ ','').replace('❌ ','');
+ul2.appendChild(li2);
+});
+
+setStatus(errs.length===0);
+return { valid: errs.length===0, name, email:em, answers:m, doubleId:dbl };
+}
+function buildEmailText(name,email,m,did){
+const ts=new Date().toISOString();
+const keys=Array.from(m.keys()).sort((a,b)=>normQOrder(a)-normQOrder(b));
+const lines=[`Name: ${name}`,`Email: ${email}`,`Week: ${CURRENT_WEEK}`,`Timestamp: ${ts}`,'','Selections:'];
+keys.forEach(k=>{ const v=m.get(k).value; const dbl=(did&&did===k)?' [DOUBLE]':''; lines.push(`${k}:${v}${dbl}`); });
+return lines.join('\n');
 }
 function onAnyChange(){ refreshExpiry(); refreshCounts(); enforceMax(12); refreshDouble(); updateSummary(); validateAll(); }
 
-/* ===================== WIRING ===================== */ document.addEventListener('change', e=>{
-  if(e.target.matches('#nameSel,#emailInp,input[type=radio],#doubleSel')) onAnyChange(); }); document.addEventListener('click', e=>{
-  if(e.target.matches('[data-clear]')){ const id=e.target.getAttribute('data-clear'); document.querySelectorAll(`input[name="${id}"]`).forEach(i=> i.checked=false); onAnyChange(); } }); $("#resetBtn").onclick=()=>{ nameSel.value=''; emailInp.value=''; doubleSel.value=''; document.querySelectorAll('input[type=radio]').forEach(i=> i.checked=false); onAnyChange(); window.scrollTo({top:0,behavior:'smooth'}); }; $("#submitBtn").onclick=async ev=>{
-  ev.preventDefault(); const s=validateAll(); if(!s.valid){ alert('Please fix the items in “Checks & Errors”.'); return; }
-  try{
-    if(EMAILJS_PUBLIC_KEY && window.emailjs){ emailjs.init({publicKey:EMAILJS_PUBLIC_KEY}); }
-    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-      organizer_email: ORGANIZER_EMAIL, participant_name: s.name, participant_email: s.email,
-      selections_text: buildEmailText(s.name,s.email,s.answers,s.doubleId)
-    });
-    alert('Submitted!');
-  }catch(err){ console.error(err); alert('Email send failed. Please try again.'); } };
+/* ===================== WIRING ===================== */
+document.addEventListener('change', e=>{
+if(e.target.matches('#nameSel,#emailInp,input[type=radio],#doubleSel')) onAnyChange();
+});
+document.addEventListener('click', e=>{
+if(e.target.matches('[data-clear]')){
+const id=e.target.getAttribute('data-clear');
+document.querySelectorAll(`input[name="${id}"]`).forEach(i=> i.checked=false);
+onAnyChange();
+}
+});
 
-/* ===================== LOAD ===================== */ document.addEventListener('DOMContentLoaded', async ()=>{
-  $("#wkLbl").textContent = CURRENT_WEEK;
-  try{
-    const [parts,nfl,ncaa]=await Promise.all([fetchCSV(CSV_URL_PARTICIPANTS), fetchCSV(CSV_URL_NFL), fetchCSV(CSV_URL_NCAA)]);
-    populateParticipants(parts);
-    renderSection($("#listA"), nfl,  'A');  // NFL → A
-    renderSection($("#listB"), ncaa, 'B');  // NCAA → B
-    onAnyChange();
-    setInterval(onAnyChange, 60000);
-  }catch(e){ console.error(e); showErr("Couldn't load one or more CSVs. Make sure each sheet is published to Web as CSV."); } }); </script> </body> </html>
+/* ===================== LOAD & SUBMIT ===================== */
+document.addEventListener('DOMContentLoaded', async ()=>{
+$("#wkLbl").textContent = CURRENT_WEEK;
+try{
+const [parts,nfl,ncaa] = await Promise.all([
+fetchCSV(CSV_URL_PARTICIPANTS),
+fetchCSV(CSV_URL_NFL),
+fetchCSV(CSV_URL_NCAA)
+]);
+populateParticipants(parts);
+renderSection($("#listA"), nfl, 'A'); // NFL → A
+renderSection($("#listB"), ncaa, 'B'); // NCAA → B
+onAnyChange(); // initial pass
+setInterval(onAnyChange, 60000); // keep deadlines fresh
+}catch(e){
+console.error('[load] fatal', e);
+// showErr already handled inside fetchCSV
+}
+});
+
+/* Submit (EmailJS: one email, CC participant via template) */
+document.addEventListener('click', async (e)=>{
+if(e.target.id !== 'statusBox') return; // no-op
+});
+document.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && e.target.tagName==='INPUT') e.preventDefault(); });
+
+/* You can attach submission to a button of your choice; example: */
+document.body.addEventListener('click', async (e)=>{
+// If you want a dedicated submit button, add it and match here by id.
+// Example:
+// if(e.target.id==='submitBtn'){ ... }
+});
+
+if (EMAILJS_PUBLIC_KEY && window.emailjs) { emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY }); }
+
+// Example function you can call when you add a "Submit" button:
+// (Hook it to a button as shown above.)
+async function submitViaEmail(){
+const s=validateAll();
+if(!s.valid){ alert('Please fix the items shown in the footer.'); return; }
+try{
+await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+organizer_email: ORGANIZER_EMAIL,
+participant_name: s.name,
+participant_email: s.email,
+selections_text: buildEmailText(s.name,s.email,s.answers,s.doubleId)
+});
+alert('Submitted!');
+}catch(err){ console.error('Email send failed', err); alert('Email send failed. Please try again.'); }
+}
+</script>
+</body>
+</html>
 
 
