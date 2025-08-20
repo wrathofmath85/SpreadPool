@@ -79,10 +79,43 @@
      margin-top: 6px;     /* space above */
      margin-left: 0;      /* align with choices */
      }
-  </style>
-</head>
-<body>
-  <div class="wrap">
+     /* Phone layout: stack everything, keep answers inside the card */
+     @media (max-width: 640px){
+      .row{
+        grid-template-columns: 1fr;     /* single column */
+        align-items: flex-start;
+      }
+      .row > :nth-child(1),
+      .row > :nth-child(2),
+      .row > :nth-child(3){
+        grid-column: 1;                 /* all children span full width */
+      }
+      /* vertical answers with proper wrapping */
+      .answers{
+        display: block;
+        max-width: 100%;
+      }
+      .answers label{
+        display: flex;
+        flex-wrap: wrap;                /* allow multi-line text */
+        gap: 8px;
+        align-items: center;
+        margin: 6px 0;
+        white-space: normal;
+        overflow-wrap: anywhere;        /* prevent overflow past the card */
+      }
+      .answers .clear{
+        display: inline-block;
+        margin-top: 8px;                /* stays under the options */
+      }
+      /* keep “Expired”/“Required” chips from floating right off-screen */
+      .chip.expired,
+      .chip.mandatory{ align-self: flex-start; }
+     }
+       </style>
+     </head>
+     <body>
+       <div class="wrap">
     <h1>Spread Pool — Week <span id="wkLbl">1</span></h1>
 
     <div id="err" class="card"></div>
