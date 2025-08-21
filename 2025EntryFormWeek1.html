@@ -5,62 +5,62 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" /> <title>Spread Pool — Week 1</title>
 
 <style>
-/* -------- THEME -------- */
 :root{
   --bg:#0d1117; --card:#111827; --text:#e6edf3; --muted:#9aa1b1; --border:#263142;
   --chip:#f2c53d; --chipText:#000; --yellow:#ffcc15; --yellowText:#000;
-  --good:#1f883d; --bad:#b42318; --blue:#1f6feb; --orange:#ff7b00; } *{box-sizing:border-box} body{
-  margin:0;background:var(--bg);color:var(--text);
-  font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.35;
-}
+  --good:#1f883d; --bad:#b42318; --blue:#1f6feb; --orange:#ff7b00; } *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);
+  font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  font-size:16px;line-height:1.35;}
 .wrap{max-width:1150px;margin:0 auto;padding:24px}
 h1{margin:0 0 18px 0;font-size:28px}
 h2{margin:0 0 12px 0;font-size:20px}
 .small{font-size:.92rem}.muted{color:var(--muted)}
-.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin:12px 0} .grid{display:grid;grid-template-columns:1fr;gap:14px}
-@media(min-width:980px){.grid{grid-template-columns:1fr 1fr}} .row{display:grid;grid-template-columns:1fr auto minmax(280px,1fr);gap:10px;align-items:center;
-     padding:10px;border-radius:10px;background:rgba(255,255,255,.02);border:1px solid var(--border)} .label{font-weight:700} .details{font-size:.95rem} .chip{display:inline-flex;align-items:center;gap:8px}
-.chip .mandatory{background:var(--yellow);color:var(--yellowText);border-radius:999px;padding:4px 10px;font-weight:800}
+.card{background:var(--card);border:1px solid var(--border);
+  border-radius:12px;padding:16px;margin:12px 0} .grid{display:grid;grid-template-columns:1fr;gap:14px}
+@media(min-width:980px){.grid{grid-template-columns:1fr 1fr}}
 
-/* ANSWERS: vertical, one line, clear below */ .answers{display:block;max-width:34rem}
+.row{display:grid;grid-template-columns:1fr auto minmax(280px,1fr);
+  gap:10px;align-items:center;padding:10px;border-radius:10px;
+  background:rgba(255,255,255,.02);border:1px solid var(--border)} .label{font-weight:700} .details{font-size:.95rem} .hdr{display:flex;align-items:center;justify-content:space-between}
+
+/* badges */
+.badge{display:inline-flex;align-items:center;justify-content:center;
+  border-radius:999px;padding:6px 12px;font-weight:800} .badge.required{background:var(--yellow);color:#000}
+.badge.expired{background:#d92d20;color:#fff}
+
+/* answers list (vertical, one line, clear below) */ .answers{display:block;max-width:34rem}
 .answers label{
   display:flex;align-items:center;gap:8px;margin:6px 0;cursor:pointer;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;word-break:normal;overflow-wrap:normal;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 .answers input{transform:translateY(1px)} .answers .clear{margin-top:8px}
 
-/* Clear button */
-.clear{
-  display:inline-block;background:transparent;border:1px solid #3b4553;border-radius:8px;
-  color:var(--muted);padding:6px 10px;cursor:pointer } .clear:hover{background:#2a3442;color:#fff}
+/* clear button */
+.clear{display:inline-block;background:transparent;border:1px solid #3b4553;
+  border-radius:8px;color:var(--muted);padding:6px 10px;cursor:pointer} .clear:hover{background:#2a3442;color:#fff}
 
-/* Section headers: answered count pill */ .hdr{display:flex;align-items:center;justify-content:space-between}
-
-/* Footer status pill */
+/* footer */
 footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
-.footer{
-  display:flex;justify-content:space-between;align-items:center;gap:8px;
+.footer{display:flex;justify-content:space-between;align-items:center;gap:8px;
   background:rgba(16,23,33,.85);backdrop-filter:blur(6px);
-  border-top:1px solid var(--border);padding:10px 14px } .btn{border:none;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}
+  border-top:1px solid var(--border);padding:10px 14px} .btn{border:none;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}
 .btn[disabled]{opacity:.5;cursor:not-allowed}
 .btn.primary{background:#238636;color:#fff}
 .btn.ghost{background:#2a3442;color:#d0d7de}
 .statusBox{font-weight:900;border:1px solid var(--border);border-radius:999px;padding:8px 14px} .status_bad{background:var(--bad);color:#fff}
 .status_good{background:#0b5cab;color:#fff;border-color:#0b5cab}
 
-/* DEMO badge */
-.demo{position:fixed;top:14px;right:14px;background:#a15;box-shadow:0 6px 18px rgba(0,0,0,.35);
-      color:#fff;border-radius:10px;padding:8px 12px;font-weight:800;z-index:20}
+/* demo badge */
+.demo{position:fixed;top:14px;right:14px;background:#a15;
+  box-shadow:0 6px 18px rgba(0,0,0,.35);color:#fff;border-radius:10px;
+  padding:8px 12px;font-weight:800;z-index:20}
 
-/* Mobile stack */
+/* mobile */
 @media(max-width:720px){
   .row{grid-template-columns:1fr;align-items:flex-start}
   .answers{max-width:none;width:100%}
   .answers label{width:100%}
 }
-
-/* Expired/Required badges in the middle column */ .badge{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:6px 12px;font-weight:800} .badge.required{background:var(--yellow);color:#000}
-.badge.expired{background:#d92d20;color:#fff}
 </style>
 </head>
 <body>
@@ -68,7 +68,7 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
 
   <h1>Spread Pool — Week <span id="weekNum">1</span></h1>
 
-  <!-- PARTICIPANT -->
+  <!-- Participant -->
   <section class="card">
     <h2>Participant</h2>
     <div class="grid">
@@ -107,7 +107,7 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
     </section>
   </div>
 
-  <!-- DOUBLE -->
+  <!-- Double -->
   <section class="card">
     <h2>Optional: Choose ONE “Double”</h2>
     <select id="selDouble" style="width:100%;max-width:560px;padding:10px;border-radius:8px;background:#0f1621;color:var(--text);border:1px solid var(--border)">
@@ -116,22 +116,22 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
     <p class="small muted">Only your currently selected, unexpired games appear here.</p>
   </section>
 
-  <!-- CHECKS -->
+  <!-- Checks -->
   <section class="card">
     <h2>Checks &amp; Errors</h2>
     <p class="small muted">Rules: select your name &amp; valid email; answer all games marked
-      <span class="chip mandatory">Required</span>; ≥3 in NFL and ≥3 in College; total 7–12 picks.
+      <span class="badge required">Required</span>; ≥3 in NFL and ≥3 in College; total 7–12 picks.
       If you choose a Double, it must be one of your selections.</p>
     <ul id="errList" class="small" style="margin:8px 0 0 18px"></ul>
   </section>
 
-  <!-- SUMMARY -->
+  <!-- Summary -->
   <section class="card">
     <h2>Summary of Chosen Answers</h2>
     <div id="summary"><p class="small muted">Your selections will appear here.</p></div>
   </section>
 
-  <!-- FOOTER -->
+  <!-- Footer -->
   <footer>
     <div class="footer">
       <div class="left">
@@ -149,128 +149,135 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
 </div>
 
 <script>
-/* =====================  CONFIG  ===================== */ // Replace with your Publish-to-web CSV links 
+/* ===================== CONFIG ===================== */
+/* Replace with your Publish‑to‑web CSV links (must end with output=csv) */ 
 const CSV_URL_PARTICIPANTS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTfQ7a2weK5Got7LTe3yVxqhcPR6pa-nPg73PdOMk8rrHwqlr3UeTcPprlgVbFjhFIVpifmMKnb_Tss/pub?gid=0&single=true&output=csv"; // Name, Email
 const CSV_URL_NFL          = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSu8cw2ymTbcJGMmBkbcJTNzvxVsl4wh3XH7pbQJ3_pbSz42LFo0HKQHVLcJtHiOqtEDt37-hSegjDK/pub?gid=2109553148&single=true&output=csv";          // Away Team, Home Team, Date, Time, TV, Location, Spread, Required
 const CSV_URL_NCAA         = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSu8cw2ymTbcJGMmBkbcJTNzvxVsl4wh3XH7pbQJ3_pbSz42LFo0HKQHVLcJtHiOqtEDt37-hSegjDK/pub?gid=0&single=true&output=csv";
 
-// Week #
 const CURRENT_WEEK = 1;
 document.getElementById("weekNum").textContent = CURRENT_WEEK;
 
-// EmailJS (fill in if you want live emails; leave DEMO_MODE=true to suppress)
-const DEMO_MODE            = true;  // true = no email sent; UI still says "Submitted"
-const EMAILJS_SERVICE_ID  = "service_txqdfck"; 
-const EMAILJS_TEMPLATE_ID = "template_o8du7pt"; 
-const EMAILJS_PUBLIC_KEY  = "w4UC6ofDTC0VdRI44";
+/* Email (demo mode suppresses sending but shows “Submitted”) */
+const DEMO_MODE            = true;
+const EMAILJS_SERVICE_ID  = "service_txqdfck"; const EMAILJS_TEMPLATE_ID = "template_o8du7pt"; const EMAILJS_PUBLIC_KEY  = "w4UC6ofDTC0VdRI44";
 const ORGANIZER_EMAIL     = "wrathofmath85@gmail.com";
 
-
-/* =====================  HELPERS  ===================== */ const $ = s => document.querySelector(s); const $$ = s => Array.from(document.querySelectorAll(s));
+/* ===================== HELPERS ===================== */ const $  = s => document.querySelector(s); const $$ = s => Array.from(document.querySelectorAll(s));
 
 function cacheBusted(url){
-  const u = new URL(url);
-  u.searchParams.set("_", String(Date.now()));
-  return u.toString();
-}
-function escapeHtml(s){ return String(s ?? "").replace(/[&<>"]/g, m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[m])); }
+  const u = new URL(url); u.searchParams.set("_", Date.now()); return u.toString(); } function escapeHtml(s){ return String(s??"").replace(/[&<>"]/g, m=>({ "&":"&amp;","<":"&lt;",">":"&gt;" }[m])); }
 
-// simple CSV -> array of objects
-async function fetchCSV(url){
+/* very small CSV parser (handles quotes) */ async function fetchCSV(url){
   const res = await fetch(cacheBusted(url), {headers:{pragma:"no-cache","cache-control":"no-cache"}});
   const txt = await res.text();
   const rows = parseCSV(txt);
   const [hdr, ...data] = rows;
-  return data.filter(r => r.some(cell => cell.trim()!=="")).map(r=>{
-    const obj={}; hdr.forEach((h,i)=>obj[h.trim()]= (r[i]??"").trim()); return obj;
+  return data.filter(r=>r.some(c=>c.trim()!=="")).map(r=>{
+    const o={}; hdr.forEach((h,i)=>o[h.trim()]=(r[i]??"").trim()); return o;
   });
 }
 function parseCSV(text){
-  const rows=[], re = /(?:^|,)(?:"([^"]*(?:""[^"]*)*)"|([^",\n\r]*))/g;
-  let row=[], m, i=0;
-  const lines = text.replace(/\r\n/g,"\n").split("\n");
-  for(const line of lines){
-    row=[]; re.lastIndex=0; i=0;
-    while((m=re.exec(line))!==null){
-      row.push( m[1] ? m[1].replace(/""/g,'"') : (m[2]??"") );
-      i = re.lastIndex;
-    }
-    rows.push(row);
+  const out=[], re=/(?:^|,)(?:"([^"]*(?:""[^"]*)*)"|([^",\n\r]*))/g;
+  for(const line of text.replace(/\r\n/g,"\n").split("\n")){
+    const row=[]; re.lastIndex=0; let m;
+    while((m=re.exec(line))!==null){ row.push(m[1]?m[1].replace(/""/g,'"'):(m[2]??"")); }
+    out.push(row);
   }
-  return rows;
+  return out;
 }
 
-// build nice display & deadlines
-function normalizeGames(arr){
-  // keep only rows with a Spread
+/* ===== Eastern → local (with proper DST) & deadline =====
+   The CSV provides Date and Time in *Eastern*. We compute a proper ISO with
+   the New York offset for that calendar date, then render local time. */ function pad(n){return n<10?("0"+n):""+n;} function parseTime12(s){ // "8:15 PM" -> {h:20,m:15}
+  const m = String(s||"").match(/^\s*(\d{1,2}):(\d{2})\s*([AP]M)\s*$/i);
+  if(!m) return {h:0,m:0};
+  let h = +m[1]%12; if(/pm/i.test(m[3])) h+=12; return {h, m:+m[2]}; } function getNYOffsetForDate(y,m,d){ // returns like "-04:00" or "-05:00"
+  const probeUTC = Date.UTC(y, m-1, d, 12, 0); // noon UTC on that date
+  const s = new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',timeZoneName:'shortOffset'}).format(probeUTC);
+  const mOff = s.match(/GMT([+-]\d{1,2})(?::(\d{2}))?/);
+  const hrs = mOff ? parseInt(mOff[1],10) : -5;
+  const mins = mOff && mOff[2] ? parseInt(mOff[2],10) : 0;
+  const sign = hrs>=0?"+":"-";
+  const ah = Math.abs(hrs);
+  return `${sign}${pad(ah)}:${pad(mins)}`; } function easternLocalISO(dateStr, timeStr){ // -> ISO with -04:00/-05:00
+  const d = new Date(dateStr); // just to extract Y/M/D
+  const y = d.getFullYear(), m = d.getMonth()+1, day = d.getDate();
+  const {h, m:mi} = parseTime12(timeStr||"12:00 PM");
+  const off = getNYOffsetForDate(y,m,day);
+  return `${y}-${pad(m)}-${pad(day)}T${pad(h)}:${pad(mi)}:00${off}`;
+}
+
+/* turn a raw row into a normalized game object */ function normalizeGames(arr){
   const keep = arr.filter(r => (r["Spread"]??"").toString().trim() !== "");
-  // Required to top
+  // Required at top
   keep.sort((a,b)=>((b["Required"]==="Y")-(a["Required"]==="Y")));
-  return keep.map((r, idx)=>{
+  return keep.map(r=>{
     const away = String(r["Away Team"]||"").trim();
     const home = String(r["Home Team"]||"").trim();
     const tv   = String(r["TV"]||"").trim();
     const loc  = String(r["Location"]||"").trim();
-    const fav  = String(r["Spread"]||"").trim(); // e.g. "Eagles -6.5"
-    const day  = String(r["Date"]||"").trim();   // leave displayed as given
+    const fav  = String(r["Spread"]||"").trim(); // e.g., "Vikings -1.5"
+    const date = String(r["Date"]||"").trim();
     const time = String(r["Time"]||"").trim();
 
-    // figure which side is favorite to decorate its label
-    let favTeam = ""; let favNum = "";
-    if(fav && fav.includes(" ")){
-      const sp = fav.split(/\s+/);
-      favTeam = sp.slice(0, sp.length-1).join(" ");
-      favNum  = sp[sp.length-1];
-    }
-    const awayLab = away + (away===favTeam ? ` ${favNum}` : "");
-    const homeLab = home + (home===favTeam ? ` ${favNum}` : "");
+    // favorite tag on labels
+    let favTeam="", favNum=""; if(fav.includes(" ")){ const sp=fav.split(/\s+/); favTeam=sp.slice(0,-1).join(" "); favNum=sp.at(-1); }
+    const awayLab = away + (away===favTeam?` ${favNum}`:"");
+    const homeLab = home + (home===favTeam?` ${favNum}`:"");
 
-    // create a soft deadline if you later add ISO; for now no expiry
-    const iso = r["DeadlineISO"] || ""; // optional column; if present, will lock
+    // compute start ISO (ET -> ISO with -04/-05). If your sheet provides DeadlineISO already, prefer it.
+    const startISO = r["DeadlineISO"] ? r["DeadlineISO"] : easternLocalISO(date, time);
+    const start    = new Date(startISO);
+    const localDay = start.toLocaleDateString(undefined,{weekday:'long'});
+    const localTime= start.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+
     return {
-      id: `q${idx+1}`,
       line: `${away} @ ${home}`,
-      fav, day, time, tv, loc,
       away, home, awayLab, homeLab,
+      tv, loc, fav,
       required: (r["Required"]==="Y"),
-      deadlineISO: iso
+      startISO, localDay, localTime
     };
   });
 }
 
-/* =====================  UI RENDER  ===================== */ function buildRow(q){
+/* ===================== UI RENDER ===================== */ function buildRow(q, qid){
+  const expired = q.startISO && (new Date(q.startISO) <= new Date());
   const el = document.createElement("div");
   el.className="row";
-  el.dataset.qid=q.id;
-  if(q.deadlineISO){
-    el.dataset.deadline=q.deadlineISO;
-  }
+  el.dataset.qid = qid;
+  if(q.startISO) el.dataset.deadline = q.startISO;
+
   el.innerHTML = `
     <div class="label">${escapeHtml(q.line)}</div>
     <div class="chip">
       ${q.required ? `<span class="badge required">Required</span>` : ``}
-      ${q.deadlineISO && (new Date(q.deadlineISO) < new Date()) ? `<span class="badge expired">Expired</span>` : ``}
+      ${expired    ? `<span class="badge expired">Expired</span>`   : ``}
     </div>
     <div class="answers">
       <div class="details">
         <div><strong>Favorite:</strong> ${q.fav?escapeHtml(q.fav):"—"}</div>
-        <div><strong>Day:</strong> ${escapeHtml(q.day||"—")}</div>
-        <div><strong>Time:</strong> ${escapeHtml(q.time||"—")}</div>
+        <div><strong>Day:</strong> ${escapeHtml(q.localDay||"—")}</div>
+        <div><strong>Time:</strong> ${escapeHtml(q.localTime||"—")}</div>
         <div><strong>Channel:</strong> ${escapeHtml(q.tv||"—")}</div>
         <div><strong>Location:</strong> ${escapeHtml(q.loc||"—")}</div>
       </div>
-      <label><input type="radio" name="${q.id}" value="${escapeHtml(q.away)}"> ${escapeHtml(q.awayLab)}</label>
-      <label><input type="radio" name="${q.id}" value="${escapeHtml(q.home)}"> ${escapeHtml(q.homeLab)}</label>
-      <button type="button" class="clear" data-clear="${q.id}">Clear</button>
+      <label><input type="radio" name="${qid}" value="${escapeHtml(q.away)}" ${expired?"disabled":""}> ${escapeHtml(q.awayLab)}</label>
+      <label><input type="radio" name="${qid}" value="${escapeHtml(q.home)}" ${expired?"disabled":""}> ${escapeHtml(q.homeLab)}</label>
+      <button type="button" class="clear" data-clear="${qid}" ${expired?"disabled":""}>Clear</button>
     </div>
   `;
   return el;
 }
-function renderSection(container, rows, cntSpan){
+
+function renderSection(container, rows, cntSpan, prefix){
   container.innerHTML="";
   if(!rows.length){ container.innerHTML=`<p class="small muted">No games found.</p>`; return; }
-  rows.forEach(q=>container.appendChild(buildRow(q)));
-  updateCounts(cntSpan, container);
+  rows.forEach((q, i)=>{
+    const qid = `${prefix}${i+1}`; // << unique per section (fixes cross-unselect bug)
+    container.appendChild(buildRow(q, qid));
+  });
   // clear buttons
   container.querySelectorAll(".clear").forEach(btn=>{
     btn.addEventListener("click",()=>{
@@ -279,13 +286,14 @@ function renderSection(container, rows, cntSpan){
       updateAll();
     });
   });
+  updateCounts(cntSpan, container);
 }
+
 function updateCounts(cntSpan, container){
-  const total = container.querySelectorAll('.row').length;
-  const ans   = container.querySelectorAll('.row input[type="radio"]:checked').length;
+  const ans = container.querySelectorAll('input[type="radio"]:checked').length;
   cntSpan.textContent = `Answered: ${ans}`; }
 
-/* =====================  STATE, CHECKS, SUMMARY  ===================== */ function getSelections(){
+/* ===================== STATE / CHECKS / SUMMARY ===================== */ function getSelections(){
   const pickMap = new Map();
   $$('.row').forEach(r=>{
     const qid = r.dataset.qid;
@@ -294,35 +302,44 @@ function updateCounts(cntSpan, container){
   });
   return pickMap;
 }
+
 function populateDouble(){
   const sel = $('#selDouble');
   const prev = sel.value;
   sel.innerHTML = `<option value="">— No double —</option>`;
   getSelections().forEach((val, qid)=>{
-    const opt = document.createElement('option');
-    opt.value = qid; opt.textContent = `${qid.toUpperCase()}: ${val}`;
-    sel.appendChild(opt);
+    // only include unexpired
+    const row = document.querySelector(`.row[data-qid="${qid}"]`);
+    const iso = row?.dataset.deadline;
+    const expired = iso && (new Date(iso) <= new Date());
+    if(!expired){
+      const opt = document.createElement('option');
+      opt.value = qid; opt.textContent = `${qid}: ${val}`;
+      sel.appendChild(opt);
+    }
   });
-  // restore if still valid
-  if(prev && [...sel.options].some(o=>o.value===prev)) sel.value = prev; } function summarize(){
+  if(prev && [...sel.options].some(o=>o.value===prev)) sel.value = prev; }
+
+function summarize(){
   const box = $('#summary');
   const picks = getSelections();
   if(!picks.size){ box.innerHTML = `<p class="small muted">Your selections will appear here.</p>`; return; }
   const rows = [];
-  picks.forEach((team,qid)=>rows.push(`<li>${qid.toUpperCase()}: <strong>${escapeHtml(team)}</strong></li>`));
+  picks.forEach((team,qid)=>rows.push(`<li>${qid}: <strong>${escapeHtml(team)}</strong></li>`));
   const dbl = $('#selDouble').value;
-  box.innerHTML = `<ul>${rows.join('')}</ul>${ dbl ? `<p><strong>Double:</strong> ${dbl.toUpperCase()}</p>` : ``}`; } function checkErrors(){
+  box.innerHTML = `<ul>${rows.join('')}</ul>${ dbl ? `<p><strong>Double:</strong> ${dbl}</p>` : ``}`; }
+
+function checkErrors(){
   const errs=[];
-  // name/email
+  // name / email
   const name = $('#selName').value || "";
   const email= $('#inpEmail').value.trim();
   if(!name) errs.push("Select your name.");
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) errs.push("Enter a valid email.");
 
-  // per section
   const listA = $('#listA'), listB = $('#listB');
-  const reqA = listA.querySelectorAll('.row .badge.required').length;
-  const reqB = listB.querySelectorAll('.row .badge.required').length;
+  const reqA = listA.querySelectorAll('.badge.required').length;
+  const reqB = listB.querySelectorAll('.badge.required').length;
   const ansA = listA.querySelectorAll('input[type="radio"]:checked').length;
   const ansB = listB.querySelectorAll('input[type="radio"]:checked').length;
 
@@ -334,27 +351,24 @@ function populateDouble(){
   const total = ansA + ansB;
   if(total < 7 || total > 12) errs.push("Pick between 7 and 12 games total.");
 
-  // double (if selected must be one of picks; we only populate from picks, so safe)
-
-  // expired
+  // any pick on expired game?
   $$('.row').forEach(r=>{
     const iso = r.dataset.deadline;
-    if(iso && new Date(iso) < new Date()){
+    if(iso && new Date(iso) <= new Date()){
       const anyChecked = r.querySelector('input:checked');
       if(anyChecked) errs.push(`A pick was made on an expired game (${r.dataset.qid}).`);
     }
   });
 
-  // render list and pill
-  const ul = $('#errList');
-  ul.innerHTML = errs.map(e=>`<li>${escapeHtml(e)}</li>`).join('');
+  // render
+  $('#errList').innerHTML = errs.map(e=>`<li>${escapeHtml(e)}</li>`).join('');
   const good = errs.length===0;
   const pill = $('#statusBox');
   pill.textContent = good ? "BEAR DOWN" : "ERRORS DETECTED";
   pill.className = 'statusBox ' + (good ? 'status_good' : 'status_bad');
-
   return errs;
 }
+
 function updateAll(){
   updateCounts($('#cntA'), $('#listA'));
   updateCounts($('#cntB'), $('#listB'));
@@ -363,63 +377,59 @@ function updateAll(){
   checkErrors();
 }
 
-/* =====================  EMAIL (optional)  ===================== */ async function sendEmail(payload){
+/* ===================== EMAIL (optional) ===================== */ async function sendEmail(payload){
   if(DEMO_MODE){ await new Promise(r=>setTimeout(r,400)); return {status:"demo"}; }
-
-  // EmailJS (only if you’ve added the SDK on your site)
   if(typeof emailjs === "undefined"){
-    alert("EmailJS SDK not loaded; enable or set DEMO_MODE=true."); throw new Error("emailjs missing");
+    alert("EmailJS SDK not loaded; set DEMO_MODE=true or include EmailJS."); throw new Error("emailjs missing");
   }
-  emailjs.init({publicKey: EMAILS_PUBLIC_KEY});
-  return await emailjs.send(EMAILS_SERVICE_ID, EMAILS_TEMPLATE_ID, payload); }
+  emailjs.init({publicKey: EMAILJS_PUBLIC_KEY});
+  return await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, payload); }
 
-/* =====================  LOAD + WIRE  ===================== */ (async function init(){
-  // show demo badge
+/* ===================== LOAD & WIRE ===================== */ (async function init(){
   $('#demoBadge').hidden = !DEMO_MODE;
 
-  // Participants
+  // participants
   const people = await fetchCSV(CSV_URL_PARTICIPANTS);
   const sel = $('#selName');
   sel.innerHTML = `<option disabled selected>— Select your name —</option>` +
-                  people.map(p=>`<option value="${escapeHtml(p.Name)}" data-email="${escapeHtml(p.Email||"")}">${escapeHtml(p.Name)}</option>`).join('');
-  sel.addEventListener('change', e=>{
+    people.map(p=>`<option value="${escapeHtml(p.Name)}" data-email="${escapeHtml(p.Email||"")}">${escapeHtml(p.Name)}</option>`).join('');
+  sel.addEventListener('change', ()=>{
     const opt = sel.selectedOptions[0];
     $('#inpEmail').value = opt?.dataset.email || '';
     updateAll();
   });
   $('#inpEmail').addEventListener('input', updateAll);
 
-  // Games
+  // games
   const [rawA, rawB] = await Promise.all([ fetchCSV(CSV_URL_NFL), fetchCSV(CSV_URL_NCAA) ]);
   const gamesA = normalizeGames(rawA);
   const gamesB = normalizeGames(rawB);
-  renderSection($('#listA'), gamesA, $('#cntA'));
-  renderSection($('#listB'), gamesB, $('#cntB'));
+  renderSection($('#listA'), gamesA, $('#cntA'), 'A');
+  renderSection($('#listB'), gamesB, $('#cntB'), 'B');
 
-  // radio change handlers
+  // radio changes
   document.body.addEventListener('change', e=>{
-    if(e.target.matches('input[type="radio"]')) updateAll();
-    if(e.target.id==='selDouble') updateAll();
+    if(e.target.matches('input[type="radio"]') || e.target.id==='selDouble') updateAll();
   });
 
-  // Reset
+  // reset
   $('#resetBtn').addEventListener('click', ()=>{
-    document.querySelector('form').reset();
+    // clear all radios & double, keep name/email
+    $$('input[type="radio"]').forEach(i=>i.checked=false);
+    $('#selDouble').value="";
     updateAll();
   });
 
-  // Submit
+  // submit
   $('#submitBtn').addEventListener('click', async ()=>{
     const errs = checkErrors();
     if(errs.length===0){
-      // Confirm if no double selected
       if(!$('#selDouble').value){
         const ok = confirm("Submit with NO double?");
         if(!ok) return;
       }
-      // build email body (simple)
       const picks = [];
-      getSelections().forEach((team,qid)=>picks.push(`${qid.toUpperCase()}:${team}`));
+      getSelections().forEach((team,qid)=>picks.push(`${qid}:${team}`));
       const payload = {
         week: CURRENT_WEEK,
         name: $('#selName').value,
@@ -430,7 +440,7 @@ function updateAll(){
       };
       try{
         await sendEmail(payload);
-        alert("Submitted!");  // UI feedback
+        alert("Submitted!");
       }catch(err){
         console.error(err);
         alert("Could not send email. Please try again.");
@@ -444,10 +454,10 @@ function updateAll(){
 })();
 </script>
 
-<!-- If you want live EmailJS, include their SDK below and set DEMO_MODE=false 
-<script src="https://nam04.safelinks.protection.outlook.com/?url=https%3A%2F%2Fcdn.jsdelivr.net%2Fnpm%2Femailjs-com%403%2Fdist%2Femail.min.js&data=05%7C02%7Cdan.fox%40brighthousefinancial.com%7Cd2a2e57d5ce544958c2d08dde0e41e45%7C2658e698ac384347a56f3f96a6bfa8ff%7C0%7C0%7C638913992552978588%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=XM6aOSsrShU5H4VqIrrwdzwewfoJxIVTZSSnjGCzGBU%3D&reserved=0"></script>
+<!-- If you want live EmailJS, include their SDK and set DEMO_MODE=false
+<script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
 -->
-
 </body>
 </html>
+
 
