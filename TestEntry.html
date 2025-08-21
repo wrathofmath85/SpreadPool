@@ -2,588 +2,494 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" /> <title>Spread Pool — Week 1</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" /> <title>Spread Pool — Week 1</title>
 
-<!-- ======== STYLE ======== -->
 <style>
 :root{
-  --bg:#0b1324; --card:#172a3a; --chip:#e0e0e0; --muted:#9aa1b1;
-  --text:#eaf1ff; --accent:#2563eb; --border:#1f3346;
-  --good:#1f9d55; --bad:#b91c1c;
+  --bg:#0d1117; --card:#111827; --text:#e6edf3; --muted:#9aa1b1; --border:#263142;
   --yellow:#ffcc15; --yellowText:#000;
-  --bearsBlue:#0b162a; --bearsOrange:#dc4405; }
-
-*{box-sizing:border-box}
-html,body{height:100%}
-body{
-  margin:0; background:var(--bg); color:var(--text);
-  font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-  font-size:16px; line-height:1.35;
+  --bad:#b42318;
+  /* Chicago Bears brand colors */
+  --bearsNavy:#0B162A;  /* background when valid */
+  --bearsOrange:#DC4405;/* text when valid */ } *{box-sizing:border-box} body{
+  margin:0;background:var(--bg);color:var(--text);
+  font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.35;
 }
-.wrap{max-width:1100px;margin:0 auto;padding:24px 16px 96px}
-h1{margin:0 0 16px 0}
-h2{margin:0 0 8px 0}
-.small{font-size:.9rem}
-.small.muted{color:var(--muted)}
-.card{
-  background:var(--card); border:1px solid var(--border);
-  border-radius:12px; padding:14px 16px; margin:14px 0; } .grid{
-  display:grid; grid-template-columns:1fr; gap:16px; align-items:start; } @media (min-width: 920px){
-  .grid{grid-template-columns:1fr 1fr}
+.wrap{max-width:1150px;margin:0 auto;padding:24px}
+h1{margin:0 0 18px 0;font-size:28px}
+h2{margin:0 0 12px 0;font-size:20px}
+.small{font-size:.92rem}.muted{color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin:12px 0} .grid{display:grid;grid-template-columns:1fr;gap:14px}
+@media(min-width:980px){.grid{grid-template-columns:1fr 1fr}}
+
+.row{
+  display:grid;
+  grid-template-columns:1fr auto minmax(280px,1fr); /* info | (now empty) | answers */
+  gap:10px;align-items:center;
+  padding:10px;border-radius:10px;
+  background:rgba(255,255,255,.02);border:1px solid var(--border) } .label{font-weight:700} .details{font-size:.95rem} .hdr{display:flex;align-items:center;justify-content:space-between}
+
+/* badges */
+.badge{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:6px 12px;font-weight:800} .badge.required{background:var(--yellow);color:#000}
+.badge.expired{background:#d92d20;color:#fff}
+
+/* answers list (vertical, one line, clear below) */ .answers{display:block;max-width:34rem}
+.answers label{
+  display:flex;align-items:center;gap:8px;margin:6px 0;cursor:pointer;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;word-break:normal;overflow-wrap:normal;
 }
-.sectionHead{
-  display:flex; gap:12px; align-items:center; justify-content:space-between;
-  margin-bottom:4px;
+.answers input{transform:translateY(1px)} .answers .clear{margin-top:8px} .badges-under{margin-top:8px;display:flex;gap:8px;flex-wrap:wrap}
+
+/* clear button */
+.clear{display:inline-block;background:transparent;border:1px solid #3b4553;border-radius:8px;color:var(--muted);padding:6px 10px;cursor:pointer} .clear:hover{background:#2a3442;color:#fff}
+
+/* footer */
+footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
+.footer{
+  display:flex;justify-content:space-between;align-items:center;gap:8px;
+  background:rgba(16,23,33,.85);backdrop-filter:blur(6px);
+  border-top:1px solid var(--border);padding:10px 14px } .btn{border:none;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn.primary{background:#238636;color:#fff}
+.btn.ghost{background:#2a3442;color:#d0d7de}
+.statusBox{font-weight:900;border:1px solid var(--border);border-radius:999px;padding:8px 14px} .status_bad{background:var(--bad);color:#fff}
+/* Bears colors when all checks pass */
+.status_good{background:var(--bearsNavy);color:var(--bearsOrange);border-color:var(--bearsNavy)}
+
+/* demo badge */
+.demo{position:fixed;top:14px;right:14px;background:#a15;box-shadow:0 6px 18px rgba(0,0,0,.35);color:#fff;border-radius:10px;padding:8px 12px;font-weight:800;z-index:20}
+
+/* picks closed banner */
+.closedBanner{
+  background:#4b5563;border:1px solid var(--border);color:#fff;
+  padding:10px 14px;border-radius:10px;margin:0 0 14px 0;font-weight:700 }
+
+/* mobile */
+@media(max-width:720px){
+  .row{grid-template-columns:1fr;align-items:flex-start}
+  .answers{max-width:none;width:100%}
+  .answers label{width:100%}
 }
-.kpi{background:rgba(255,255,255,.07); padding:.3rem .7rem; border-radius:999px} .row{
-  border:1px solid var(--border); border-radius:12px; padding:12px 12px 10px; margin:10px 0;
-  display:flex; flex-direction:column; gap:8px; } .label{font-weight:700; margin-bottom:4px} .details{display:grid; grid-template-columns:auto; gap:2px} .details div{white-space:nowrap; overflow:hidden; text-overflow:ellipsis} .answers{display:flex; flex-direction:column; gap:6px; margin-top:6px} .answers label{
-  display:flex; gap:10px; align-items:center; cursor:pointer; user-select:none; } .clear{align-self:flex-start; margin-top:8px} .btn{
-  border:0; padding:.6rem 1rem; border-radius:10px; cursor:pointer;
-  background:#2a3f55; color:var(--text); font-weight:700; } .btn.ghost{
-  background:transparent; border:1px solid var(--border); color:var(--muted) } .btn:disabled{opacity:.6; cursor:not-allowed} .chip{
-  display:inline-flex; align-items:center; gap:.35rem;
-  padding:.2rem .6rem; border-radius:999px; border:1px solid var(--border);
-  background:rgba(255,255,255,.08); color:var(--text); font-weight:700;
-  font-size:.82rem;
-}
-.chip.mandatory{background:var(--yellow); color:var(--yellowText); border-color:#eab308} .chip.expired{background:#ffe4e6; color:#7f1d1d; border-color:#fecdd3}
+</style>
+</head>
+<script src="https://nam04.safelinks.protection.outlook.com/?url=https%3A%2F%2Fcdn.jsdelivr.net%2Fnpm%2Femailjs-com%403%2Fdist%2Femail.min.js&data=05%7C02%7Cdan.fox%40brighthousefinancial.com%7C6a56fb1e1bea42b71b4b08dde10e5343%7C2658e698ac384347a56f3f96a6bfa8ff%7C0%7C0%7C638914173845912988%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=YeAyR2lMq0OuuueHjkhCeCqnhK3q%2FzMit10z8pVGrT0%3D&reserved=0"></script>
+<body>
+<div class="wrap">
 
-footer{
-  position:fixed; left:0; right:0; bottom:0; z-index:99;
-  backdrop-filter: blur(6px);
-}
-.footerWrap{
-  display:flex; align-items:center; justify-content:space-between; gap:12px;
-  max-width:1100px; margin:0 auto; padding:12px 16px; } .statusBox{
-  font-weight:900; border:1px solid var(--border);
-  border-radius:12px; padding:10px 14px; display:inline-flex; align-items:center; } .status_bad{background:var(--bad); color:#fff} .status_good{background:var(--bearsBlue); color:var(--bearsOrange)} /* Bears colors */ .controls{display:flex; gap:8px} .controls .btn{padding:.7rem 1.1rem}
+  <h1>Spread Pool — Week <span id="weekNum">1</span></h1>
+  <div id="closedMsg" class="closedBanner" style="display:none;"></div>
 
-select, input[type="email"]{
-  width:100%; background:transparent; color:var(--text);
-  border:1px solid var(--border); border-radius:10px; padding:.6rem .7rem; } label[for="nameSel"], label[for="emailBox"]{display:block; margin-bottom:6px}
-
-.note{margin-top:6px}
-
-.badgeRow{display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:6px} .requiredHolder{margin-top:6px} </style> </head> <body>
-  <div class="wrap">
-    <h1>Spread Pool — Week 1</h1>
-
-    <!-- Participant -->
-    <section class="card">
-      <div class="sectionHead">
-        <h2>Participant</h2>
-      </div>
-      <div class="grid">
-        <div>
-          <label for="nameSel" class="small">Choose your name</label>
-          <select id="nameSel" aria-label="Choose your name">
-            <option value="">— Select your name —</option>
-          </select>
-          <div class="note small muted">One email is sent to the organizer and you’ll be CC’d.</div>
-        </div>
-        <div>
-          <label for="emailBox" class="small">Your email (auto-filled; editable)</label>
-          <input id="emailBox" type="email" placeholder="you@example.com" />
-        </div>
-      </div>
-    </section>
-
-    <!-- Two columns -->
+  <!-- Participant -->
+  <section class="card">
+    <h2>Participant</h2>
     <div class="grid">
-      <!-- NFL -->
-      <section class="card" id="nflCard">
-        <div class="sectionHead">
-          <h2>NFL (Section A)</h2>
-          <span class="kpi small" id="nflCount">Answered: 0</span>
-        </div>
-        <div id="nflList" class="list"></div>
-      </section>
-
-      <!-- NCAA -->
-      <section class="card" id="ncaaCard">
-        <div class="sectionHead">
-          <h2>College (Section B)</h2>
-          <span class="kpi small" id="ncaaCount">Answered: 0</span>
-        </div>
-        <div id="ncaaList" class="list"></div>
-      </section>
+      <div>
+        <label class="small muted">Choose your name</label>
+        <select id="selName" style="width:100%;padding:10px;border-radius:8px;background:#0f1621;color:var(--text);border:1px solid var(--border)">
+          <option disabled selected>— Loading names… —</option>
+        </select>
+      </div>
+      <div>
+        <label class="small muted">Your email (auto-filled; editable)</label>
+        <input id="inpEmail" type="email" placeholder="you@example.com"
+               style="width:100%;padding:10px;border-radius:8px;background:#0f1621;color:var(--text);border:1px solid var(--border)"/>
+        <p class="small muted" style="margin:.5rem 0 0">One email is sent to the organizer and you’ll be CC’d.</p>
+      </div>
     </div>
+  </section>
 
-    <!-- Double -->
+  <div class="grid">
+    <!-- NFL -->
     <section class="card">
-      <h2 class="small">Optional: Choose ONE “Double”</h2>
-      <select id="doubleSel">
-        <option value="">— No double —</option>
-      </select>
-      <div class="small muted" style="margin-top:6px">Only your currently selected, unexpired games appear here.</div>
+      <div class="hdr">
+        <h2>NFL</h2>
+        <span id="cntA" class="small muted">Answered: 0</span>
+      </div>
+      <div id="listA"><p class="small muted">Loading NFL…</p></div>
     </section>
 
-    <!-- Checks -->
+    <!-- NCAA -->
     <section class="card">
-      <h2>Checks & Errors</h2>
-      <p class="small muted">
-        Rules: select your name & valid email; answer all games marked
-        <span class="chip mandatory">Required</span>; ≥3 in NFL and ≥3 in College; total 7–12 picks.
-        If you choose a Double, it must be one of your selections.
-      </p>
-      <ul id="errorList" class="small"></ul>
-    </section>
-
-    <!-- Summary -->
-    <section class="card">
-      <h2>Summary of Chosen Answer(s)</h2>
-      <div id="summary" class="small muted">Your selections will appear here.</div>
+      <div class="hdr">
+        <h2>College</h2>
+        <span id="cntB" class="small muted">Answered: 0</span>
+      </div>
+      <div id="listB"><p class="small muted">Loading NCAA…</p></div>
     </section>
   </div>
 
+  <!-- Double -->
+  <section class="card">
+    <h2>Optional: Choose ONE “Double”</h2>
+    <select id="selDouble" style="width:100%;max-width:560px;padding:10px;border-radius:8px;background:#0f1621;color:var(--text);border:1px solid var(--border)">
+      <option value="">— No double —</option>
+    </select>
+    <p class="small muted">Only your currently selected, unexpired games appear here.</p>
+  </section>
+
+  <!-- Checks -->
+  <section class="card">
+    <h2>Checks &amp; Errors</h2>
+    <p class="small muted">Rules: select your name &amp; valid email; answer all games marked
+      <span class="badge required">Required</span>; ≥3 in NFL and ≥3 in College; total 7–12 picks.
+      If you choose a Double, it must be one of your selections.</p>
+    <ul id="errList" class="small" style="margin:8px 0 0 18px"></ul>
+  </section>
+
+  <!-- Summary -->
+  <section class="card">
+    <h2>Summary of Chosen Answers</h2>
+    <div id="summary"><p class="small muted">Your selections will appear here.</p></div>
+  </section>
+
   <!-- Footer -->
   <footer>
-    <div class="footerWrap">
-      <div class="controls">
-        <button id="submitBtn" class="btn">Submit</button>
+    <div class="footer">
+      <div class="left">
+        <button id="submitBtn" class="btn primary">Submit</button>
         <button id="resetBtn"  class="btn ghost">Reset</button>
       </div>
-      <div id="statusPill" class="statusBox status_bad">ERRORS DETECTED</div>
-      <div class="small muted">Organizer: <strong>wrathofmath85@gmail.com</strong></div>
+      <div class="right">
+        <span id="statusBox" class="statusBox status_bad">ERRORS DETECTED</span>
+      </div>
     </div>
   </footer>
 
-<!-- EmailJS SDK (loaded only if DEMO_MODE === false) --> <script id="emailjs-sdk" type="text/plain"></script>
+  <div id="demoBadge" class="demo" hidden>DEMO MODE</div>
 
-<!-- ========= SCRIPT ========= -->
+</div>
+
 <script>
-/* =================== CONFIG (EDIT THESE) =================== */
-
-// Google Sheets "Publish to web" CSV URLs 
+/* ===================== CONFIG ===================== */
+/* Replace with your Publish‑to‑web CSV links (must end with output=csv) */ 
 const CSV_URL_PARTICIPANTS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTfQ7a2weK5Got7LTe3yVxqhcPR6pa-nPg73PdOMk8rrHwqlr3UeTcPprlgVbFjhFIVpifmMKnb_Tss/pub?gid=0&single=true&output=csv"; // Name, Email
 const CSV_URL_NFL          = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSu8cw2ymTbcJGMmBkbcJTNzvxVsl4wh3XH7pbQJ3_pbSz42LFo0HKQHVLcJtHiOqtEDt37-hSegjDK/pub?gid=2109553148&single=true&output=csv";          // Away Team, Home Team, Date, Time, TV, Location, Spread, Required
 const CSV_URL_NCAA         = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSu8cw2ymTbcJGMmBkbcJTNzvxVsl4wh3XH7pbQJ3_pbSz42LFo0HKQHVLcJtHiOqtEDt37-hSegjDK/pub?gid=0&single=true&output=csv";
 
-
-// Current week label used in email subject line and summary 
+/* Week label */
 const CURRENT_WEEK = 1;
+document.getElementById("weekNum").textContent = CURRENT_WEEK;
 
-// Global picks cut-off. After this moment, no one can submit.
-// Provide an Eastern time string (same style as your sheet), we'll convert to UTC internally.
-const PICKS_DEADLINE_ET = "Sept 6, 2025 12:00 PM"; // example; change as needed
+/* Global picks deadline (no picks accepted after this moment) — ISO 8601.
+   Example: "2025-08-23T16:00:00Z" (UTC). Leave empty to disable. */ const PICKS_DEADLINE_ISO = "";
 
-// EmailJS
-const DEMO_MODE          = false;                  // true: no real email, still shows "Submitted"
-const EMAILJS_SERVICE_ID  = "service_txqdfck"; 
-const EMAILJS_TEMPLATE_ID = "template_o8du7pt"; 
-const EMAILJS_PUBLIC_KEY  = "w4UC6ofDTC0VdRI44";
+/* Email (demo mode suppresses sending but shows “Submitted”) */
+const DEMO_MODE            = false;
+const EMAILJS_SERVICE_ID  = "service_txqdfck"; const EMAILJS_TEMPLATE_ID = "template_o8du7pt"; const EMAILJS_PUBLIC_KEY  = "w4UC6ofDTC0VdRI44";
+const ORGANIZER_EMAIL     = "wrathofmath85@gmail.com";
 
-/* ================ UTILITIES ================ */
 
-const $ = s => document.querySelector(s); const $$= s => [...document.querySelectorAll(s)];
+/* =====================  HELPERS  ===================== */ const $  = s => document.querySelector(s); const $$ = s => Array.from(document.querySelectorAll(s));
 
-function escapeHtml(s){ return String(s??"").replace(/[&<>"]/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m])); }
+function cacheBusted(url){
+  const u = new URL(url); u.searchParams.set("_", String(Date.now())); return u.toString(); } function escapeHtml(s){ return String(s ?? "").replace(/[&<>"]/g, m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[m])); }
 
-function bust(url){
-  const sep = url.includes("?") ? "&" : "?";
-  return url + sep + "_=" + Date.now();
+/* CSV parsing & shaping */
+async function fetchCSV(url){
+  const res = await fetch(cacheBusted(url), {headers:{pragma:"no-cache","cache-control":"no-cache"}});
+  const txt = await res.text();
+  const rows = parseCSV(txt);
+  const [hdr, ...data] = rows;
+  return data.filter(r => r.some(cell => (cell??"").trim()!=="")).map(r=>{
+    const obj={}; hdr.forEach((h,i)=>obj[h.trim()]= (r[i]??"").trim()); return obj;
+  });
 }
-
-// Fetch text with small cache-bust
-async function fetchText(url){
-  const r = await fetch(bust(url), {cache:"no-store"});
-  if(!r.ok) throw new Error("Fetch failed for " + url);
-  return r.text();
-}
-
-// Parse minimal CSV (first row header)
 function parseCSV(text){
-  const rows = text.trim().split(/\r?\n/).map(r=>r.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(c=>c.replace(/^"|"$/g,"")));
-  const [hdr, ...rest] = rows;
-  return rest.map(r => Object.fromEntries(hdr.map((h,i)=>[h.trim(), r[i]??""]))); }
-
-// Build a Date from Eastern date+time (sheet) and return a UTC Date object, // plus a user-facing local time string.
-function makeLocalTimeFromET(dateStr, timeStr){
-  if(!dateStr) return { utc:null, localText:"—", iso:"" };
-
-  // Combine (e.g., "Sept 6, 2025 12:00 PM")
-  const etString = (dateStr + " " + (timeStr||"")).trim();
-
-  // Try fixed "America/New_York" interpretation
-  let et;
-  try{
-    // Create a Date by manually parsing since Date.parse is locale sensitive.
-    // We accept "Mon Sep 6, 2025 12:00 PM" style or "Sept 6, 2025 12:00 PM".
-    et = new Date(etString + " GMT-0400"); // coarse nudge for EDT; if it’s EST time of year, offset differs automatically below.
-    if(Number.isNaN(et.getTime())){
-      // last-resort
-      et = new Date(Date.parse(etString));
-    }
-  }catch(e){ et = null; }
-
-  if(!et || Number.isNaN(et.getTime())){
-    return { utc:null, localText:"—", iso:"" };
+  const rows=[], re = /(?:^|,)(?:"([^"]*(?:""[^"]*)*)"|([^",\n\r]*))/g;
+  for(const line of text.replace(/\r\n/g,"\n").split("\n")){
+    const row=[]; re.lastIndex=0; let m;
+    while((m=re.exec(line))!==null){ row.push( m[1] ? m[1].replace(/""/g,'"') : (m[2]??"") ); }
+    rows.push(row);
   }
-
-  const utc = new Date(et.getTime()); // essentially the same absolute instant
-  const localText = new Intl.DateTimeFormat(undefined, {
-    weekday:"short", hour:"numeric", minute:"2-digit"
-  }).format(utc);
-
-  return { utc, localText, iso: utc.toISOString() }; }
-
-// Format favorite like "Vikings -1.5" or "—"
-function formatFavorite(away, home, spread){
-  const s = String(spread||"").trim();
-  if(!s) return "—";
-  // spread is like "Vikings -1.5", or "SMU -3.0"
-  return s;
+  return rows;
 }
 
-/* ====== CSV → normalized game data ====== */ 
-function normalizeGames(csvRows){
- // Expect columns: Away Team, Home Team, Date, Time, TV, Location, Spread, Required
- const out = [];
- for (const r of csvRows){
-   const away = String(r["Away Team"]||r["Away"]||"").trim();
-   const home = String(r["Home Team"]||r["Home"]||"").trim();
-   const date = String(r["Date"]||"").trim();
-   const time = String(r["Time"]||"").trim();
-   const tv   = String(r["TV"]||"").trim();
-   const loc  = String(r["Location"]||"").trim();
-   const spr  = String(r["Spread"]||"").trim();
-   const req  = /^y/i.test(String(r["Required"]||""));
-   if (!away || !home) continue;
-   // >>> ONLY SHOW GAMES WITH A SPREAD <<<
-   if (!spr || /^[-—\s]*$/.test(spr)) continue;
-   const t = makeLocalTimeFromET(date, time);
-   out.push({
-     away, home,
-     tv, loc,
-     fav: spr,                 // e.g. "Illinois -2.5"
-     deadline: t.utc,          // UTC Date (can be null)
-     timeText: t.localText,    // local reader-friendly time
-     iso: t.iso,
-     required: req
-   });
- }
- return out;
+/* -------- Time zone: CSV is Eastern; display in user's local time -------- */ function pad(n){return n<10?("0"+n):""+n;} function parseTime12(s){
+  const m = String(s||"").match(/^\s*(\d{1,2}):(\d{2})\s*([AP]M)\s*$/i);
+  if(!m) return {h:0,m:0};
+  let h = (+m[1])%12; if(m[3].toUpperCase()==='PM') h+=12; return {h, m:+m[2]}; } function getNYOffsetForDate(y,m,d){
+  const probeUTC = Date.UTC(y, m-1, d, 12, 0); // noon UTC
+  const s = new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',timeZoneName:'shortOffset'}).format(probeUTC);
+  const mm = s.match(/GMT([+-]\d{1,2})(?::(\d{2}))?/);
+  const hrs = mm ? parseInt(mm[1],10) : -5;
+  const mins = mm && mm[2] ? parseInt(mm[2],10) : 0;
+  const sign = hrs>=0?"+":"-"; const ah = Math.abs(hrs);
+  return `${sign}${pad(ah)}:${pad(mins)}`; } function easternLocalISO(dateStr, timeStr){
+  const d = new Date(dateStr); // let Date parse month/day/year
+  const y = d.getFullYear(), m = d.getMonth()+1, day = d.getDate();
+  const {h, m:mi} = parseTime12(timeStr||"12:00 PM");
+  const off = getNYOffsetForDate(y,m,day);
+  return `${y}-${pad(m)}-${pad(day)}T${pad(h)}:${pad(mi)}:00${off}`;
+}
+const fmtDayLocal  = ms => new Intl.DateTimeFormat(undefined,{weekday:'long'}).format(ms);
+const fmtTimeLocal = ms => new Intl.DateTimeFormat(undefined,{hour:'numeric',minute:'2-digit'}).format(ms);
+
+/* Normalize a lines row into a game object with local display and start ISO */ function normalizeGames(arr){
+  const keep = arr.filter(r => (r["Spread"]??"").toString().trim() !== "");
+  keep.sort((a,b)=>((b["Required"]==="Y")-(a["Required"]==="Y")));
+  return keep.map(r=>{
+    const away = String(r["Away Team"]||"").trim();
+    const home = String(r["Home Team"]||"").trim();
+    const tv   = String(r["TV"]||"").trim();
+    const loc  = String(r["Location"]||"").trim();
+    const fav  = String(r["Spread"]||"").trim();
+    const date = String(r["Date"]||"").trim();
+    const time = String(r["Time"]||"").trim();
+
+    let favTeam="", favNum="";
+    if(fav.includes(" ")){ const sp=fav.split(/\s+/); favTeam=sp.slice(0,-1).join(" "); favNum=sp.at(-1); }
+    const awayLab = away + (away===favTeam?` ${favNum}`:"");
+    const homeLab = home + (home===favTeam?` ${favNum}`:"");
+
+    const startISO = r["DeadlineISO"] ? r["DeadlineISO"] : easternLocalISO(date, time);
+    const start    = new Date(startISO);
+    const localDay = fmtDayLocal(start);
+    const localTime= fmtTimeLocal(start);
+
+    return { away, home, awayLab, homeLab, tv, loc, fav, localDay, localTime, startISO, required:(r["Required"]==="Y") };
+  });
 }
 
-/* ========== PAGE STATE ========== */
+/* =====================  UI RENDER  ===================== */ function buildRow(q, qid){
+  const expired = q.startISO && (new Date(q.startISO) <= new Date());
+  const el = document.createElement("div");
+  el.className="row";
+  el.dataset.qid = qid;
+  if(q.startISO) el.dataset.deadline = q.startISO;
 
-const state = {
-  participants: [], // {name,email}
-  nfl: [],          // normalized game objects
-  ncaa: [],
-  // answers keyed by qid ("A1","B7", etc)
-  picks: new Map(), // qid -> "away" | "home"
-  doubleQid: ""
-};
-
-function qidFor(prefix, index){ return `${prefix}${index+1}`; }
-
-/* ======== BUILD ROW ======== */
-function buildRow(prefix, index, game){
-  const qid = qidFor(prefix, index);
-  const expired = !!(game.deadline && (new Date() > game.deadline));
-
-  const wrap = document.createElement("div");
-  wrap.className = "row";
-  wrap.dataset.qid = qid;
-
-  const label = document.createElement("div");
-  label.className = "label";
-  label.textContent = `${game.away} @ ${game.home}`;
-  wrap.appendChild(label);
-
-  const details = document.createElement("div");
-  details.className = "details";
-  details.innerHTML = `
-    <div><strong>Favorite:</strong> ${escapeHtml(game.fav)}</div>
-    <div><strong>Day:</strong> ${game.timeText.split(",")[0] || "—"}</div>
-    <div><strong>Time:</strong> ${escapeHtml(game.timeText || "—")}</div>
-    <div><strong>Channel:</strong> ${escapeHtml(game.tv || "—")}</div>
-    <div><strong>Location:</strong> ${escapeHtml(game.loc || "—")}</div>
+  el.innerHTML = `
+    <div class="label">${escapeHtml(`${q.away} @ ${q.home}`)}</div>
+    <div class="chip"><!-- middle column intentionally left blank now --></div>
+    <div class="answers">
+      <div class="details">
+        <div><strong>Favorite:</strong> ${q.fav?escapeHtml(q.fav):"—"}</div>
+        <div><strong>Day:</strong> ${escapeHtml(q.localDay||"—")}</div>
+        <div><strong>Time:</strong> ${escapeHtml(q.localTime||"—")}</div>
+        <div><strong>Channel:</strong> ${escapeHtml(q.tv||"—")}</div>
+        <div><strong>Location:</strong> ${escapeHtml(q.loc||"—")}</div>
+      </div>
+      <div class="badges-under">
+        ${q.required ? `<span class="badge required">Required</span>` : ``}
+        ${expired    ? `<span class="badge expired">Expired</span>`   : ``}
+      </div>
+      <label><input type="radio" name="${qid}" value="${escapeHtml(q.away)}" ${expired?"disabled":""}> ${escapeHtml(q.awayLab)}</label>
+      <label><input type="radio" name="${qid}" value="${escapeHtml(q.home)}" ${expired?"disabled":""}> ${escapeHtml(q.homeLab)}</label>
+      <button type="button" class="clear" data-clear="${qid}" ${expired?"disabled":""}>Clear</button>
+    </div>
   `;
-  wrap.appendChild(details);
-
-  const badgeRow = document.createElement("div");
-  badgeRow.className = "badgeRow requiredHolder";
-  if(game.required){
-    const reqChip = document.createElement("span");
-    reqChip.className = "chip mandatory";
-    reqChip.textContent = "Required";
-    badgeRow.appendChild(reqChip);
-  }
-  if(expired){
-    const expChip = document.createElement("span");
-    expChip.className = "chip expired";
-    expChip.textContent = "Expired";
-    badgeRow.appendChild(expChip);
-  }
-  if(badgeRow.children.length) wrap.appendChild(badgeRow);
-
-  const answers = document.createElement("div");
-  answers.className = "answers";
-  const disabledAttr = expired ? "disabled" : "";
-  answers.innerHTML = `
-    <label><input type="radio" name="${qid}" value="away" ${disabledAttr}> ${escapeHtml(game.away)}</label>
-    <label><input type="radio" name="${qid}" value="home" ${disabledAttr}> ${escapeHtml(game.home)}</label>
-  `;
-  wrap.appendChild(answers);
-
-  const clearBtn = document.createElement("button");
-  clearBtn.type = "button";
-  clearBtn.className = "btn ghost clear";
-  clearBtn.textContent = "Clear";
-  clearBtn.disabled = expired;
-  clearBtn.dataset.clear = qid;
-  wrap.appendChild(clearBtn);
-
-  return wrap;
+  return el;
 }
 
-/* ======== RENDER SECTIONS ======== */
-function renderSection(container, games, prefix){
-  container.innerHTML = "";
-  const list = normalizeGames(games);
-  if(!list.length){
-    container.innerHTML = `<p class="small muted">No games found (check sheet headers and “Spread” column).</p>`;
-    return;
-  }
-  list.forEach((g,i)=> container.appendChild(buildRow(prefix,i,g)));
+function renderSection(container, rows, cntSpan, prefix){
+  container.innerHTML="";
+  if(!rows.length){ container.innerHTML=`<p class="small muted">No games found.</p>`; return; }
+  rows.forEach((q, i)=>container.appendChild(buildRow(q, `${prefix}${i+1}`)));
+  // wire clear buttons
+  container.querySelectorAll(".clear").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      const name = btn.dataset.clear;
+      container.querySelectorAll(`input[name="${CSS.escape(name)}"]`).forEach(i=>i.checked=false);
+      updateAll();
+    });
+  });
+  updateCounts(cntSpan, container);
 }
 
-/* ======== COUNTS, SUMMARY, VALIDATION ======== */ function refreshCountsAndSummary(){
-  // Count per section
-  const nflAnswered  = $$('#nflList input[type="radio"]:checked').length;
-  const ncaaAnswered = $$('#ncaaList input[type="radio"]:checked').length;
-  $('#nflCount').textContent  = `Answered: ${nflAnswered}`;
-  $('#ncaaCount').textContent = `Answered: ${ncaaAnswered}`;
+function updateCounts(cntSpan, container){
+  const ans = container.querySelectorAll('input[type="radio"]:checked').length;
+  cntSpan.textContent = `Answered: ${ans}`; }
 
-  // Build picks map and double options
-  state.picks.clear();
-  $$('.row').forEach(row=>{
-    const qid = row.dataset.qid;
-    const sel = row.querySelector('input[type="radio"]:checked');
-    if(sel) state.picks.set(qid, sel.value); // away|home
+/* =====================  STATE / CHECKS / SUMMARY  ===================== */ function getSelections(){
+  const pickMap = new Map();
+  $$('.row').forEach(r=>{
+    const qid = r.dataset.qid;
+    const inp = r.querySelector('input[type="radio"]:checked');
+    if(inp) pickMap.set(qid, inp.value);
   });
+  return pickMap;
+}
 
-  const doubleSel = $('#doubleSel');
-  const keep = new Set(state.picks.keys());
-  const current = doubleSel.value;
-  doubleSel.innerHTML = `<option value="">— No double —</option>`;
-  [...keep].sort().forEach(q=>{
-    const opt = document.createElement('option');
-    opt.value = q; opt.textContent = q;
-    doubleSel.appendChild(opt);
-  });
-  if(keep.has(current)) doubleSel.value = current; else doubleSel.value = "";
-
-  // Summary
-  const lines = [];
-  lines.push(`Name: ${$('#nameSel').value || "—"}`);
-  lines.push(`Email: ${$('#emailBox').value || "—"}`);
-  lines.push(`Week: ${CURRENT_WEEK}`);
-  lines.push(`Timestamp: ${new Date().toISOString()}`);
-  lines.push("");
-  lines.push("Selections:");
-  // iterate rows in visual order
-  $$('.row').forEach(row=>{
-    const qid = row.dataset.qid;
-    const sel = row.querySelector('input[type="radio"]:checked');
-    if(sel){
-      const team = sel.parentElement.textContent.trim();
-      const isDouble = (qid === $('#doubleSel').value);
-      lines.push(`${qid}:${team}${isDouble ? " [DOUBLE]" : ""}`);
+function populateDouble(){
+  const sel = $('#selDouble'); const prev = sel.value;
+  sel.innerHTML = `<option value="">— No double —</option>`;
+  getSelections().forEach((val,qid)=>{
+    const row = document.querySelector(`.row[data-qid="${qid}"]`);
+    const iso = row?.dataset.deadline;
+    const expired = iso && (new Date(iso) <= new Date());
+    if(!expired){
+      const opt=document.createElement('option'); opt.value=qid; opt.textContent=`${qid}: ${val}`; sel.appendChild(opt);
     }
   });
-  $('#summary').textContent = lines.join("\n");
+  if(prev && [...sel.options].some(o=>o.value===prev)) sel.value=prev; }
 
-  // Validate and status pill
-  const errors = validateAll();
-  const pill = $('#statusPill');
-  if(errors.length){
-    pill.className = "statusBox status_bad";
-    pill.textContent = "ERRORS DETECTED";
-  }else{
-    pill.className = "statusBox status_good";
-    pill.textContent = "BEAR DOWN!";
+function summarize(){
+  const box = $('#summary'); const picks = getSelections();
+  if(!picks.size){ box.innerHTML = `<p class="small muted">Your selections will appear here.</p>`; return; }
+  const rows=[]; picks.forEach((team,qid)=>rows.push(`<li>${qid}: <strong>${escapeHtml(team)}</strong></li>`));
+  const dbl = $('#selDouble').value;
+  box.innerHTML = `<ul>${rows.join('')}</ul>${ dbl ? `<p><strong>Double:</strong> ${dbl}</p>` : ``}`; }
+
+function checkErrors(){
+  const errs=[];
+
+  // global cutoff blocks everything
+  if(isPicksClosed()){
+    errs.push("Picks are closed.");
   }
-}
 
-function validateAll(){
-  const errs = [];
-  const name = $('#nameSel').value.trim();
-  const email= $('#emailBox').value.trim();
-  if(!name) errs.push("Pick your name.");
-  if(!/^\S+@\S+\.\S+$/.test(email)) errs.push("Enter a valid email.");
+  const name = $('#selName').value || "";
+  const email= $('#inpEmail').value.trim();
+  if(!name) errs.push("Select your name.");
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) errs.push("Enter a valid email.");
 
-  // Required rows must be answered (and not expired)
-  $$('.row').forEach(row=>{
-    const isReq = !!row.querySelector('.chip.mandatory');
-    const isExpired = !!row.querySelector('.chip.expired');
-    if(isReq && !isExpired){
-      const picked = row.querySelector('input[type="radio"]:checked');
-      if(!picked) errs.push(`Required game ${row.dataset.qid} not answered.`);
+  const listA = $('#listA'), listB = $('#listB');
+  const reqA = listA.querySelectorAll('.badge.required').length;
+  const reqB = listB.querySelectorAll('.badge.required').length;
+  const ansA = listA.querySelectorAll('input[type="radio"]:checked').length;
+  const ansB = listB.querySelectorAll('input[type="radio"]:checked').length;
+
+  if(reqA && ansA < reqA) errs.push("Answer all Required games in NFL.");
+  if(reqB && ansB < reqB) errs.push("Answer all Required games in College.");
+  if(ansA < 3) errs.push("Pick at least 3 NFL games.");
+  if(ansB < 3) errs.push("Pick at least 3 College games.");
+
+  const total = ansA + ansB;
+  if(total < 7 || total > 12) errs.push("Pick between 7 and 12 games total.");
+
+  // expired picks not allowed
+  $$('.row').forEach(r=>{
+    const iso = r.dataset.deadline;
+    if(iso && new Date(iso) <= new Date()){
+      const anyChecked = r.querySelector('input:checked');
+      if(anyChecked) errs.push(`A pick was made on an expired game (${r.dataset.qid}).`);
     }
   });
 
-  const nflPicked  = $$('#nflList input[type="radio"]:checked').length;
-  const ncaaPicked = $$('#ncaaList input[type="radio"]:checked').length;
-  const total = nflPicked + ncaaPicked;
-  if(nflPicked < 3) errs.push("Answer at least 3 NFL games.");
-  if(ncaaPicked < 3) errs.push("Answer at least 3 College games.");
-  if(total < 7 || total > 12) errs.push("Answer between 7 and 12 total games.");
-
-  // If double chosen, it must be among selected
-  const dbl = $('#doubleSel').value;
-  if(dbl && !state.picks.has(dbl)) errs.push("Double must be one of your selections.");
-
-  // Global picks deadline (hard stop)
-  const cut = parseETToDate(PICKS_DEADLINE_ET);
-  if(cut && new Date() > cut) errs.push("Picks window is closed.");
-
-  // Render list
-  const ul = $('#errorList');
-  ul.innerHTML = "";
-  errs.forEach(e=>{
-    const li = document.createElement('li');
-    li.textContent = e;
-    ul.appendChild(li);
-  });
+  // render
+  $('#errList').innerHTML = errs.map(e=>`<li>${escapeHtml(e)}</li>`).join('');
+  const pill = $('#statusBox'); const good = errs.length===0;
+  pill.textContent = good ? "BEAR DOWN!" : (isPicksClosed() ? "PICKS CLOSED" : "ERRORS DETECTED");
+  pill.className = 'statusBox ' + (good ? 'status_good' : 'status_bad');
   return errs;
 }
 
-/* Parse a single "ET" datetime string → Date */ function parseETToDate(etString){
-  if(!etString) return null;
-  const d = new Date(etString + " GMT-0400"); // coarse hint for EDT
-  if(Number.isNaN(d.getTime())) return null;
-  return d;
+function updateAll(){
+  updateCounts($('#cntA'), $('#listA'));
+  updateCounts($('#cntB'), $('#listB'));
+  populateDouble();
+  summarize();
+  checkErrors();
 }
 
-/* ======== EMAIL ======== */
-
-function ensureEmailJSLib(){
-  if(DEMO_MODE) return Promise.resolve("demo");
-  return new Promise((resolve, reject)=>{
-    const slot = document.getElementById('emailjs-sdk');
-    // load once
-    if(slot.type === "text/javascript"){ return resolve("ready"); }
-    slot.type = "text/javascript";
-    slot.src = "https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js";
-    slot.onload = ()=>{
-      try{
-        emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
-        resolve("ready");
-      }catch(e){ reject(e); }
-    };
-    slot.onerror = ()=> reject(new Error("EmailJS SDK failed to load"));
-    document.body.appendChild(slot);
-  });
-}
-
-function buildSelectionsText(){
-  // same content the summary shows
-  return $('#summary').textContent;
-}
-
-async function sendEmail(){
-  if(DEMO_MODE){
-    alert("Submitted (DEMO MODE). No email sent.");
-    return;
+/* =====================  GLOBAL DEADLINE ENFORCEMENT  ===================== */ function isPicksClosed(){
+  return PICKS_DEADLINE_ISO && (new Date(PICKS_DEADLINE_ISO) <= new Date()); } function enforceGlobalDeadlineUI(){
+  const closed = isPicksClosed();
+  const msg = $('#closedMsg');
+  if(closed){
+    const when = new Date(PICKS_DEADLINE_ISO).toLocaleString();
+    msg.style.display='block';
+    msg.textContent = `Picks closed at ${when}.`;
+  }else{
+    msg.style.display='none';
+    msg.textContent = '';
   }
-  await ensureEmailJSLib();
+  // disable interactions
+  $$('.row input[type="radio"], .row .clear, #selDouble, #submitBtn').forEach(el=>{
+    el.disabled = closed || el.disabled; // preserve per-game expired state
+  });
+}
 
-  const participant_name = $('#nameSel').value || "";
-  const selections_text  = buildSelectionsText();
-
-  const params = { participant_name, selections_text };
-
-  try{
-    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, params);
-    alert("Submitted! A copy will be CC’d to you.");
-  }catch(e){
-    console.error(e);
-    alert("Could not send via EmailJS. Check your service / template / public key.");
+/* =====================  EMAIL (optional)  ===================== */ async function sendEmail(payload){
+  if(DEMO_MODE){ await new Promise(r=>setTimeout(r,400)); return {status:"demo"}; }
+  if(typeof emailjs === "undefined"){
+    alert("EmailJS SDK not loaded; enable or set DEMO_MODE=true."); throw new Error("emailjs missing");
   }
-}
+  emailjs.init({publicKey: EMAILJS_PUBLIC_KEY});
+  return await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, payload); }
 
-/* ======== WIRING ======== */
-function wireRowEvents(){
-  // radios
-  $$('.row input[type="radio"]').forEach(r=>{
-    r.addEventListener('change', ()=>{
-      // keep selections in both sections independent (fixes “selecting Vikings unselects Illinois”)
-      refreshCountsAndSummary();
-    });
-  });
-  // clear buttons
-  $$('.row .clear').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const qid = btn.dataset.clear;
-      $$(`input[name="${qid}"]`).forEach(r=>{ r.checked=false; });
-      refreshCountsAndSummary();
-    });
-  });
-}
+/* =====================  LOAD & WIRE  ===================== */ (async function init(){
+  $('#demoBadge').hidden = !DEMO_MODE;
 
-function wireTopControls(){
-  $('#doubleSel').addEventListener('change', refreshCountsAndSummary);
-  $('#nameSel').addEventListener('change', ()=>{
-    const found = state.participants.find(p=>p.Name=== $('#nameSel').value);
-    if(found) $('#emailBox').value = found.Email || "";
-    refreshCountsAndSummary();
+  // Participants
+  const people = await fetchCSV(CSV_URL_PARTICIPANTS);
+  const sel = $('#selName');
+  sel.innerHTML = `<option disabled selected>— Select your name —</option>` +
+                  people.map(p=>`<option value="${escapeHtml(p.Name)}" data-email="${escapeHtml(p.Email||"")}">${escapeHtml(p.Name)}</option>`).join('');
+  sel.addEventListener('change', ()=>{
+    const opt = sel.selectedOptions[0];
+    $('#inpEmail').value = opt?.dataset.email || '';
+    updateAll();
   });
-  $('#emailBox').addEventListener('input', refreshCountsAndSummary);
+  $('#inpEmail').addEventListener('input', updateAll);
 
+  // Games
+  const [rawA, rawB] = await Promise.all([ fetchCSV(CSV_URL_NFL), fetchCSV(CSV_URL_NCAA) ]);
+  const gamesA = normalizeGames(rawA);
+  const gamesB = normalizeGames(rawB);
+  renderSection($('#listA'), gamesA, $('#cntA'), 'A'); // unique names A1, A2...
+  renderSection($('#listB'), gamesB, $('#cntB'), 'B'); // unique names B1, B2...
+
+  // react to picks
+  document.body.addEventListener('change', e=>{
+    if(e.target.matches('input[type="radio"]') || e.target.id==='selDouble') updateAll();
+  });
+
+  // Reset: keep name/email; clear picks + double
   $('#resetBtn').addEventListener('click', ()=>{
-    $$('.row input[type="radio"]').forEach(r=> r.checked=false);
-    $('#doubleSel').value="";
-    refreshCountsAndSummary();
+    $$('input[type="radio"]').forEach(i=>i.checked=false);
+    $('#selDouble').value="";
+    updateAll();
   });
 
+  // Submit
   $('#submitBtn').addEventListener('click', async ()=>{
-    const errs = validateAll();
-    if(errs.length){
-      alert("Please fix the errors first.");
+    if(isPicksClosed()){
+      alert("Picks are closed. Submissions are no longer accepted.");
       return;
     }
-    // gentle confirm if no double
-    if(!$('#doubleSel').value){
-      const ok = confirm("Submit with NO double?");
-      if(!ok) return;
+    const errs = checkErrors();
+    if(errs.length===0){
+      if(!$('#selDouble').value){
+        const ok = confirm("Submit with NO double?");
+        if(!ok) return;
+      }
+      const picks = [];
+      getSelections().forEach((team,qid)=>picks.push(`${qid}:${team}`));
+
+      /* ONLY CHANGE: align EmailJS variables with your template */
+      const payload = {
+        participant_name: $('#selName').value,   // matches {{participant_name}}
+        selections_text:  picks.join("\n"),      // matches {{selections_text}}
+        /* keep your existing extras (harmless to EmailJS) */
+        week: CURRENT_WEEK,
+        email: $('#inpEmail').value,
+        timestamp: new Date().toISOString(),
+        double_qid: ($('#selDouble').value||"")
+      };
+
+      try{
+        await sendEmail(payload);
+        alert("Submitted!");
+      }catch(err){
+        console.error(err);
+        alert("Could not send email. Please try again.");
+      }
+    }else{
+      window.scrollTo({top:0,behavior:'smooth'});
     }
-    await sendEmail();
   });
-}
 
-/* ======== LOAD EVERYTHING ======== */
-async function loadAll(){
-  try{
-    // Participants
-    const partCsv = parseCSV(await fetchText(CSV_URL_PARTICIPANTS));
-    state.participants = partCsv.map(r => ({Name:r["Name"]||"", Email:r["Email"]||""})).filter(p=>p.Name);
-    // fill names
-    const sel = $('#nameSel');
-    state.participants.forEach(p=>{
-      const o = document.createElement('option');
-      o.value = p.Name; o.textContent = p.Name;
-      sel.appendChild(o);
-    });
+  enforceGlobalDeadlineUI();
+  updateAll();
 
-    // Lines
-    state.nfl  = parseCSV(await fetchText(CSV_URL_NFL));
-    state.ncaa = parseCSV(await fetchText(CSV_URL_NCAA));
+  // In case the page stays open across the deadline, re-enforce every 30s
+  setInterval(()=>{ enforceGlobalDeadlineUI(); updateAll(); }, 30000); })(); </script>
 
-    renderSection($('#nflList'),  state.nfl,  "A");
-    renderSection($('#ncaaList'), state.ncaa, "B");
+<!-- If you want live EmailJS, include their SDK and set DEMO_MODE=false 
+<script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+-->
 
-    wireRowEvents();
-    wireTopControls();
-    refreshCountsAndSummary();
-  }catch(e){
-    console.error(e);
-    alert("Could not load one or more CSV files. Check the URLs and that they are published as CSV.");
-  }
-}
+</body>
+</html>
 
-document.addEventListener('DOMContentLoaded', loadAll); </script> </body> </html>
 
