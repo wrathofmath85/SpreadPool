@@ -301,7 +301,7 @@ function favoriteFrom(away, home, spread){
   if(!s) return "—";
   const v = parseFloat(s.replace(/[^\d\.\-]/g,""));
   if(isNaN(v)) return "—";
-  return (v<0 ? home : away) + " " + s; // home favored is usually negative in your sheet }
+  return (v<0 ? home : away) + " " + s;} // home favored is usually negative in your sheet 
 
 // Build a normalized game record
 function normalizeGames(csvRows){
