@@ -287,7 +287,8 @@ function ET_toLocalDate(dateStr, timeStr){
  const utcMs = Date.UTC(d.y, d.mo-1, d.da, t.h, t.mi) - offsetMin*60*1000;
  return new Date(utcMs);
 }
-// Return a user-facing Day/Time string for a Date function formatLocalDayTime(d){
+// Return a user-facing Day/Time string for a Date 
+function formatLocalDayTime(d){
   if(!d) return {day:"—", time:"—"};
   const day = new Intl.DateTimeFormat(undefined,{weekday:"long"}).format(d);
   const time = new Intl.DateTimeFormat(undefined,{hour:"numeric",minute:"2-digit"}).format(d);
