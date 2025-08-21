@@ -7,53 +7,62 @@
 <style>
 :root{
   --bg:#0d1117; --card:#111827; --text:#e6edf3; --muted:#9aa1b1; --border:#263142;
-  --chip:#f2c53d; --chipText:#000; --yellow:#ffcc15; --yellowText:#000;
-  --good:#1f883d; --bad:#b42318; --blue:#1f6feb; --orange:#ff7b00; } *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);
-  font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
-  font-size:16px;line-height:1.35;}
+  --yellow:#ffcc15; --yellowText:#000;
+  --bad:#b42318;
+  /* Chicago Bears brand colors */
+  --bearsNavy:#0B162A;  /* background when valid */
+  --bearsOrange:#DC4405;/* text when valid */ } *{box-sizing:border-box} body{
+  margin:0;background:var(--bg);color:var(--text);
+  font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.35;
+}
 .wrap{max-width:1150px;margin:0 auto;padding:24px}
 h1{margin:0 0 18px 0;font-size:28px}
 h2{margin:0 0 12px 0;font-size:20px}
 .small{font-size:.92rem}.muted{color:var(--muted)}
-.card{background:var(--card);border:1px solid var(--border);
-  border-radius:12px;padding:16px;margin:12px 0} .grid{display:grid;grid-template-columns:1fr;gap:14px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin:12px 0} .grid{display:grid;grid-template-columns:1fr;gap:14px}
 @media(min-width:980px){.grid{grid-template-columns:1fr 1fr}}
 
-.row{display:grid;grid-template-columns:1fr auto minmax(280px,1fr);
-  gap:10px;align-items:center;padding:10px;border-radius:10px;
-  background:rgba(255,255,255,.02);border:1px solid var(--border)} .label{font-weight:700} .details{font-size:.95rem} .hdr{display:flex;align-items:center;justify-content:space-between}
+.row{
+  display:grid;
+  grid-template-columns:1fr auto minmax(280px,1fr); /* info | (now empty) | answers */
+  gap:10px;align-items:center;
+  padding:10px;border-radius:10px;
+  background:rgba(255,255,255,.02);border:1px solid var(--border) } .label{font-weight:700} .details{font-size:.95rem} .hdr{display:flex;align-items:center;justify-content:space-between}
 
 /* badges */
-.badge{display:inline-flex;align-items:center;justify-content:center;
-  border-radius:999px;padding:6px 12px;font-weight:800} .badge.required{background:var(--yellow);color:#000}
+.badge{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:6px 12px;font-weight:800} .badge.required{background:var(--yellow);color:#000}
 .badge.expired{background:#d92d20;color:#fff}
 
 /* answers list (vertical, one line, clear below) */ .answers{display:block;max-width:34rem}
 .answers label{
   display:flex;align-items:center;gap:8px;margin:6px 0;cursor:pointer;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;word-break:normal;overflow-wrap:normal;
 }
-.answers input{transform:translateY(1px)} .answers .clear{margin-top:8px}
+.answers input{transform:translateY(1px)} .answers .clear{margin-top:8px} .badges-under{margin-top:8px;display:flex;gap:8px;flex-wrap:wrap}
 
 /* clear button */
-.clear{display:inline-block;background:transparent;border:1px solid #3b4553;
-  border-radius:8px;color:var(--muted);padding:6px 10px;cursor:pointer} .clear:hover{background:#2a3442;color:#fff}
+.clear{display:inline-block;background:transparent;border:1px solid #3b4553;border-radius:8px;color:var(--muted);padding:6px 10px;cursor:pointer} .clear:hover{background:#2a3442;color:#fff}
 
 /* footer */
 footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
-.footer{display:flex;justify-content:space-between;align-items:center;gap:8px;
+.footer{
+  display:flex;justify-content:space-between;align-items:center;gap:8px;
   background:rgba(16,23,33,.85);backdrop-filter:blur(6px);
-  border-top:1px solid var(--border);padding:10px 14px} .btn{border:none;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}
+  border-top:1px solid var(--border);padding:10px 14px } .btn{border:none;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}
 .btn[disabled]{opacity:.5;cursor:not-allowed}
 .btn.primary{background:#238636;color:#fff}
 .btn.ghost{background:#2a3442;color:#d0d7de}
 .statusBox{font-weight:900;border:1px solid var(--border);border-radius:999px;padding:8px 14px} .status_bad{background:var(--bad);color:#fff}
-.status_good{background:#0b5cab;color:#fff;border-color:#0b5cab}
+/* Bears colors when all checks pass */
+.status_good{background:var(--bearsNavy);color:var(--bearsOrange);border-color:var(--bearsNavy)}
 
 /* demo badge */
-.demo{position:fixed;top:14px;right:14px;background:#a15;
-  box-shadow:0 6px 18px rgba(0,0,0,.35);color:#fff;border-radius:10px;
-  padding:8px 12px;font-weight:800;z-index:20}
+.demo{position:fixed;top:14px;right:14px;background:#a15;box-shadow:0 6px 18px rgba(0,0,0,.35);color:#fff;border-radius:10px;padding:8px 12px;font-weight:800;z-index:20}
+
+/* picks closed banner */
+.closedBanner{
+  background:#4b5563;border:1px solid var(--border);color:#fff;
+  padding:10px 14px;border-radius:10px;margin:0 0 14px 0;font-weight:700 }
 
 /* mobile */
 @media(max-width:720px){
@@ -67,6 +76,7 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
 <div class="wrap">
 
   <h1>Spread Pool — Week <span id="weekNum">1</span></h1>
+  <div id="closedMsg" class="closedBanner" style="display:none;"></div>
 
   <!-- Participant -->
   <section class="card">
@@ -155,94 +165,91 @@ const CSV_URL_PARTICIPANTS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT
 const CSV_URL_NFL          = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSu8cw2ymTbcJGMmBkbcJTNzvxVsl4wh3XH7pbQJ3_pbSz42LFo0HKQHVLcJtHiOqtEDt37-hSegjDK/pub?gid=2109553148&single=true&output=csv";          // Away Team, Home Team, Date, Time, TV, Location, Spread, Required
 const CSV_URL_NCAA         = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSu8cw2ymTbcJGMmBkbcJTNzvxVsl4wh3XH7pbQJ3_pbSz42LFo0HKQHVLcJtHiOqtEDt37-hSegjDK/pub?gid=0&single=true&output=csv";
 
+/* Week label */
 const CURRENT_WEEK = 1;
 document.getElementById("weekNum").textContent = CURRENT_WEEK;
+
+/* Global picks deadline (no picks accepted after this moment) — ISO 8601.
+   Example: "2025-08-23T16:00:00Z"  (UTC)  */ const PICKS_DEADLINE_ISO = ""; // <-- set to your cutoff (leave empty to disable global cutoff)
 
 /* Email (demo mode suppresses sending but shows “Submitted”) */
 const DEMO_MODE            = true;
 const EMAILJS_SERVICE_ID  = "service_txqdfck"; const EMAILJS_TEMPLATE_ID = "template_o8du7pt"; const EMAILJS_PUBLIC_KEY  = "w4UC6ofDTC0VdRI44";
 const ORGANIZER_EMAIL     = "wrathofmath85@gmail.com";
 
-/* ===================== HELPERS ===================== */ const $  = s => document.querySelector(s); const $$ = s => Array.from(document.querySelectorAll(s));
+
+/* =====================  HELPERS  ===================== */ const $  = s => document.querySelector(s); const $$ = s => Array.from(document.querySelectorAll(s));
 
 function cacheBusted(url){
-  const u = new URL(url); u.searchParams.set("_", Date.now()); return u.toString(); } function escapeHtml(s){ return String(s??"").replace(/[&<>"]/g, m=>({ "&":"&amp;","<":"&lt;",">":"&gt;" }[m])); }
+  const u = new URL(url); u.searchParams.set("_", String(Date.now())); return u.toString(); } function escapeHtml(s){ return String(s ?? "").replace(/[&<>"]/g, m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[m])); }
 
-/* very small CSV parser (handles quotes) */ async function fetchCSV(url){
+/* CSV parsing */
+async function fetchCSV(url){
   const res = await fetch(cacheBusted(url), {headers:{pragma:"no-cache","cache-control":"no-cache"}});
   const txt = await res.text();
   const rows = parseCSV(txt);
   const [hdr, ...data] = rows;
-  return data.filter(r=>r.some(c=>c.trim()!=="")).map(r=>{
-    const o={}; hdr.forEach((h,i)=>o[h.trim()]=(r[i]??"").trim()); return o;
+  return data.filter(r => r.some(cell => (cell??"").trim()!=="")).map(r=>{
+    const obj={}; hdr.forEach((h,i)=>obj[h.trim()]= (r[i]??"").trim()); return obj;
   });
 }
 function parseCSV(text){
-  const out=[], re=/(?:^|,)(?:"([^"]*(?:""[^"]*)*)"|([^",\n\r]*))/g;
+  const rows=[], re = /(?:^|,)(?:"([^"]*(?:""[^"]*)*)"|([^",\n\r]*))/g;
   for(const line of text.replace(/\r\n/g,"\n").split("\n")){
     const row=[]; re.lastIndex=0; let m;
-    while((m=re.exec(line))!==null){ row.push(m[1]?m[1].replace(/""/g,'"'):(m[2]??"")); }
-    out.push(row);
+    while((m=re.exec(line))!==null){ row.push( m[1] ? m[1].replace(/""/g,'"') : (m[2]??"") ); }
+    rows.push(row);
   }
-  return out;
+  return rows;
 }
 
-/* ===== Eastern → local (with proper DST) & deadline =====
-   The CSV provides Date and Time in *Eastern*. We compute a proper ISO with
-   the New York offset for that calendar date, then render local time. */ function pad(n){return n<10?("0"+n):""+n;} function parseTime12(s){ // "8:15 PM" -> {h:20,m:15}
+/* -------- Time zone: CSV is Eastern; display in user's local time -------- */ function pad(n){return n<10?("0"+n):""+n;} function parseTime12(s){
   const m = String(s||"").match(/^\s*(\d{1,2}):(\d{2})\s*([AP]M)\s*$/i);
   if(!m) return {h:0,m:0};
-  let h = +m[1]%12; if(/pm/i.test(m[3])) h+=12; return {h, m:+m[2]}; } function getNYOffsetForDate(y,m,d){ // returns like "-04:00" or "-05:00"
-  const probeUTC = Date.UTC(y, m-1, d, 12, 0); // noon UTC on that date
+  let h = (+m[1])%12; if(m[3].toUpperCase()==='PM') h+=12; return {h, m:+m[2]}; } function getNYOffsetForDate(y,m,d){
+  const probeUTC = Date.UTC(y, m-1, d, 12, 0); // noon UTC
   const s = new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',timeZoneName:'shortOffset'}).format(probeUTC);
-  const mOff = s.match(/GMT([+-]\d{1,2})(?::(\d{2}))?/);
-  const hrs = mOff ? parseInt(mOff[1],10) : -5;
-  const mins = mOff && mOff[2] ? parseInt(mOff[2],10) : 0;
-  const sign = hrs>=0?"+":"-";
-  const ah = Math.abs(hrs);
-  return `${sign}${pad(ah)}:${pad(mins)}`; } function easternLocalISO(dateStr, timeStr){ // -> ISO with -04:00/-05:00
-  const d = new Date(dateStr); // just to extract Y/M/D
+  const mm = s.match(/GMT([+-]\d{1,2})(?::(\d{2}))?/);
+  const hrs = mm ? parseInt(mm[1],10) : -5;
+  const mins = mm && mm[2] ? parseInt(mm[2],10) : 0;
+  const sign = hrs>=0?"+":"-"; const ah = Math.abs(hrs);
+  return `${sign}${pad(ah)}:${pad(mins)}`; } function easternLocalISO(dateStr, timeStr){
+  const d = new Date(dateStr); // let Date parse month/day/year
   const y = d.getFullYear(), m = d.getMonth()+1, day = d.getDate();
   const {h, m:mi} = parseTime12(timeStr||"12:00 PM");
   const off = getNYOffsetForDate(y,m,day);
   return `${y}-${pad(m)}-${pad(day)}T${pad(h)}:${pad(mi)}:00${off}`;
 }
+const fmtDayLocal  = ms => new Intl.DateTimeFormat(undefined,{weekday:'long'}).format(ms);
+const fmtTimeLocal = ms => new Intl.DateTimeFormat(undefined,{hour:'numeric',minute:'2-digit'}).format(ms);
 
-/* turn a raw row into a normalized game object */ function normalizeGames(arr){
+/* Normalize a lines row into a game object with local display and start ISO */ function normalizeGames(arr){
   const keep = arr.filter(r => (r["Spread"]??"").toString().trim() !== "");
-  // Required at top
   keep.sort((a,b)=>((b["Required"]==="Y")-(a["Required"]==="Y")));
   return keep.map(r=>{
     const away = String(r["Away Team"]||"").trim();
     const home = String(r["Home Team"]||"").trim();
     const tv   = String(r["TV"]||"").trim();
     const loc  = String(r["Location"]||"").trim();
-    const fav  = String(r["Spread"]||"").trim(); // e.g., "Vikings -1.5"
+    const fav  = String(r["Spread"]||"").trim();
     const date = String(r["Date"]||"").trim();
     const time = String(r["Time"]||"").trim();
 
-    // favorite tag on labels
-    let favTeam="", favNum=""; if(fav.includes(" ")){ const sp=fav.split(/\s+/); favTeam=sp.slice(0,-1).join(" "); favNum=sp.at(-1); }
+    let favTeam="", favNum="";
+    if(fav.includes(" ")){ const sp=fav.split(/\s+/); favTeam=sp.slice(0,-1).join(" "); favNum=sp.at(-1); }
     const awayLab = away + (away===favTeam?` ${favNum}`:"");
     const homeLab = home + (home===favTeam?` ${favNum}`:"");
 
-    // compute start ISO (ET -> ISO with -04/-05). If your sheet provides DeadlineISO already, prefer it.
     const startISO = r["DeadlineISO"] ? r["DeadlineISO"] : easternLocalISO(date, time);
     const start    = new Date(startISO);
-    const localDay = start.toLocaleDateString(undefined,{weekday:'long'});
-    const localTime= start.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+    const localDay = fmtDayLocal(start);
+    const localTime= fmtTimeLocal(start);
 
-    return {
-      line: `${away} @ ${home}`,
-      away, home, awayLab, homeLab,
-      tv, loc, fav,
-      required: (r["Required"]==="Y"),
-      startISO, localDay, localTime
-    };
+    return { away, home, awayLab, homeLab, tv, loc, fav, localDay, localTime, startISO, required:(r["Required"]==="Y") };
   });
 }
 
-/* ===================== UI RENDER ===================== */ function buildRow(q, qid){
+/* =====================  UI RENDER  ===================== */ function buildRow(q, qid){
   const expired = q.startISO && (new Date(q.startISO) <= new Date());
   const el = document.createElement("div");
   el.className="row";
@@ -250,11 +257,8 @@ function parseCSV(text){
   if(q.startISO) el.dataset.deadline = q.startISO;
 
   el.innerHTML = `
-    <div class="label">${escapeHtml(q.line)}</div>
-    <div class="chip">
-      ${q.required ? `<span class="badge required">Required</span>` : ``}
-      ${expired    ? `<span class="badge expired">Expired</span>`   : ``}
-    </div>
+    <div class="label">${escapeHtml(`${q.away} @ ${q.home}`)}</div>
+    <div class="chip"><!-- middle column intentionally left blank now --></div>
     <div class="answers">
       <div class="details">
         <div><strong>Favorite:</strong> ${q.fav?escapeHtml(q.fav):"—"}</div>
@@ -262,6 +266,10 @@ function parseCSV(text){
         <div><strong>Time:</strong> ${escapeHtml(q.localTime||"—")}</div>
         <div><strong>Channel:</strong> ${escapeHtml(q.tv||"—")}</div>
         <div><strong>Location:</strong> ${escapeHtml(q.loc||"—")}</div>
+      </div>
+      <div class="badges-under">
+        ${q.required ? `<span class="badge required">Required</span>` : ``}
+        ${expired    ? `<span class="badge expired">Expired</span>`   : ``}
       </div>
       <label><input type="radio" name="${qid}" value="${escapeHtml(q.away)}" ${expired?"disabled":""}> ${escapeHtml(q.awayLab)}</label>
       <label><input type="radio" name="${qid}" value="${escapeHtml(q.home)}" ${expired?"disabled":""}> ${escapeHtml(q.homeLab)}</label>
@@ -274,11 +282,8 @@ function parseCSV(text){
 function renderSection(container, rows, cntSpan, prefix){
   container.innerHTML="";
   if(!rows.length){ container.innerHTML=`<p class="small muted">No games found.</p>`; return; }
-  rows.forEach((q, i)=>{
-    const qid = `${prefix}${i+1}`; // << unique per section (fixes cross-unselect bug)
-    container.appendChild(buildRow(q, qid));
-  });
-  // clear buttons
+  rows.forEach((q, i)=>container.appendChild(buildRow(q, `${prefix}${i+1}`)));
+  // wire clear buttons
   container.querySelectorAll(".clear").forEach(btn=>{
     btn.addEventListener("click",()=>{
       const name = btn.dataset.clear;
@@ -293,7 +298,7 @@ function updateCounts(cntSpan, container){
   const ans = container.querySelectorAll('input[type="radio"]:checked').length;
   cntSpan.textContent = `Answered: ${ans}`; }
 
-/* ===================== STATE / CHECKS / SUMMARY ===================== */ function getSelections(){
+/* =====================  STATE / CHECKS / SUMMARY  ===================== */ function getSelections(){
   const pickMap = new Map();
   $$('.row').forEach(r=>{
     const qid = r.dataset.qid;
@@ -304,34 +309,32 @@ function updateCounts(cntSpan, container){
 }
 
 function populateDouble(){
-  const sel = $('#selDouble');
-  const prev = sel.value;
+  const sel = $('#selDouble'); const prev = sel.value;
   sel.innerHTML = `<option value="">— No double —</option>`;
-  getSelections().forEach((val, qid)=>{
-    // only include unexpired
+  getSelections().forEach((val,qid)=>{
     const row = document.querySelector(`.row[data-qid="${qid}"]`);
     const iso = row?.dataset.deadline;
     const expired = iso && (new Date(iso) <= new Date());
     if(!expired){
-      const opt = document.createElement('option');
-      opt.value = qid; opt.textContent = `${qid}: ${val}`;
-      sel.appendChild(opt);
+      const opt=document.createElement('option'); opt.value=qid; opt.textContent=`${qid}: ${val}`; sel.appendChild(opt);
     }
   });
-  if(prev && [...sel.options].some(o=>o.value===prev)) sel.value = prev; }
+  if(prev && [...sel.options].some(o=>o.value===prev)) sel.value=prev; }
 
 function summarize(){
-  const box = $('#summary');
-  const picks = getSelections();
+  const box = $('#summary'); const picks = getSelections();
   if(!picks.size){ box.innerHTML = `<p class="small muted">Your selections will appear here.</p>`; return; }
-  const rows = [];
-  picks.forEach((team,qid)=>rows.push(`<li>${qid}: <strong>${escapeHtml(team)}</strong></li>`));
+  const rows=[]; picks.forEach((team,qid)=>rows.push(`<li>${qid}: <strong>${escapeHtml(team)}</strong></li>`));
   const dbl = $('#selDouble').value;
   box.innerHTML = `<ul>${rows.join('')}</ul>${ dbl ? `<p><strong>Double:</strong> ${dbl}</p>` : ``}`; }
 
 function checkErrors(){
   const errs=[];
-  // name / email
+  // global cutoff blocks everything
+  if(isPicksClosed()){
+    errs.push("Picks are closed.");
+  }
+
   const name = $('#selName').value || "";
   const email= $('#inpEmail').value.trim();
   if(!name) errs.push("Select your name.");
@@ -351,7 +354,7 @@ function checkErrors(){
   const total = ansA + ansB;
   if(total < 7 || total > 12) errs.push("Pick between 7 and 12 games total.");
 
-  // any pick on expired game?
+  // expired picks not allowed
   $$('.row').forEach(r=>{
     const iso = r.dataset.deadline;
     if(iso && new Date(iso) <= new Date()){
@@ -362,9 +365,8 @@ function checkErrors(){
 
   // render
   $('#errList').innerHTML = errs.map(e=>`<li>${escapeHtml(e)}</li>`).join('');
-  const good = errs.length===0;
-  const pill = $('#statusBox');
-  pill.textContent = good ? "BEAR DOWN" : "ERRORS DETECTED";
+  const pill = $('#statusBox'); const good = errs.length===0;
+  pill.textContent = good ? "BEAR DOWN!" : (isPicksClosed() ? "PICKS CLOSED" : "ERRORS DETECTED");
   pill.className = 'statusBox ' + (good ? 'status_good' : 'status_bad');
   return errs;
 }
@@ -377,22 +379,40 @@ function updateAll(){
   checkErrors();
 }
 
-/* ===================== EMAIL (optional) ===================== */ async function sendEmail(payload){
+/* =====================  GLOBAL DEADLINE ENFORCEMENT  ===================== */ function isPicksClosed(){
+  return PICKS_DEADLINE_ISO && (new Date(PICKS_DEADLINE_ISO) <= new Date()); } function enforceGlobalDeadlineUI(){
+  const closed = isPicksClosed();
+  const msg = $('#closedMsg');
+  if(closed){
+    const when = new Date(PICKS_DEADLINE_ISO).toLocaleString();
+    msg.style.display='block';
+    msg.textContent = `Picks closed at ${when}.`;
+  }else{
+    msg.style.display='none';
+    msg.textContent = '';
+  }
+  // disable interactions
+  $$('.row input[type="radio"], .row .clear, #selDouble, #submitBtn').forEach(el=>{
+    el.disabled = closed || el.disabled; // preserve per-game expired state
+  });
+}
+
+/* =====================  EMAIL (optional)  ===================== */ async function sendEmail(payload){
   if(DEMO_MODE){ await new Promise(r=>setTimeout(r,400)); return {status:"demo"}; }
   if(typeof emailjs === "undefined"){
-    alert("EmailJS SDK not loaded; set DEMO_MODE=true or include EmailJS."); throw new Error("emailjs missing");
+    alert("EmailJS SDK not loaded; enable or set DEMO_MODE=true."); throw new Error("emailjs missing");
   }
   emailjs.init({publicKey: EMAILJS_PUBLIC_KEY});
   return await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, payload); }
 
-/* ===================== LOAD & WIRE ===================== */ (async function init(){
+/* =====================  LOAD & WIRE  ===================== */ (async function init(){
   $('#demoBadge').hidden = !DEMO_MODE;
 
-  // participants
+  // Participants
   const people = await fetchCSV(CSV_URL_PARTICIPANTS);
   const sel = $('#selName');
   sel.innerHTML = `<option disabled selected>— Select your name —</option>` +
-    people.map(p=>`<option value="${escapeHtml(p.Name)}" data-email="${escapeHtml(p.Email||"")}">${escapeHtml(p.Name)}</option>`).join('');
+                  people.map(p=>`<option value="${escapeHtml(p.Name)}" data-email="${escapeHtml(p.Email||"")}">${escapeHtml(p.Name)}</option>`).join('');
   sel.addEventListener('change', ()=>{
     const opt = sel.selectedOptions[0];
     $('#inpEmail').value = opt?.dataset.email || '';
@@ -400,28 +420,31 @@ function updateAll(){
   });
   $('#inpEmail').addEventListener('input', updateAll);
 
-  // games
+  // Games
   const [rawA, rawB] = await Promise.all([ fetchCSV(CSV_URL_NFL), fetchCSV(CSV_URL_NCAA) ]);
   const gamesA = normalizeGames(rawA);
   const gamesB = normalizeGames(rawB);
-  renderSection($('#listA'), gamesA, $('#cntA'), 'A');
-  renderSection($('#listB'), gamesB, $('#cntB'), 'B');
+  renderSection($('#listA'), gamesA, $('#cntA'), 'A'); // unique names A1, A2...
+  renderSection($('#listB'), gamesB, $('#cntB'), 'B'); // unique names B1, B2...
 
-  // radio changes
+  // react to picks
   document.body.addEventListener('change', e=>{
     if(e.target.matches('input[type="radio"]') || e.target.id==='selDouble') updateAll();
   });
 
-  // reset
+  // Reset: keep name/email; clear picks + double
   $('#resetBtn').addEventListener('click', ()=>{
-    // clear all radios & double, keep name/email
     $$('input[type="radio"]').forEach(i=>i.checked=false);
     $('#selDouble').value="";
     updateAll();
   });
 
-  // submit
+  // Submit
   $('#submitBtn').addEventListener('click', async ()=>{
+    if(isPicksClosed()){
+      alert("Picks are closed. Submissions are no longer accepted.");
+      return;
+    }
     const errs = checkErrors();
     if(errs.length===0){
       if(!$('#selDouble').value){
@@ -438,25 +461,23 @@ function updateAll(){
         selections_text: picks.join("\n"),
         double_qid: ($('#selDouble').value||"")
       };
-      try{
-        await sendEmail(payload);
-        alert("Submitted!");
-      }catch(err){
-        console.error(err);
-        alert("Could not send email. Please try again.");
-      }
+      try{ await sendEmail(payload); alert("Submitted!"); }
+      catch(err){ console.error(err); alert("Could not send email. Please try again."); }
     }else{
       window.scrollTo({top:0,behavior:'smooth'});
     }
   });
 
+  enforceGlobalDeadlineUI();
   updateAll();
-})();
-</script>
+
+  // In case the page stays open across the deadline, re-enforce every 30s
+  setInterval(()=>{ enforceGlobalDeadlineUI(); updateAll(); }, 30000); })(); </script>
 
 <!-- If you want live EmailJS, include their SDK and set DEMO_MODE=false
 <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
 -->
+
 </body>
 </html>
 
