@@ -226,25 +226,67 @@ function parseCSV(text){
   const [hdr, ...rest] = rows;
   return rest.map(r => Object.fromEntries(hdr.map((h,i)=>[h.trim(), r[i]??""]))); }
 
-// Parse Eastern date/time from CSV to a Date in **viewer’s local zone** function ET_toLocalDate(dateStr, timeStr){
-  // CSV has Date like "Sept 6, 2025" or "2025-09-06"; Time like "1:00 PM"
-  const dt = `${dateStr} ${timeStr}`.trim();
-  if(!dt) return null;
-  // Build a Date interpreted in America/New_York, then format into ISO and reparse in local
-  try{
-    const fmt = new Intl.DateTimeFormat("en-US",{
-      timeZone:"America/New_York",
-      year:"numeric",month:"2-digit",day:"2-digit",
-      hour:"2-digit",minute:"2-digit",hour12:true
-    });
-    // Best-effort parsing by creating a Date from dt in ET:
-    const et = new Date(Date.parse(dt + " EST"));
-    if(isNaN(et)) return null;
-    // convert to same absolute moment but display will be local automatically
-    return new Date(et.getTime());
-  }catch(e){ return null; }
+// Parse Eastern date/time from CSV to a Date in **viewer’s local zone** 
+function ET_toLocalDate(dateStr, timeStr){
+ // Accepts dates like "Sept 6, 2025" or "Sep 6, 2025" or "2025-09-06"
+ // and times like "1:00 PM" (12-hour).
+ if(!dateStr) return null;
+ function parseDate(d){
+   // ISO yyyy-mm-dd
+   let m;
+   if((m = d.match(/^(\d{4})-(\d{2})-(\d{2})$/))){
+     return { y:+m[1], mo:+m[2], da:+m[3] };
+   }
+   // Month-name d, yyyy
+   const months = {
+     jan:1,feb:2,mar:3,apr:4,may:5,jun:6,
+     jul:7,aug:8,sep:9,sept:9,oct:10,nov:11,dec:12
+   };
+   m = d.trim().replace(/\./g,'').match(/^([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})$/);
+   if(m){
+     const key = m[1].toLowerCase();
+     const mo = months[key];
+     if(mo) return { y:+m[3], mo, da:+m[2] };
+   }
+   return null;
+ }
+ function parseTime(t){
+   // default to midnight if missing
+   if(!t) return { h:0, mi:0 };
+   const m = t.trim().match(/^(\d{1,2}):(\d{2})\s*([AP]M)$/i);
+   if(!m) return { h:0, mi:0 };
+   let h = +m[1], mi = +m[2];
+   const ampm = m[3].toUpperCase();
+   if(ampm === "PM" && h !== 12) h += 12;
+   if(ampm === "AM" && h === 12) h = 0;
+   return { h, mi };
+ }
+ const d = parseDate(String(dateStr).trim());
+ if(!d) return null;
+ const t = parseTime(String(timeStr||"").trim());
+ // Build a UTC instant that corresponds to that *Eastern wall time*.
+ // We determine the ET offset for that instant using Intl with timeZoneName: 'shortOffset'.
+ const approxUTC = Date.UTC(d.y, d.mo-1, d.da, t.h, t.mi);
+ const parts = new Intl.DateTimeFormat('en-US', {
+   timeZone: 'America/New_York',
+   timeZoneName: 'shortOffset',
+   year: 'numeric', month: '2-digit', day: '2-digit',
+   hour: '2-digit', minute: '2-digit', hour12: false
+ }).formatToParts(new Date(approxUTC));
+ const tz = (parts.find(p => p.type === 'timeZoneName') || {}).value || 'GMT-05';
+ // tz looks like "GMT-4" or "GMT-5" (or "GMT-04:00"). Convert to minutes:
+ const mtz = tz.match(/GMT([+-]\d{1,2})(?::(\d{2}))?/);
+ let offsetMin = 0;
+ if(mtz){
+   const hr = parseInt(mtz[1],10);
+   const mm = mtz[2] ? parseInt(mtz[2],10) : 0;
+   offsetMin = hr*60 + (hr<0 ? -mm : mm);
+ }
+ // ET offset is negative (e.g., GMT-4 => -240). To get the UTC ms for that ET wall time,
+ // subtract the offset minutes.
+ const utcMs = Date.UTC(d.y, d.mo-1, d.da, t.h, t.mi) - offsetMin*60*1000;
+ return new Date(utcMs);
 }
-
 // Return a user-facing Day/Time string for a Date function formatLocalDayTime(d){
   if(!d) return {day:"—", time:"—"};
   const day = new Intl.DateTimeFormat(undefined,{weekday:"long"}).format(d);
