@@ -101,7 +101,7 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
     <!-- NFL -->
     <section class="card">
       <div class="hdr">
-        <h2>NFL (Section A)</h2>
+        <h2>NFL</h2>
         <span id="cntA" class="small muted">Answered: 0</span>
       </div>
       <div id="listA"><p class="small muted">Loading NFL…</p></div>
@@ -110,7 +110,7 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
     <!-- NCAA -->
     <section class="card">
       <div class="hdr">
-        <h2>College (Section B)</h2>
+        <h2>College</h2>
         <span id="cntB" class="small muted">Answered: 0</span>
       </div>
       <div id="listB"><p class="small muted">Loading NCAA…</p></div>
@@ -170,7 +170,7 @@ const CURRENT_WEEK = 1;
 document.getElementById("weekNum").textContent = CURRENT_WEEK;
 
 /* Global picks deadline (no picks accepted after this moment) — ISO 8601.
-   Example: "2025-08-23T16:00:00Z"  (UTC)  */ const PICKS_DEADLINE_ISO = ""; // <-- set to your cutoff (leave empty to disable global cutoff)
+   Example: "2025-08-23T16:00:00Z"  (UTC)  */ const PICKS_DEADLINE_ISO = "2025-08-20T16:00:00Z"; // <-- set to your cutoff (leave empty to disable global cutoff)
 
 /* Email (demo mode suppresses sending but shows “Submitted”) */
 const DEMO_MODE            = true;
