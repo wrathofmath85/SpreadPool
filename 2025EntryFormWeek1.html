@@ -1,12 +1,14 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <title>2025 Entry Form – Week 1</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <!-- Libraries -->
+  < script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/luxon@3/build/global/luxon.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+
   <style>
     :root{
       --bg:#0b1324; --card:#0f172a; --text:#e5e7eb; --muted:#93a1b1;
@@ -19,42 +21,44 @@
       margin:0; background:var(--bg); color:var(--text);
       font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
       font-size:14px; line-height:1.35;
-      padding-bottom:88px;
+      padding-bottom:90px; /* space for fixed footer */
     }
     h1{margin:12px 16px}
     .wrap{max-width:1100px;margin:0 auto;padding:0 16px 40px}
     .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin:10px 0}
     .muted{color:var(--muted)} .small{font-size:.9rem}
     input,select{background:transparent;color:var(--text);border:1px solid var(--border);border-radius:9px;padding:8px;width:100%}
+
+    /* Two-column sections */
     .grid2{display:grid;gap:14px;grid-template-columns:1fr}
     @media (min-width:720px){ .grid2{grid-template-columns:1fr 1fr} }
-    /* AFTER: 3 columns (info | required | answers) */
-    .row{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:8px;border-radius:10px}
-    /* Keep picks vertical and put Clear below the options */
-    .answers{display:block}
-    .answers label{display:flex;gap:8px;align-items:center;margin:4px 0;cursor:pointer}
-    .answers .clear{display:block;margin-top:6px}
+
+    /* Question rows (desktop = 3 columns: info | chip | answers) */
+    .row{
+      display:grid;
+      grid-template-columns:1fr auto auto;
+      gap:10px; align-items:center; padding:8px; border-radius:10px
+    }
     .row:nth-child(odd){background:rgba(255,255,255,.03)}
     .label{font-weight:700}
     .details{font-size:.9rem;line-height:1.25rem;margin-top:4px}
     .details div{margin:1px 0}
-     /* Vertical radio options */
-    .answers{display:block}
-    .answers label{
-     display:flex;            /* radio + text on one line */
-     gap:8px;
-     align-items:center;
-     margin:4px 0;            /* space between choices */
-     cursor:pointer;
-     }
-    .clear{border:1px solid var(--border);background:transparent;color:var(--muted);border-radius:7px;padding:5px 9px;cursor:pointer}
-    .clear:hover{color:#fff;border-color:#334155}
+
+    /* Answers vertical with clear under options */
+    .answers{display:block; max-width:100%}
+    .answers label{display:flex;gap:8px;align-items:center;margin:4px 0;cursor:pointer;white-space:normal;overflow-wrap:anywhere}
+    .answers .clear{display:inline-block;margin-top:8px}
+
     .chip{display:inline-block;background:var(--chip);border-radius:999px;padding:2px 10px;font-size:.8rem}
     .chip.mandatory{background:var(--yellow);color:var(--yellowText);font-weight:800;border:1px solid #eab308}
-    .chip.expired{opacity:.7}
-    .expired{opacity:.55}
+    .chip.expired{background:#b91c1c;color:#fff;font-weight:800;border:1px solid #991b1b}
+    .row.expired{opacity:.75}
+    .row.expired .answers .clear{display:none}
+
     .hdr{display:flex;gap:10px;align-items:baseline;justify-content:space-between}
     .counts{display:inline-flex;gap:8px}
+
+    /* Footer (fixed) */
     footer{
       position:fixed; bottom:0; left:0; right:0; z-index:9999;
       background:var(--footer-bg); backdrop-filter:blur(6px);
@@ -69,68 +73,31 @@
     .btn.ghost{background:transparent;border:1px solid var(--border);color:var(--muted)}
     .btn[disabled]{opacity:.6;cursor:not-allowed}
     #err{display:none;color:#fee;background:#3b0f0f;border-color:#7f1d1d}
-    /* Make pick options vertical instead of horizontal */
-    .game .options label {
-     display: block;
-     margin: 4px 0;
-     }
-    .clearBtn {
-     display: block;      /* puts it on its own line */
-     margin-top: 6px;     /* space above */
-     margin-left: 0;      /* align with choices */
-     }
-     /* Phone layout: stack everything, keep answers inside the card */
-     @media (max-width: 640px){
-      .row{
-        grid-template-columns: 1fr;     /* single column */
-        align-items: flex-start;
-      }
-      .row > :nth-child(1),
-      .row > :nth-child(2),
-      .row > :nth-child(3){
-        grid-column: 1;                 /* all children span full width */
-      }
-      /* vertical answers with proper wrapping */
-      .answers{
-        display: block;
-        max-width: 100%;
-      }
-      .answers label{
-        display: flex;
-        flex-wrap: wrap;                /* allow multi-line text */
-        gap: 8px;
-        align-items: center;
-        margin: 6px 0;
-        white-space: normal;
-        overflow-wrap: anywhere;        /* prevent overflow past the card */
-      }
-      .answers .clear{
-        display: inline-block;
-        margin-top: 8px;                /* stays under the options */
-      }
-      /* keep “Expired”/“Required” chips from floating right off-screen */
-      .chip.expired,
-      .chip.mandatory{ align-self: flex-start; }
-     }
-     /* Red chip for expired games (same shape as Required) */
-     .chip.expired{
-      background:#b91c1c;      /* red */
-      color:#fff;
-      font-weight:800;
-      border:1px solid #991b1b;
-     }
-     /* Subtle fade + no Clear button when expired */
-     .row.expired{opacity:.75}
-     .row.expired .answers .clear{display:none}
- </style>
-     </head>
-	<script src="https://cdn.jsdelivr.net/npm/luxon@3/build/global/luxon.min.js"></script>
-     <body>
-       <div class="wrap">
+
+    /* Phone layout: stack all columns */
+    @media (max-width:640px){
+      .row{grid-template-columns:1fr;align-items:flex-start}
+      .row > :nth-child(1), .row > :nth-child(2), .row > :nth-child(3){grid-column:1}
+      .chip.mandatory, .chip.expired{align-self:flex-start}
+    }
+
+    /* Demo badge */
+    .demo-badge{
+      position:fixed; top:8px; right:8px; z-index:10000;
+      background:#78350f; color:#fff; padding:6px 10px; border-radius:8px;
+      font-weight:700; font-size:.85rem; opacity:.9; display:none;
+    }
+  </style>
+</head>
+<body>
+  <div id="demoBadge" class="demo-badge">DEMO MODE</div>
+
+  <div class="wrap">
     <h1>Spread Pool — Week <span id="wkLbl">1</span></h1>
 
     <div id="err" class="card"></div>
 
+    <!-- Participant -->
     <section class="card">
       <h2>Participant</h2>
       <div class="grid2">
@@ -146,10 +113,11 @@
       <p class="small muted">One email is sent to the organizer and you’ll be CC’d.</p>
     </section>
 
+    <!-- Sections A & B -->
     <div class="grid2">
       <section class="card">
         <div class="hdr">
-          <h2>NFL</h2>
+          <h2>NFL (Section A)</h2>
           <div class="counts"><span id="countA" class="chip">Answered: 0</span></div>
         </div>
         <div id="listA" class="qList"><p class="small muted">Loading NFL…</p></div>
@@ -157,31 +125,35 @@
 
       <section class="card">
         <div class="hdr">
-          <h2>College</h2>
+          <h2>College (Section B)</h2>
           <div class="counts"><span id="countB" class="chip">Answered: 0</span></div>
         </div>
         <div id="listB" class="qList"><p class="small muted">Loading NCAA…</p></div>
       </section>
     </div>
 
+    <!-- Double (optional) -->
     <section class="card">
       <h2>Optional: Choose ONE “Double”</h2>
       <select id="doubleSel"><option value="">— No double —</option></select>
       <p class="small muted">Only your currently selected, unexpired games appear here.</p>
     </section>
 
+    <!-- Checks & Errors -->
     <section class="card">
       <h2>Checks & Errors</h2>
       <ul id="errorListPanel" class="small"></ul>
       <p class="small muted">Rules: select your name & valid email; answer all games marked <span class="chip mandatory">Required</span>; ≥3 in NFL and ≥3 in College; total 7–12 picks. If you choose a Double, it must be one of your selected answers.</p>
     </section>
 
+    <!-- Summary -->
     <section class="card">
       <h2>Summary of Chosen Answers</h2>
       <div id="summary"><p class="small muted">Your selections will appear here.</p></div>
     </section>
   </div>
 
+  <!-- Sticky Footer -->
   <footer>
     <div class="footer-actions">
       <button id="submitBtn" class="btn">Submit</button>
@@ -191,21 +163,23 @@
   </footer>
 
 <script>
-/* ===================== CONFIG ===================== */ 
+/* ===================== CONFIG ===================== */
 // Turn demo mode on to block email sending
 const DEMO_MODE = true;  // set false when you want real emails
 const CSV_URL_PARTICIPANTS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTfQ7a2weK5Got7LTe3yVxqhcPR6pa-nPg73PdOMk8rrHwqlr3UeTcPprlgVbFjhFIVpifmMKnb_Tss/pub?gid=0&single=true&output=csv"; // Name, Email
 const CSV_URL_NFL          = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSu8cw2ymTbcJGMmBkbcJTNzvxVsl4wh3XH7pbQJ3_pbSz42LFo0HKQHVLcJtHiOqtEDt37-hSegjDK/pub?gid=2109553148&single=true&output=csv";          // Away Team, Home Team, Date, Time, TV, Location, Spread, Required
-const CSV_URL_NCAA         = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSu8cw2ymTbcJGMmBkbcJTNzvxVsl4wh3XH7pbQJ3_pbSz42LFo0HKQHVLcJtHiOqtEDt37-hSegjDK/pub?gid=0&single=true&output=csv";
-const CURRENT_WEEK = 1;
 
-const EMAILJS_SERVICE_ID  = "service_txqdfck"; const EMAILJS_TEMPLATE_ID = "template_o8du7pt"; const EMAILJS_PUBLIC_KEY  = "w4UC6ofDTC0VdRI44";
+/* EmailJS (single email, CC to user via your template) */ const EMAILJS_SERVICE_ID  = "service_txqdfck"; const EMAILJS_TEMPLATE_ID = "template_o8du7pt"; const EMAILJS_PUBLIC_KEY  = "w4UC6ofDTC0VdRI44";
 const ORGANIZER_EMAIL     = "wrathofmath85@gmail.com";
 
-/* ===================== UTIL & DIAGNOSTICS ===================== */ const $ = s => document.querySelector(s); const escapeHtml = s => String(s ?? "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
-function showErr(msg){ const box=$("#err"); box.style.display=msg?"block":"none"; box.innerHTML=msg||""; } function setStatus(ok){ const box=$("#statusBox"); if(ok){box.textContent="BEAR DOWN!"; box.classList.remove('bad'); box.classList.add('good');} else {box.textContent="ERRORS DETECTED"; box.classList.remove('good'); box.classList.add('bad');} } function okStatus(resp){ return resp && (resp.status===200 || resp.ok); }
 
-async function fetchCSV(url){
+/* ===================== UTIL & DIAGNOSTICS ===================== */ const $ = s => document.querySelector(s); const { DateTime } = luxon;
+
+const escapeHtml = s => String(s ?? "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+
+function showErr(msg){ const box=$("#err"); box.style.display=msg?"block":"none"; box.innerHTML=msg||""; } function setStatus(ok){ const box=$("#statusBox"); if(ok){box.textContent="BEAR DOWN!"; box.classList.remove('bad'); box.classList.add('good');} else {box.textContent="ERRORS DETECTED"; box.classList.remove('good'); box.classList.add('bad');} } function okStatus(resp){ return resp && (resp.status===200 || resp.ok); } if (DEMO_MODE) $("#demoBadge").style.display = "block";
+
+/* Robust CSV fetch with clear diagnostics */ async function fetchCSV(url){
   const full = url + (url.includes('?') ? '&' : '?') + 'cb=' + Date.now();
   try{
     const resp = await fetch(full, { mode:'cors' });
@@ -228,38 +202,22 @@ async function fetchCSV(url){
   }
 }
 
-/* ===================== DATES ===================== */ function toISO(dateStr,timeStr){
-  const s=[dateStr,timeStr].filter(Boolean).join(' ');
-  const d=new Date(s); if(isNaN(+d)) return "";
-  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), da=String(d.getDate()).padStart(2,'0'),
-        h=String(d.getHours()).padStart(2,'0'), mi=String(d.getMinutes()).padStart(2,'0');
-  return `${y}-${m}-${da}T${h}:${mi}`;
+/* ===================== TIME — Eastern → UTC, then display local ===================== */ function easternToUTCISO(dateStr, timeStr){
+  // Expect Date like "2025-08-23" and Time like "12:00 PM" in Eastern Time
+  if(!dateStr || !timeStr) return "";
+  const dtET = DateTime.fromFormat(`${dateStr} ${timeStr}`, "yyyy-LL-dd h:mm a", { zone: "America/New_York" });
+  if(!dtET.isValid) return "";
+  return dtET.toUTC().toISO({ suppressMilliseconds:true }); } function localDayFromUTC(isoUTC){
+  if(!isoUTC) return '';
+  const d = DateTime.fromISO(isoUTC, { zone: "utc" }).setZone();
+  return d.toFormat("EEEE");
 }
-function dayName(dateStr){ const d=new Date(dateStr); return isNaN(+d)?'':d.toLocaleDateString(undefined,{weekday:'long'}); } function isExpired(iso){ if(!iso) return false; const d=new Date(iso); return !isNaN(+d) && (new Date()>d); } function normQOrder(q){ if(!q) return 9999; const s=q[0], n=parseInt(q.slice(1),10); return (s==='A'?0:1)*1000 + (isFinite(n)?n:999); }
-
-const { DateTime } = luxon;
-// Build a UTC ISO string from Eastern date+time (handles DST automatically)
-function easternToUTCISO(dateStr, timeStr) {
- // Expecting date like 2025-08-23 and time like 12:00 PM
- const dtET = DateTime.fromFormat(
-   `${dateStr} ${timeStr}`,
-   "yyyy-LL-dd h:mm a",
-   { zone: "America/New_York" }
- );
- if (!dtET.isValid) return ""; // fall back if parse fails
- return dtET.toUTC().toISO({ suppressMilliseconds: true });
+function localTimeFromUTC(isoUTC){
+  if(!isoUTC) return '';
+  const d = DateTime.fromISO(isoUTC, { zone: "utc" }).setZone();
+  return d.toFormat("h:mm a");
 }
-// For display: take a UTC ISO and show *local* day/time to the user
-function localDayFromUTC(isoUTC) {
- if (!isoUTC) return "";
- const d = DateTime.fromISO(isoUTC, { zone: "utc" }).setZone();
- return d.toFormat("EEEE"); // e.g., "Saturday"
-}
-function localTimeFromUTC(isoUTC) {
- if (!isoUTC) return "";
- const d = DateTime.fromISO(isoUTC, { zone: "utc" }).setZone();
- return d.toFormat("h:mm a"); // e.g., "7:00 PM"
-}
+function isExpired(iso){ if(!iso) return false; const nowUTC = DateTime.utc(); const d = DateTime.fromISO(iso, { zone: "utc" }); return d.isValid && nowUTC > d; } function normQOrder(q){ if(!q) return 9999; const s=q[0], n=parseInt(q.slice(1),10); return (s==='A'?0:1)*1000 + (isFinite(n)?n:999); }
 
 /* ===================== PARTICIPANTS ===================== */ const nameSel=$("#nameSel"), emailInp=$("#emailInp"); function populateParticipants(rows){
   const map={}, names=[];
@@ -274,19 +232,18 @@ function localTimeFromUTC(isoUTC) {
   nameSel.innerHTML = `<option value="">— Select your name —</option>` + names.map(n=>`<option>${escapeHtml(n)}</option>`).join('');
   nameSel.onchange = ()=>{ const nm=nameSel.value.trim(); if(map[nm]) emailInp.value=map[nm]; onAnyChange(); }; }
 
-/* ===================== GAMES ===================== */ function escRx(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
-
-/* Attach spread ONLY if it starts with the full team name followed by space and '(' or '-' */ function spreadOnExactTeam(team, spreadText){
+/* ===================== GAMES ===================== */
+/* Prevent "Iowa" matching "Iowa State" when applying spread text */ function escRx(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); } function spreadOnExactTeam(team, spreadText){
   if(!team || !spreadText) return team;
-  const rx = new RegExp("^" + escRx(team) + "\\s*[(-]", "i"); // e.g., "Iowa (-3)" or "Iowa -3"
+  // starts with full team name followed by space and '(' or '-'
+  const rx = new RegExp("^" + escRx(team) + "\\s*[(-]", "i");
   if(rx.test(spreadText)){
     const m = spreadText.match(rx)[0];
-    const rest = spreadText.slice(m.length-1).trim(); // keep leading "(" or "-" included
+    const rest = spreadText.slice(m.length-1).trim();
     return rest ? `${team} ${rest}` : team;
   }
   return team;
 }
-
 function favoriteFrom(awayChoice, homeChoice){
   const aFav = /(^|[ (])-\d/.test(awayChoice);
   const hFav = /(^|[ (])-\d/.test(homeChoice);
@@ -300,26 +257,26 @@ function normalizeGames(rows){
   rows.forEach(r=>{
     const away=String(r["Away Team"]||r["Away"]||"").trim();
     const home=String(r["Home Team"]||r["Home"]||"").trim();
-	const date = String(r["Date"]||"").trim();
-	const time = String(r["Time"]||"").trim();
-	// Build a UTC deadline from Eastern inputs
-	const iso = easternToUTCISO(date, time);
-	// For display, show the user's local day/time from that UTC instant
-	const day = localDayFromUTC(iso);
-	const localTime = localTimeFromUTC(iso);
+    const date=String(r["Date"]||"").trim();   // Eastern date (yyyy-mm-dd)
+    const time=String(r["Time"]||"").trim();   // Eastern time (h:mm AM/PM)
     const tv  =String(r["TV"]||"").trim();
     const loc =String(r["Location"]||"").trim();
     const spread=String(r["Spread"]||"").trim();
     const req =String(r["Required"]||"").trim().toUpperCase()==='Y';
-    if(!spread) return;
-    const iso = toISO(date,time);
-    const day = dayName(date);
+    if(!spread) return; // only show games that have spreads
+
+    // Build UTC ISO from Eastern date+time
+    const iso = easternToUTCISO(date,time);
+    const day = localDayFromUTC(iso);
+    const localTime = localTimeFromUTC(iso);
+
     const awayChoice = spreadOnExactTeam(away, spread);
     const homeChoice = spreadOnExactTeam(home, spread);
     const fav = favoriteFrom(awayChoice, homeChoice);
+
     arr.push({
-      line:`${away} @ ${home}`, fav, day, time:localTime, tv, loc,
-      deadline:iso, req, choices:[awayChoice,homeChoice]
+      line:`${away} @ ${home}`, fav, day, time: localTime, tv, loc,
+      deadline: iso, req, choices:[awayChoice,homeChoice]
     });
   });
   return [...arr.filter(x=>x.req), ...arr.filter(x=>!x.req)]; }
@@ -327,26 +284,24 @@ function normalizeGames(rows){
 function buildRow(q, qid){
   const el=document.createElement('div');
   el.className='row'; el.dataset.qid=qid; el.dataset.deadline=q.deadline||'';
-  const answers = q.choices
-     .map(c => `<label><input type="radio" name="${qid}" value="${escapeHtml(c)}"> ${escapeHtml(c)}</label>`)
-      .join('');
-    el.innerHTML = `
-     <div>
-     <div class="label">${escapeHtml(q.line)}</div>
-     <div class="details">
-     <div><strong>Favorite:</strong> ${escapeHtml(q.fav || '—')}</div>
-     <div><strong>Day:</strong> ${escapeHtml(q.day || '—')}</div>
-     <div><strong>Time:</strong> ${escapeHtml(q.time || '—')}</div>
-     <div><strong>Channel:</strong> ${escapeHtml(q.tv || '—')}</div>
-     <div><strong>Location:</strong> ${escapeHtml(q.loc || '—')}</div>
-     </div>
-     </div>
-     <div>${q.req ? '<span class="chip mandatory">Required</span>' : ''}</div>
-     <div class="answers">
-        ${answers}
-     <button type="button" class="clear" data-clear="${qid}">Clear</button>
-     </div>
-     `;
+  const answers=q.choices.map(c=>`<label><input type="radio" name="${qid}" value="${escapeHtml(c)}"> ${escapeHtml(c)}</label>`).join('');
+  el.innerHTML = `
+    <div>
+      <div class="label">${escapeHtml(q.line)}</div>
+      <div class="details">
+        <div><strong>Favorite:</strong> ${escapeHtml(q.fav || '—')}</div>
+        <div><strong>Day:</strong> ${escapeHtml(q.day || '—')}</div>
+        <div><strong>Time:</strong> ${escapeHtml(q.time || '—')}</div>
+        <div><strong>Channel:</strong> ${escapeHtml(q.tv || '—')}</div>
+        <div><strong>Location:</strong> ${escapeHtml(q.loc || '—')}</div>
+      </div>
+    </div>
+    <div class="chipSlot">${q.req?'<span class="chip mandatory">Required</span>':''}</div>
+    <div class="answers">
+      ${answers}
+      <button type="button" class="clear" data-clear="${qid}">Clear</button>
+    </div>
+  `;
   return el;
 }
 function renderSection(container, rows, prefix){
@@ -368,35 +323,36 @@ function allRows(){ return Array.from(document.querySelectorAll('.row')); } func
   });
   return map;
 }
-function countAB(map){ let a=0,b=0; for(const k of map.keys()){ if(k.startsWith('A')) a++; else if(k.startsWith('B')) b++; } return {a,b,total:a+b}; } function refreshCounts(){ const m=answersMap(); const {a,b}=countAB(m); $("#countA").textContent=`Answered: ${a}`; $("#countB").textContent=`Answered: ${b}`; } 
+function countAB(map){ let a=0,b=0; for(const k of map.keys()){ if(k.startsWith('A')) a++; else if(k.startsWith('B')) b++; } return {a,b,total:a+b}; } function refreshCounts(){ const m=answersMap(); const {a,b}=countAB(m); $("#countA").textContent=`Answered: ${a}`; $("#countB").textContent=`Answered: ${b}`; }
 
 function refreshExpiry(){
- allRows().forEach(r=>{
-   const expired = isExpired(r.dataset.deadline);
-   r.classList.toggle('expired', expired);
-   // disable radios if expired
-   r.querySelectorAll('input[type=radio]').forEach(i => i.disabled = expired);
-   // the second child div is the chip column (Required/Expired)
-   const chipCol = r.children[1];
-   if (!chipCol) return;
-   // preserve existing "Required" chip if present
-   const hasRequired = !!chipCol.querySelector('.mandatory');
-   // remove any existing expired chip
-   const oldExp = chipCol.querySelector('.expired');
-   if (oldExp) oldExp.remove();
-   if (expired) {
-     // insert Expired chip next to Required (or by itself)
-     const exp = document.createElement('span');
-     exp.className = 'chip expired';
-     exp.textContent = 'Expired';
-     if (hasRequired) {
-       chipCol.appendChild(document.createTextNode(' '));
-       chipCol.appendChild(exp);
-     } else {
-       chipCol.appendChild(exp);
-     }
-   }
- });
+  allRows().forEach(r=>{
+    const expired = isExpired(r.dataset.deadline);
+    r.classList.toggle('expired', expired);
+
+    // disable radios if expired
+    r.querySelectorAll('input[type=radio]').forEach(i => i.disabled = expired);
+
+    // the second child div is the chip column
+    const chipCol = r.children[1];
+    if (!chipCol) return;
+
+    const hasRequired = !!chipCol.querySelector('.mandatory');
+    const oldExp = chipCol.querySelector('.expired');
+    if (oldExp) oldExp.remove();
+
+    if (expired) {
+      const exp = document.createElement('span');
+      exp.className = 'chip expired';
+      exp.textContent = 'Expired';
+      if (hasRequired) {
+        chipCol.appendChild(document.createTextNode(' '));
+        chipCol.appendChild(exp);
+      } else {
+        chipCol.appendChild(exp);
+      }
+    }
+  });
 }
 
 function enforceMax(max=12){
@@ -449,11 +405,12 @@ function refreshDouble(){
   if(dbl){ if(m.has(dbl)) checks.push(`✅ Double valid (${dbl})`); else { checks.push('❌ Double not among selections'); errs.push('Double must be one of your selected answers.'); } }
   else checks.push('ℹ️ No double selected (optional)');
 
+  // Render checklist panel (footer list removed by design)
   const ul1=$("#errorListPanel"); ul1.innerHTML='';
   checks.forEach(c=>{
-    const li=document.createElement('li'); li.textContent=c;
-    li.style.color=c.startsWith('❌')?'var(--bad)':c.startsWith('✅')?'var(--ok)':'var(--muted)';
-    ul1.appendChild(li);
+    const li1=document.createElement('li'); li1.textContent=c;
+    li1.style.color=c.startsWith('❌')?'var(--bad)':c.startsWith('✅')?'var(--ok)':'var(--muted)';
+    ul1.appendChild(li1);
   });
 
   setStatus(errs.length===0);
@@ -490,52 +447,47 @@ $("#resetBtn").onclick=()=>{
       fetchCSV(CSV_URL_NCAA)
     ]);
     populateParticipants(parts);
-    renderSection($("#listA"), nfl,  'A');
-    renderSection($("#listB"), ncaa, 'B');
-    onAnyChange();
-    setInterval(onAnyChange, 60000);
+    renderSection($("#listA"), nfl,  'A');  // NFL → A
+    renderSection($("#listB"), ncaa, 'B');  // NCAA → B
+    onAnyChange();                         // initial pass
+    setInterval(onAnyChange, 60000);       // keep expiry fresh
   }catch(e){
     console.error('[load] fatal', e);
   }
 });
 
-// Footer SUBMIT button (with "no double" confirmation)
-$("#submitBtn").onclick = async () => {
- const s = validateAll();
- if (!s.valid) {
-   alert("Please fix the items shown in the Checks & Errors card.");
-   return;
- }
- if (!s.doubleId) {
-   const ok = confirm("You didn’t pick a Double. Submit anyway?");
-   if (!ok) return;
- }
- $("#submitBtn").disabled = true;
- try {
-   if (DEMO_MODE) {
-     // Fake wait so it “feels” like sending
-     await new Promise(r => setTimeout(r, 400));
-     console.log("[DEMO] Skipping email send. Data:", {
-       name: s.name,
-       email: s.email,
-       answers: s.answers,
-       double: s.doubleId
-     });
-   } else {
-     await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-       organizer_email: ORGANIZER_EMAIL,
-       participant_name: s.name,
-       participant_email: s.email,
-       selections_text: buildEmailText(s.name, s.email, s.answers, s.doubleId)
-     });
-   }
-   alert("Submitted!");
- } catch (err) {
-   console.error("Send failed", err);
-   alert("Error while submitting.");
- } finally {
-   $("#submitBtn").disabled = false;
- }
+/* Footer SUBMIT (with "no double" confirmation + demo mode) */ $("#submitBtn").onclick = async ()=>{
+  const s=validateAll();
+  if(!s.valid){ alert('Please fix the items shown in the Checks & Errors card.'); return; }
+
+  if(!s.doubleId){
+    const ok = confirm("You didn't select a Double.\n\nSubmit without a Double?");
+    if(!ok) return;
+  }
+
+  $("#submitBtn").disabled = true;
+  try{
+    if (DEMO_MODE){
+      await new Promise(r=>setTimeout(r,400)); // simulate send
+      console.log('[DEMO] Email suppressed. Would have sent:\n', buildEmailText(s.name,s.email,s.answers,s.doubleId));
+    }else{
+      await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+        organizer_email: ORGANIZER_EMAIL,
+        participant_name: s.name,
+        participant_email: s.email,
+        selections_text: buildEmailText(s.name, s.email, s.answers, s.doubleId)
+      });
+    }
+    alert('Submitted!');
+  }catch(err){
+    console.error('Email send failed', err);
+    alert('Email send failed. Please try again.');
+  }finally{
+    $("#submitBtn").disabled = false;
+  }
 };
-</script> </body> </html> 
+</script>
+</body>
+</html>
+
 
