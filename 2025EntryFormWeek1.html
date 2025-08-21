@@ -170,10 +170,11 @@ const CURRENT_WEEK = 1;
 document.getElementById("weekNum").textContent = CURRENT_WEEK;
 
 /* Global picks deadline (no picks accepted after this moment) — ISO 8601.
-   Example: "2025-08-23T16:00:00Z"  (UTC)  */ const PICKS_DEADLINE_ISO = "2025-08-20T16:00:00Z"; // <-- set to your cutoff (leave empty to disable global cutoff)
+   Example: "2025-08-23T16:00:00Z"  (UTC)  */ 
+const PICKS_DEADLINE_ISO = ""; // <-- set to your cutoff (leave empty to disable global cutoff)
 
 /* Email (demo mode suppresses sending but shows “Submitted”) */
-const DEMO_MODE            = true;
+const DEMO_MODE            = false;
 const EMAILJS_SERVICE_ID  = "service_txqdfck"; const EMAILJS_TEMPLATE_ID = "template_o8du7pt"; const EMAILJS_PUBLIC_KEY  = "w4UC6ofDTC0VdRI44";
 const ORGANIZER_EMAIL     = "wrathofmath85@gmail.com";
 
