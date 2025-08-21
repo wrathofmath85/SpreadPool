@@ -337,7 +337,8 @@ function normalizeGames(csvRows){
 /* =============== STATE =============== */ let ALL_GAMES_A = []; let ALL_GAMES_B = []; let ANSWERS = new Map(); // qid -> "Away"/"Home"
 let EMAILS_BY_NAME = new Map();
 
-/* =============== UI BUILDS =============== */ function buildRow(q){
+/* =============== UI BUILDS =============== */ 
+function buildRow(q){
   const el = document.createElement("div");
   el.className = "row";
   el.dataset.qid = q.qid;
@@ -409,7 +410,8 @@ function renderSection(container, rows){
   container.appendChild(frag);
 }
 
-/* =============== LOAD & INIT =============== */ async function loadAll(){
+/* =============== LOAD & INIT =============== */ 
+async function loadAll(){
   // hard deadline block
   if(isHardDeadlinePassed()){
     $("#submitBtn").disabled = true;
@@ -446,7 +448,8 @@ function renderSection(container, rows){
   refreshDoubleChoices();
 }
 
-/* counts, summary, double options, status */ function refreshCountsAndSummary(){
+/* counts, summary, double options, status */ 
+function refreshCountsAndSummary(){
   const countA = ALL_GAMES_A.filter(g => ANSWERS.has(g.qid)).length;
   const countB = ALL_GAMES_B.filter(g => ANSWERS.has(g.qid)).length;
   $("#countA").textContent = countA;
@@ -525,7 +528,8 @@ function validateAll(showAlerts=true){
   return true;
 }
 
-/* hard cutoff helper: interpret config as Eastern, compare with now */ function isHardDeadlinePassed(){
+/* hard cutoff helper: interpret config as Eastern, compare with now */ 
+function isHardDeadlinePassed(){
   if(!PICKS_HARD_DEADLINE_ET) return false;
   // naive parse → append “ET” so it’s interpreted as Eastern wall time
   const d = new Date(PICKS_HARD_DEADLINE_ET.replace(" ", "T") + ":00 EST");
@@ -551,7 +555,8 @@ function buildSelectionsText(){
   return `Name: ${nm}\n${weekLine}\nSelections:\n${picks}${dblLine}`;
 }
 
-/* ============ EMAIL SEND (matches template) ============ */ function sendEmail_withEmailJS(){
+/* ============ EMAIL SEND (matches template) ============ */ 
+function sendEmail_withEmailJS(){
   if(DEMO_MODE){
     return Promise.resolve({status:"demo", msg:"Demo mode: not sending email"});
   }
