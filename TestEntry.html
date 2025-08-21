@@ -236,32 +236,34 @@ function formatFavorite(away, home, spread){
   return s;
 }
 
-/* ====== CSV → normalized game data ====== */ function normalizeGames(csvRows){
-  // Expect columns: Away Team, Home Team, Date, Time, TV, Location, Spread, Required
-  const out = [];
-  for(const r of csvRows){
-    const away = String(r["Away Team"]||r["Away"]||"").trim();
-    const home = String(r["Home Team"]||r["Home"]||"").trim();
-    const date = String(r["Date"]||"").trim();
-    const time = String(r["Time"]||"").trim();
-    const tv   = String(r["TV"]||"").trim();
-    const loc  = String(r["Location"]||"").trim();
-    const spr  = String(r["Spread"]||"").trim();
-    const req  = /^y/i.test(String(r["Required"]||""));
-    if(!away || !home) continue;
-
-    const t = makeLocalTimeFromET(date, time);
-    out.push({
-      away, home,
-      tv, loc,
-      fav: formatFavorite(away, home, spr),
-      deadline: t.utc,       // UTC Date (can be null)
-      timeText: t.localText, // local reader-friendly time
-      iso: t.iso,
-      required: req
-    });
-  }
-  return out;
+/* ====== CSV → normalized game data ====== */ 
+function normalizeGames(csvRows){
+ // Expect columns: Away Team, Home Team, Date, Time, TV, Location, Spread, Required
+ const out = [];
+ for (const r of csvRows){
+   const away = String(r["Away Team"]||r["Away"]||"").trim();
+   const home = String(r["Home Team"]||r["Home"]||"").trim();
+   const date = String(r["Date"]||"").trim();
+   const time = String(r["Time"]||"").trim();
+   const tv   = String(r["TV"]||"").trim();
+   const loc  = String(r["Location"]||"").trim();
+   const spr  = String(r["Spread"]||"").trim();
+   const req  = /^y/i.test(String(r["Required"]||""));
+   if (!away || !home) continue;
+   // >>> ONLY SHOW GAMES WITH A SPREAD <<<
+   if (!spr || /^[-—\s]*$/.test(spr)) continue;
+   const t = makeLocalTimeFromET(date, time);
+   out.push({
+     away, home,
+     tv, loc,
+     fav: spr,                 // e.g. "Illinois -2.5"
+     deadline: t.utc,          // UTC Date (can be null)
+     timeText: t.localText,    // local reader-friendly time
+     iso: t.iso,
+     required: req
+   });
+ }
+ return out;
 }
 
 /* ========== PAGE STATE ========== */
