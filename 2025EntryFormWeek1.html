@@ -124,6 +124,7 @@
      .row.expired .answers .clear{display:none}
  </style>
      </head>
+	<script src="https://cdn.jsdelivr.net/npm/luxon@3/build/global/luxon.min.js"></script>
      <body>
        <div class="wrap">
     <h1>Spread Pool — Week <span id="wkLbl">1</span></h1>
@@ -236,6 +237,30 @@ async function fetchCSV(url){
 }
 function dayName(dateStr){ const d=new Date(dateStr); return isNaN(+d)?'':d.toLocaleDateString(undefined,{weekday:'long'}); } function isExpired(iso){ if(!iso) return false; const d=new Date(iso); return !isNaN(+d) && (new Date()>d); } function normQOrder(q){ if(!q) return 9999; const s=q[0], n=parseInt(q.slice(1),10); return (s==='A'?0:1)*1000 + (isFinite(n)?n:999); }
 
+const { DateTime } = luxon;
+// Build a UTC ISO string from Eastern date+time (handles DST automatically)
+function easternToUTCISO(dateStr, timeStr) {
+ // Expecting date like 2025-08-23 and time like 12:00 PM
+ const dtET = DateTime.fromFormat(
+   `${dateStr} ${timeStr}`,
+   "yyyy-LL-dd h:mm a",
+   { zone: "America/New_York" }
+ );
+ if (!dtET.isValid) return ""; // fall back if parse fails
+ return dtET.toUTC().toISO({ suppressMilliseconds: true });
+}
+// For display: take a UTC ISO and show *local* day/time to the user
+function localDayFromUTC(isoUTC) {
+ if (!isoUTC) return "";
+ const d = DateTime.fromISO(isoUTC, { zone: "utc" }).setZone();
+ return d.toFormat("EEEE"); // e.g., "Saturday"
+}
+function localTimeFromUTC(isoUTC) {
+ if (!isoUTC) return "";
+ const d = DateTime.fromISO(isoUTC, { zone: "utc" }).setZone();
+ return d.toFormat("h:mm a"); // e.g., "7:00 PM"
+}
+
 /* ===================== PARTICIPANTS ===================== */ const nameSel=$("#nameSel"), emailInp=$("#emailInp"); function populateParticipants(rows){
   const map={}, names=[];
   rows.forEach(r=>{
@@ -275,8 +300,13 @@ function normalizeGames(rows){
   rows.forEach(r=>{
     const away=String(r["Away Team"]||r["Away"]||"").trim();
     const home=String(r["Home Team"]||r["Home"]||"").trim();
-    const date=String(r["Date"]||"").trim();
-    const time=String(r["Time"]||"").trim();
+	const date = String(r["Date"]||"").trim();
+	const time = String(r["Time"]||"").trim();
+	// Build a UTC deadline from Eastern inputs
+	const iso = easternToUTCISO(date, time);
+	// For display, show the user's local day/time from that UTC instant
+	const day = localDayFromUTC(iso);
+	const localTime = localTimeFromUTC(iso);
     const tv  =String(r["TV"]||"").trim();
     const loc =String(r["Location"]||"").trim();
     const spread=String(r["Spread"]||"").trim();
@@ -288,7 +318,7 @@ function normalizeGames(rows){
     const homeChoice = spreadOnExactTeam(home, spread);
     const fav = favoriteFrom(awayChoice, homeChoice);
     arr.push({
-      line:`${away} @ ${home}`, fav, day, time, tv, loc,
+      line:`${away} @ ${home}`, fav, day, time:localTime, tv, loc,
       deadline:iso, req, choices:[awayChoice,homeChoice]
     });
   });
