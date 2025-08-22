@@ -182,16 +182,59 @@ const DEMO_MODE = false;
 const escapeHtml = s => String(s??"").replace(/[&<>"]/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[m]));
 
 /* cache-busted fetch so sheet edits appear quickly */ 
-function fetchCSV(url){
-  const bust = (url.includes("?") ? "&" : "?") + "_=" + Date.now();
-  return fetch(url + bust, {mode: "cors"})
-    .then(r => { if(!r.ok) throw new Error("CSV fetch failed: "+r.status); return r.text(); }); }
+<script>
+async function fetchCSV(url) {
+ // Always request CSV and let redirects happen
+ const res = await fetch(url, {
+   redirect: "follow",
+   // avoid caches while you’re testing; you can flip this later
+   cache: "no-store"
+ });
+ const text = await res.text();
+ // If Google served a viewer/HTML wrapper, try to extract the CSV
+ // 1) Some wrappers start with <html>
+ if (/^\s*</i.test(text)) {
+   // If it’s an HTML page, there’s nothing reliable to parse.
+   // Throw a readable error so we see it in the console.
+   throw new Error("CSV fetch returned HTML instead of CSV. Check publish link (must end with output=csv).");
+ }
+ // 2) If first row doesn’t look like CSV header, still let the parser try,
+ //    but we’ll sanitize weird line endings first.
+ return text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+}
+</script>
 
 /* CSV → array of objects */
-function parseCSV(text){
-  const rows = text.trim().split(/\r?\n/).map(r=>r.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(c=>c.replace(/^"|"$/g,"")));
-  const hdr = rows.shift();
-  return rows.map(r => Object.fromEntries(hdr.map((h,i)=>[h.trim(), (r[i]??"").trim()]))); }
+<script>
+function parseCSV(text) {
+ // minimal CSV parser that tolerates commas in quotes and stray BOMs
+ const clean = text.replace(/^\uFEFF/, ""); // strip BOM if present
+ const rows = [];
+ let i = 0, field = "", inQuotes = false, row = [];
+ while (i < clean.length) {
+   const ch = clean[i];
+   if (inQuotes) {
+     if (ch === '"') {
+       if (clean[i + 1] === '"') { field += '"'; i += 2; continue; }
+       inQuotes = false; i++; continue;
+     }
+     field += ch; i++; continue;
+   } else {
+     if (ch === '"') { inQuotes = true; i++; continue; }
+     if (ch === ",") { row.push(field.trim()); field = ""; i++; continue; }
+     if (ch === "\n") { row.push(field.trim()); rows.push(row); row = []; field = ""; i++; continue; }
+     i++; field += ch;
+   }
+ }
+ // flush last field/row
+ row.push(field.trim()); rows.push(row);
+ // header + objects
+ const [hdr, ...rest] = rows.filter(r => r.length && r.some(c => c !== ""));
+ if (!hdr || hdr.length === 0) return [];
+ const header = hdr.map(h => h.trim());
+ return rest.map(r => Object.fromEntries(header.map((h, idx) => [h, r[idx] ?? ""])));
+}
+</script>
 
 /* Parse a Date + Time written in EASTERN time into a local (viewer) time string,
    and produce an ISO UTC deadline for expiration checks.
