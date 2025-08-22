@@ -563,7 +563,7 @@ $("#submitBtn").addEventListener("click", async ()=>{
     });
     alert("Submitted! A copy will be CC’d to you.");
   }catch(err){
-    console.error(err);
+    console.error("EmailJS error details:",err);
     alert("Could not send via EmailJS. Check your EmailJS keys/template.");
   }
 });
