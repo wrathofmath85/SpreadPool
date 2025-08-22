@@ -165,7 +165,8 @@ const CSV_URL_NCAA         = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS
 /* Week label for subject lines, summaries, etc. */ 
 const CURRENT_WEEK = 1;
 
-/* UTC cut-off for the WHOLE form (block all submissions after this moment). */ const PICKS_DEADLINE_UTC = "2025-08-31T23:59:00Z";
+/* UTC cut-off for the WHOLE form (block all submissions after this moment). */ 
+const PICKS_DEADLINE_UTC = "2025-08-31T23:59:00Z";
 
 /* Email (demo mode suppresses sending but shows “Submitted”) */
 
@@ -173,13 +174,15 @@ const EMAILJS_SERVICE_ID  = "service_txqdfck";
 const EMAILJS_TEMPLATE_ID = "template_o8du7pt"; 
 const EMAILJS_PUBLIC_KEY  = "w4UC6ofDTC0VdRI44";
 
-/* Set true to suppress real emails but show “Submitted!” flow. */ const DEMO_MODE = false;
+/* Set true to suppress real emails but show “Submitted!” flow. */ 
+const DEMO_MODE = false;
 /* ======================  END CONFIG  ======================= */
 
 /* =============== HELPERS =============== */ const $ = s => document.querySelector(s); const $$ = s => [...document.querySelectorAll(s)];
 const escapeHtml = s => String(s??"").replace(/[&<>"]/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[m]));
 
-/* cache-busted fetch so sheet edits appear quickly */ function fetchCSV(url){
+/* cache-busted fetch so sheet edits appear quickly */ 
+function fetchCSV(url){
   const bust = (url.includes("?") ? "&" : "?") + "_=" + Date.now();
   return fetch(url + bust, {mode: "cors"})
     .then(r => { if(!r.ok) throw new Error("CSV fetch failed: "+r.status); return r.text(); }); }
@@ -192,7 +195,8 @@ function parseCSV(text){
 
 /* Parse a Date + Time written in EASTERN time into a local (viewer) time string,
    and produce an ISO UTC deadline for expiration checks.
-   Date like “Sept 6, 2025”, Time like “12:00 PM”. */ function easternToLocalStrings(dateStr, timeStr){
+   Date like “Sept 6, 2025”, Time like “12:00 PM”. */ 
+function easternToLocalStrings(dateStr, timeStr){
   if(!dateStr) return { day:"—", time:"—", isoUTC:null };
 
   // Build an ET Date as if in America/New_York, then convert to the same absolute instant.
@@ -217,7 +221,8 @@ function parseCSV(text){
   }
 }
 
-/* Derive favorite string from Spread text, e.g., "SMU -3.0" → "SMU -3.0" */ function favoriteFromSpread(away, home, spreadRaw){
+/* Derive favorite string from Spread text, e.g., "SMU -3.0" → "SMU -3.0" */ 
+function favoriteFromSpread(away, home, spreadRaw){
   const s = String(spreadRaw||"").trim();
   if(!s) return "—";
   // Expect "<Team> -N" or "<Team> (+N)"; otherwise pass through
@@ -255,7 +260,8 @@ function normalizeGames(csvRows, wantA/*true for NFL*/){
   return rows;
 }
 
-/* =============== RENDER =============== */ function buildRow(q){
+/* =============== RENDER =============== */ 
+function buildRow(q){
   const el = document.createElement("div");
   el.className = "row";
   el.dataset.qid = q.qid;
@@ -302,7 +308,8 @@ function renderSection(container, rows){
   rows.forEach(q => container.appendChild(buildRow(q)));
 }
 
-/* =============== STATE / VALIDATION =============== */ function nowUTC(){ return new Date(); }
+/* =============== STATE / VALIDATION =============== */ 
+function nowUTC(){ return new Date(); }
 
 function isExpired(el){
   const iso = el.dataset.deadline || "";
@@ -391,7 +398,8 @@ function setCheck(sel, ok){
   li.classList.toggle("check-bad", !ok);
   li.querySelector(".check-icon").textContent = ok ? "✓" : "✕"; }
 
-/* Double select list = only currently selected, unexpired games */ function refreshDoubleChoices(){
+/* Double select list = only currently selected, unexpired games */ 
+function refreshDoubleChoices(){
   const sel = $("#doubleSel");
   const keep = sel.value;
   const chosen = $$('input[type="radio"]:checked')
@@ -405,7 +413,8 @@ function setCheck(sel, ok){
 
   if(keep && chosen.some(o=>o.qid===keep)) sel.value = keep; }
 
-/* Summary text for the email and on-screen summary */ function buildSelectionsText(){
+/* Summary text for the email and on-screen summary */ 
+function buildSelectionsText(){
   const name  = $("#nameSel").selectedOptions[0]?.textContent || "";
   const email = $("#emailBox").value.trim();
   const stamp = new Date().toISOString();
@@ -445,7 +454,8 @@ function renderSummary(){
   $("#summary").innerHTML = `<pre style="white-space:pre-wrap">${escapeHtml(text)}</pre>`;
 }
 
-/* =============== EVENTS =============== */ document.addEventListener("change", e=>{
+/* =============== EVENTS =============== */ 
+document.addEventListener("change", e=>{
   if(e.target.matches('#nameSel')){
     // Fill email from participants list (data-email on option)
     const em = e.target.selectedOptions[0]?.dataset.email || "";
@@ -530,7 +540,8 @@ $("#submitBtn").addEventListener("click", async ()=>{
   }
 });
 
-/* =============== LOAD DATA =============== */ async function loadAll(){
+/* =============== LOAD DATA =============== */ 
+async function loadAll(){
   try{
     const [pCSV, aCSV, bCSV] = await Promise.all([
       fetchCSV(CSV_URL_PARTICIPANTS),
