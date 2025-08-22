@@ -171,21 +171,18 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
 
 <script>
 /* ===================== CONFIG ===================== */
-/* Replace with your Publish‑to‑web CSV links (must end with output=csv) */ 
-const CSV_URL_PARTICIPANTS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTfQ7a2weK5Got7LTe3yVxqhcPR6pa-nPg73PdOMk8rrHwqlr3UeTcPprlgVbFjhFIVpifmMKnb_Tss/pub?gid=0&single=true&output=csv"; // Name, Email
-const CSV_URL_NFL          = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSu8cw2ymTbcJGMmBkbcJTNzvxVsl4wh3XH7pbQJ3_pbSz42LFo0HKQHVLcJtHiOqtEDt37-hSegjDK/pub?gid=2109553148&single=true&output=csv";          // Away Team, Home Team, Date, Time, TV, Location, Spread, Required
+/* Replace with your Publish-to-web CSV links (must end with output=csv) */ 
+const CSV_URL_PARTICIPANTS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTfQ7a2weK5Got7LTe3yVxqhcPR6pa-nPg73PdOMk8rrHwqlr3UeTcPprlgVbFjhFIVpifmMKnb_Tss/pub?gid=0&single=true&output=csv";
+const CSV_URL_NFL          = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSu8cw2ymTbcJGMmBkbcJTNzvxVsl4wh3XH7pbQJ3_pbSz42LFo0HKQHVLcJtHiOqtEDt37-hSegjDK/pub?gid=2109553148&single=true&output=csv";
 const CSV_URL_NCAA         = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSu8cw2ymTbcJGMmBkbcJTNzvxVsl4wh3XH7pbQJ3_pbSz42LFo0HKQHVLcJtHiOqtEDt37-hSegjDK/pub?gid=0&single=true&output=csv";
 /* Week label for subject lines, summaries, etc. */
 const CURRENT_WEEK = 1;
-
 /* UTC cut-off for the WHOLE form (block all submissions after this moment). */
 const PICKS_DEADLINE_UTC = "2025-08-31T23:59:00Z";
-
 /* EmailJS (template expects ONLY: participant_name, selections_text) */
 const EMAILJS_SERVICE_ID = "service_txqdfck";
 const EMAILJS_TEMPLATE_ID = "template_o8du7pt";
 const EMAILJS_PUBLIC_KEY  = "w4UC6ofDTC0VdRI44";
-
 /* Set true to suppress real emails but show “Submitted!” flow. */
 const DEMO_MODE = false;
 /* ======================  END CONFIG  ======================= */
@@ -195,46 +192,34 @@ const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const escapeHtml = s => String(s??"").replace(/[&<>"]/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[m]));
 
-/* cache-busted fetch so sheet edits appear quickly */
 function fetchCSV(url){
   const bust = (url.includes("?") ? "&" : "?") + "_=" + Date.now();
   return fetch(url + bust, {mode: "cors", cache:"no-store"})
     .then(r => { if(!r.ok) throw new Error("CSV fetch failed: "+r.status); return r.text(); });
 }
-
-/* CSV → array of objects (tolerant to commas in quotes) */
 function parseCSV(text){
   const rows = text.trim().split(/\r?\n/).map(r=>r.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(c=>c.replace(/^"|"$/g,"")));
   const hdr = rows.shift();
   return rows.map(r => Object.fromEntries(hdr.map((h,i)=>[h.trim(), (r[i]??"").trim()])));
 }
 
-/* ---------- Robust Eastern (CSV) → local viewer time ---------- */
-/* Accepts:
-   - "Sat, Aug 23, 2025" / "Saturday, August 23, 2025"
-   - "Aug 23, 2025"
-   - "8/23/2025"
-   And time like "7:00 PM" (12h). */
+/* ---------- Eastern (CSV) → local viewer time ---------- */
 function stripWeekday(dateStr){
   if(!dateStr) return "";
-  // Remove leading weekday and comma(s), e.g., "Sat, " / "Saturday, "
   return String(dateStr)
-    .replace(/^\s*[A-Za-z]+day,\s*/i, "")   // "Saturday, "
-    .replace(/^\s*[A-Za-z]{3},\s*/i, "")    // "Sat, "
+    .replace(/^\s*[A-Za-z]+day,\s*/i, "")
+    .replace(/^\s*[A-Za-z]{3},\s*/i, "")
     .trim();
 }
 function parseDateToken(s){
   s = stripWeekday(String(s||"").replace(/\s+/g," ").trim());
-  // "Aug 23, 2025" or "August 23, 2025"
   let m = s.replace(/\./g,'').match(/^([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})$/);
   if(m){
     const L={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,sept:9,oct:10,nov:11,dec:12,august:8,september:9,october:10,november:11,december:12};
     const mo=L[m[1].toLowerCase()]; if(mo) return {y:+m[3], mo, d:+m[2]};
   }
-  // "8/23/2025"
   m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if(m) return {y:+m[3], mo:+m[1], d:+m[2]};
-  // "2025-08-23"
   m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if(m) return {y:+m[1], mo:+m[2], d:+m[3]};
   return null;
@@ -247,7 +232,6 @@ function parseTime12(s){
   if(ampm==="PM"&&h!==12) h+=12; if(ampm==="AM"&&h===12) h=0;
   return {h,mi};
 }
-/* Compute the ET offset for a given date (DST-safe) */
 function getETOffsetMinutes(y,mo,d){
   const probeUTC = Date.UTC(y,mo-1,d,12,0);
   const parts = new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',timeZoneName:'shortOffset'}).formatToParts(new Date(probeUTC));
@@ -260,8 +244,8 @@ function ETtoLocal(dateStr,timeStr){
   const d=parseDateToken(dateStr);
   if(!d) return {date:null,day:"—",time:"—",iso:""};
   const t=parseTime12(timeStr);
-  const offMin=getETOffsetMinutes(d.y,d.mo,d.d);     // ET offset (e.g., -240 for EDT)
-  const utcMs = Date.UTC(d.y,d.mo-1,d.d,t.h,t.mi) - offMin*60*1000; // ET → UTC
+  const offMin=getETOffsetMinutes(d.y,d.mo,d.d);
+  const utcMs = Date.UTC(d.y,d.mo-1,d.d,t.h,t.mi) - offMin*60*1000;
   const dt    = new Date(utcMs);
   if (isNaN(dt.getTime())) return {date:null,day:"—",time:"—",iso:""};
   const day   = new Intl.DateTimeFormat(undefined,{weekday:'long'}).format(dt);
@@ -306,8 +290,8 @@ function normalizeGames(csvRows, prefix){
       qid: `${prefix}${++idx}`,
       away, home,
       tv, loc,
-      spread: spr,           // raw spread string (e.g., "Kansas -12.0")
-      start: t.date,         // Date
+      spread: spr,
+      start: t.date,         // Date (local viewer time for display/logic)
       day: t.day, timeText: t.time, iso: t.iso,
       required: req
     });
@@ -318,7 +302,6 @@ function normalizeGames(csvRows, prefix){
 /* -------- determine favorite & label text with spread -------- */
 function favoriteInfo(away, home, spreadText){
   const s = String(spreadText||"");
-  // Extract numeric like -12.0 or +3.5
   const mNum = s.match(/([+-]?\d+(?:\.\d+)?)/);
   const num = mNum ? mNum[1] : "";
   const awayFav = s.toLowerCase().includes(away.toLowerCase());
@@ -332,7 +315,6 @@ function favoriteInfo(away, home, spreadText){
 
 /* ============== UI BUILDERS ============== */
 function buildRow(g){
-  // If date failed to parse, treat as NOT expired (so users aren’t blocked)
   const expired = g.start ? (Date.now() >= g.start.getTime()) : false;
 
   const el = document.createElement("div");
@@ -375,6 +357,35 @@ function renderSection(container, list){
     return;
   }
   list.forEach(g => container.appendChild(buildRow(g)));
+}
+
+/* ---- keep radios + expired pill in sync using the same logic ---- */
+function refreshExpiryUI(){
+  const updateFor = (rows, games) => {
+    rows.forEach(row=>{
+      const qid = row.dataset.qid;
+      const g = games.find(x=>x.qid===qid);
+      const expired = g?.start ? (Date.now() >= g.start.getTime()) : false;
+
+      // pill visibility
+      const pill = row.querySelector('.badge.expired');
+      if (pill) pill.hidden = !expired;
+
+      // radios enable/disable
+      const radios = row.querySelectorAll('input[type="radio"]');
+      radios.forEach(i=>{
+        if(expired){
+          i.disabled = true;
+          i.checked = false;
+        }else{
+          i.disabled = false;
+        }
+      });
+    });
+  };
+
+  updateFor([...document.querySelectorAll('#listA .row')], gamesA);
+  updateFor([...document.querySelectorAll('#listB .row')], gamesB);
 }
 
 /* ============== DOUBLE, SUMMARY, CHECKS ============== */
@@ -445,7 +456,6 @@ function validateAll(){
   const b = countChecked($("#listB"));
   const total = a + b;
 
-  // Required rows: if not expired, must be answered
   const reqAOk = !gamesA.some(g=>{
     if(!g.required) return false;
     const expired = g.start ? (Date.now() >= g.start.getTime()) : false;
@@ -471,7 +481,6 @@ function validateAll(){
 
   const globalDeadlineOk = (new Date() <= new Date(PICKS_DEADLINE_UTC) || !PICKS_DEADLINE_UTC);
 
-  // Update check list
   setCheck("#chkName", nameOk);
   setCheck("#chkEmail", emailOk);
   setCheck("#chkReqNFL", reqAOk);
@@ -512,7 +521,6 @@ document.addEventListener("change", e=>{
     validateAll();
   }
 });
-
 document.addEventListener("click", e=>{
   if(e.target.matches('.clear')){
     const qid = e.target.dataset.clear;
@@ -522,7 +530,6 @@ document.addEventListener("click", e=>{
     validateAll();
   }
 });
-
 $("#resetBtn").addEventListener("click", ()=>{
   $$('input[type="radio"]').forEach(r=>r.checked=false);
   $("#doubleSel").value = "";
@@ -530,7 +537,6 @@ $("#resetBtn").addEventListener("click", ()=>{
   refreshDoubleChoices();
   validateAll();
 });
-
 $("#submitBtn").addEventListener("click", async ()=>{
   if(PICKS_DEADLINE_UTC && new Date() > new Date(PICKS_DEADLINE_UTC)){
     alert("The global picks deadline has passed. Submissions are closed.");
@@ -538,12 +544,10 @@ $("#submitBtn").addEventListener("click", async ()=>{
   }
   const ok = validateAll();
   if(!ok){ alert("Please fix the items in Checks & Errors before submitting."); return; }
-
   if(!$("#doubleSel").value){
     const okNoDouble = confirm("Submit with NO Double?");
     if(!okNoDouble) return;
   }
-
   const participantName = $("#nameSel").selectedOptions[0]?.textContent || "";
   const selectionsText  = buildSelectionsText();
 
@@ -552,7 +556,6 @@ $("#submitBtn").addEventListener("click", async ()=>{
     alert("Submitted! (Demo mode — email suppressed)");
     return;
   }
-
   try{
     if(!window.emailjs){
       await new Promise((res,rej)=>{
@@ -573,33 +576,30 @@ $("#submitBtn").addEventListener("click", async ()=>{
   }
 });
 
-/* ============== LOAD DATA ============== */
+/* ============== LOAD DATA & EXPIRED UI ============== */
 async function loadAll(){
   try{
-    // Participants
     const pCSV = parseCSV(await fetchCSV(CSV_URL_PARTICIPANTS)); // Name, Email
     $("#nameSel").innerHTML =
       `<option value="">— Select your name —</option>` +
       pCSV.map(p => `<option value="${escapeHtml(p.Name)}" data-email="${escapeHtml(p.Email||"")}">${escapeHtml(p.Name)}</option>`).join("");
 
-    // Lines (QIDs auto-generated here)
     const aRows = parseCSV(await fetchCSV(CSV_URL_NFL));
     const bRows = parseCSV(await fetchCSV(CSV_URL_NCAA));
-    gamesA = normalizeGames(aRows,  "A"); // NFL
-    gamesB = normalizeGames(bRows,  "B"); // NCAA
+    gamesA = normalizeGames(aRows,  "A");
+    gamesB = normalizeGames(bRows,  "B");
 
     const hostA = $("#listA"), hostB = $("#listB");
     renderSection(hostA, gamesA);
     renderSection(hostB, gamesB);
 
-    // Wire inputs in the newly rendered nodes
+    // wire events for new nodes
     hostA.querySelectorAll('input[type="radio"]').forEach(r=>{
       r.addEventListener('change', ()=>{ refreshDoubleChoices(); renderSummary(); validateAll(); });
     });
     hostB.querySelectorAll('input[type="radio"]').forEach(r=>{
       r.addEventListener('change', ()=>{ refreshDoubleChoices(); renderSummary(); validateAll(); });
     });
-
     hostA.querySelectorAll('.clear').forEach(b=>{
       b.addEventListener('click', ()=>{ const id=b.dataset.clear; $$(`input[name="${CSS.escape(id)}"]`).forEach(i=>i.checked=false); refreshDoubleChoices(); renderSummary(); validateAll(); });
     });
@@ -607,26 +607,15 @@ async function loadAll(){
       b.addEventListener('click', ()=>{ const id=b.dataset.clear; $$(`input[name="${CSS.escape(id)}"]`).forEach(i=>i.checked=false); refreshDoubleChoices(); renderSummary(); validateAll(); });
     });
 
+    // first pass: sync pills with the same logic as disabling radios
+    refreshExpiryUI();
+
     refreshDoubleChoices();
     renderSummary();
     validateAll();
 
-    // Re-check expiry every minute
-    setInterval(()=>{
-      [...hostA.querySelectorAll('.row'), ...hostB.querySelectorAll('.row')].forEach(row=>{
-        const qid = row.dataset.qid;
-        const g = qid.startsWith('A') ? gamesA.find(x=>x.qid===qid) : gamesB.find(x=>x.qid===qid);
-        const expired = g?.start ? (Date.now() >= g.start.getTime()) : false;
-        const badge = row.querySelector('.badge.expired');
-        const radios = row.querySelectorAll('input[type="radio"]');
-        if(expired){
-          badge.hidden = false;
-          radios.forEach(i=>{i.disabled=true; i.checked=false;});
-        }
-      });
-      refreshDoubleChoices();
-      validateAll();
-    }, 60_000);
+    // keep it fresh once per minute
+    setInterval(()=>{ refreshExpiryUI(); refreshDoubleChoices(); validateAll(); }, 60_000);
 
   }catch(e){
     console.error(e);
