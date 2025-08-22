@@ -44,6 +44,9 @@ h2{margin:0 0 12px 0;font-size:20px}
 .badge.required{background:var(--yellow);color:var(--yellowText)}
 .badge.expired{background:#d92d20;color:#fff}
 
+/* NEW: utility used only to toggle pill visibility */
+.is-hidden{display:none !important;}
+
 .answers{display:block;max-width:34rem}
 .answers label{
   display:flex;align-items:center;gap:8px;margin:6px 0;cursor:pointer;
@@ -171,19 +174,15 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
 
 <script>
 /* ===================== CONFIG ===================== */
-/* Replace with your Publish-to-web CSV links (must end with output=csv) */ 
-const CSV_URL_PARTICIPANTS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTfQ7a2weK5Got7LTe3yVxqhcPR6pa-nPg73PdOMk8rrHwqlr3UeTcPprlgVbFjhFIVpifmMKnb_Tss/pub?gid=0&single=true&output=csv";
-const CSV_URL_NFL          = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSu8cw2ymTbcJGMmBkbcJTNzvxVsl4wh3XH7pbQJ3_pbSz42LFo0HKQHVLcJtHiOqtEDt37-hSegjDK/pub?gid=2109553148&single=true&output=csv";
+/* Replace with your Publish‑to‑web CSV links (must end with output=csv) */ 
+const CSV_URL_PARTICIPANTS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTfQ7a2weK5Got7LTe3yVxqhcPR6pa-nPg73PdOMk8rrHwqlr3UeTcPprlgVbFjhFIVpifmMKnb_Tss/pub?gid=0&single=true&output=csv"; // Name, Email
+const CSV_URL_NFL          = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSu8cw2ymTbcJGMmBkbcJTNzvxVsl4wh3XH7pbQJ3_pbSz42LFo0HKQHVLcJtHiOqtEDt37-hSegjDK/pub?gid=2109553148&single=true&output=csv";          // Lines
 const CSV_URL_NCAA         = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSu8cw2ymTbcJGMmBkbcJTNzvxVsl4wh3XH7pbQJ3_pbSz42LFo0HKQHVLcJtHiOqtEDt37-hSegjDK/pub?gid=0&single=true&output=csv";
-/* Week label for subject lines, summaries, etc. */
 const CURRENT_WEEK = 1;
-/* UTC cut-off for the WHOLE form (block all submissions after this moment). */
 const PICKS_DEADLINE_UTC = "2025-08-31T23:59:00Z";
-/* EmailJS (template expects ONLY: participant_name, selections_text) */
 const EMAILJS_SERVICE_ID = "service_txqdfck";
 const EMAILJS_TEMPLATE_ID = "template_o8du7pt";
 const EMAILJS_PUBLIC_KEY  = "w4UC6ofDTC0VdRI44";
-/* Set true to suppress real emails but show “Submitted!” flow. */
 const DEMO_MODE = false;
 /* ======================  END CONFIG  ======================= */
 
@@ -266,8 +265,8 @@ function sortRequiredFirst(arr){
 }
 
 /* ============== STATE ============== */
-let participants=[]; // {Name,Email}
-let gamesA=[], gamesB=[]; // normalized, sorted
+let participants=[];
+let gamesA=[], gamesB=[];
 
 /* ============== CSV → GAMES (QIDs auto) ============== */
 function normalizeGames(csvRows, prefix){
@@ -283,7 +282,7 @@ function normalizeGames(csvRows, prefix){
     const spr  = String(r["Spread"]||r["Line"]||"").trim();
     const req  = /^y/i.test(String(r["Required"]||""));
     if(!away || !home) continue;
-    if(!spr) continue; // only list games with spreads
+    if(!spr) continue;
 
     const t = ETtoLocal(date, time);
     out.push({
@@ -291,7 +290,7 @@ function normalizeGames(csvRows, prefix){
       away, home,
       tv, loc,
       spread: spr,
-      start: t.date,         // Date (local viewer time for display/logic)
+      start: t.date,
       day: t.day, timeText: t.time, iso: t.iso,
       required: req
     });
@@ -315,8 +314,7 @@ function favoriteInfo(away, home, spreadText){
 
 /* ============== UI BUILDERS ============== */
 function buildRow(g){
-  const expired = g.start ? (Date.now() >= g.start.getTime()) : false;
-
+  /* Pill visibility is controlled later by refreshExpiryUI; start hidden here. */
   const el = document.createElement("div");
   el.className = "row";
   el.dataset.qid = g.qid;
@@ -324,9 +322,9 @@ function buildRow(g){
   const fav = favoriteInfo(g.away, g.home, g.spread);
 
   const answers = `
-    <label><input type="radio" name="${escapeHtml(g.qid)}" value="away" ${expired?'disabled':''}> ${escapeHtml(fav.awayLabel)}</label>
-    <label><input type="radio" name="${escapeHtml(g.qid)}" value="home" ${expired?'disabled':''}> ${escapeHtml(fav.homeLabel)}</label>
-    <button type="button" class="clear" data-clear="${escapeHtml(g.qid)}" ${expired?'disabled':''}>Clear</button>
+    <label><input type="radio" name="${escapeHtml(g.qid)}" value="away"> ${escapeHtml(fav.awayLabel)}</label>
+    <label><input type="radio" name="${escapeHtml(g.qid)}" value="home"> ${escapeHtml(fav.homeLabel)}</label>
+    <button type="button" class="clear" data-clear="${escapeHtml(g.qid)}">Clear</button>
   `;
 
   el.innerHTML = `
@@ -341,7 +339,7 @@ function buildRow(g){
       </div>
       <div class="badges-under">
         ${g.required ? `<span class="badge required">Required</span>` : ``}
-        <span class="badge expired" ${expired?``:`hidden`}>Expired</span>
+        <span class="badge expired is-hidden">Expired</span>
       </div>
     </div>
     <div></div>
@@ -367,11 +365,9 @@ function refreshExpiryUI(){
       const g = games.find(x=>x.qid===qid);
       const expired = g?.start ? (Date.now() >= g.start.getTime()) : false;
 
-      // pill visibility
       const pill = row.querySelector('.badge.expired');
-      if (pill) pill.hidden = !expired;
+      if (pill) pill.classList.toggle('is-hidden', !expired);
 
-      // radios enable/disable
       const radios = row.querySelectorAll('input[type="radio"]');
       radios.forEach(i=>{
         if(expired){
@@ -383,7 +379,6 @@ function refreshExpiryUI(){
       });
     });
   };
-
   updateFor([...document.querySelectorAll('#listA .row')], gamesA);
   updateFor([...document.querySelectorAll('#listB .row')], gamesB);
 }
@@ -397,7 +392,7 @@ function refreshDoubleChoices(){
   const chosen = $$('input[type="radio"]:checked')
     .map(r => ({ qid:r.name, label: (r.closest(".row").querySelector(".label")?.textContent||"").trim(),
                  row:r.closest(".row") }))
-    .filter(o => !o.row.querySelector('.badge.expired:not([hidden])'));
+    .filter(o => !o.row.querySelector('.badge.expired:not(.is-hidden)'));
 
   sel.innerHTML = `<option value="">No double</option>` + chosen
     .map(o => `<option value="${escapeHtml(o.qid)}">${escapeHtml(o.qid)} — ${escapeHtml(o.label)}</option>`)
@@ -607,14 +602,14 @@ async function loadAll(){
       b.addEventListener('click', ()=>{ const id=b.dataset.clear; $$(`input[name="${CSS.escape(id)}"]`).forEach(i=>i.checked=false); refreshDoubleChoices(); renderSummary(); validateAll(); });
     });
 
-    // first pass: sync pills with the same logic as disabling radios
+    // first pass: sync pills & radios using the SAME logic
     refreshExpiryUI();
 
     refreshDoubleChoices();
     renderSummary();
     validateAll();
 
-    // keep it fresh once per minute
+    // keep fresh once per minute
     setInterval(()=>{ refreshExpiryUI(); refreshDoubleChoices(); validateAll(); }, 60_000);
 
   }catch(e){
