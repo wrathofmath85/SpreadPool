@@ -168,14 +168,12 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
 </div>
 
 <div id="demoBadge" class="demo" hidden>DEMO MODE</div>
-
 <script>
 /* ===================== CONFIG ===================== */
 /* Replace with your Publish‑to‑web CSV links (must end with output=csv) */
 const CSV_URL_PARTICIPANTS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTfQ7a2weK5Got7LTe3yVxqhcPR6pa-nPg73PdOMk8rrHwqlr3UeTcPprlgVbFjhFIVpifmMKnb_Tss/pub?gid=0&single=true&output=csv"; // Name, Email
 const CSV_URL_NFL          = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSu8cw2ymTbcJGMmBkbcJTNzvxVsl4wh3XH7pbQJ3_pbSz42LFo0HKQHVLcJtHiOqtEDt37-hSegjDK/pub?gid=2109553148&single=true&output=csv";          // Away Team, Home Team, Date, Time, TV, Location, Spread, Required
 const CSV_URL_NCAA         = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSu8cw2ymTbcJGMmBkbcJTNzvxVsl4wh3XH7pbQJ3_pbSz42LFo0HKQHVLcJtHiOqtEDt37-hSegjDK/pub?gid=0&single=true&output=csv";
-
 
 /* Week label for subject lines, summaries, etc. */
 const CURRENT_WEEK = 1;
@@ -212,11 +210,44 @@ function parseCSV(text){
 }
 
 /* ---------- Robust Eastern (CSV) → local viewer time ---------- */
-function tryParseETDirect(dateStr, timeStr){
-  const s = `${String(dateStr||"").trim()} ${String(timeStr||"").trim()} ET`.trim();
-  const d = new Date(s);
-  return isNaN(d.getTime()) ? null : d;
+/* Accepts:
+   - "Sat, Aug 23, 2025" / "Saturday, August 23, 2025"
+   - "Aug 23, 2025"
+   - "8/23/2025"
+   And time like "7:00 PM" (12h). */
+function stripWeekday(dateStr){
+  if(!dateStr) return "";
+  // Remove leading weekday and comma(s), e.g., "Sat, " / "Saturday, "
+  return String(dateStr)
+    .replace(/^\s*[A-Za-z]+day,\s*/i, "")   // "Saturday, "
+    .replace(/^\s*[A-Za-z]{3},\s*/i, "")    // "Sat, "
+    .trim();
 }
+function parseDateToken(s){
+  s = stripWeekday(String(s||"").replace(/\s+/g," ").trim());
+  // "Aug 23, 2025" or "August 23, 2025"
+  let m = s.replace(/\./g,'').match(/^([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})$/);
+  if(m){
+    const L={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,sept:9,oct:10,nov:11,dec:12,august:8,september:9,october:10,november:11,december:12};
+    const mo=L[m[1].toLowerCase()]; if(mo) return {y:+m[3], mo, d:+m[2]};
+  }
+  // "8/23/2025"
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m) return {y:+m[3], mo:+m[1], d:+m[2]};
+  // "2025-08-23"
+  m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(m) return {y:+m[1], mo:+m[2], d:+m[3]};
+  return null;
+}
+function parseTime12(s){
+  s=String(s||"12:00 PM").trim();
+  const m=s.match(/^(\d{1,2}):(\d{2})\s*([AP]M)$/i);
+  if(!m) return {h:12,mi:0};
+  let h=+m[1], mi=+m[2]; const ampm=m[3].toUpperCase();
+  if(ampm==="PM"&&h!==12) h+=12; if(ampm==="AM"&&h===12) h=0;
+  return {h,mi};
+}
+/* Compute the ET offset for a given date (DST-safe) */
 function getETOffsetMinutes(y,mo,d){
   const probeUTC = Date.UTC(y,mo-1,d,12,0);
   const parts = new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',timeZoneName:'shortOffset'}).formatToParts(new Date(probeUTC));
@@ -225,40 +256,12 @@ function getETOffsetMinutes(y,mo,d){
   const hr = parseInt(m[1],10), mm = m[2]?parseInt(m[2],10):0;
   return hr*60 + (hr<0?-mm:mm);
 }
-function parseDateToken(s){
-  s=String(s||"").trim();
-  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if(m) return {y:+m[1], mo:+m[2], d:+m[3]};
-  m = s.replace(/\./g,'').match(/^([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})$/);
-  if(m){
-    const L={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,sept:9,oct:10,nov:11,dec:12};
-    const mo=L[m[1].toLowerCase()]; if(mo) return {y:+m[3], mo, d:+m[2]};
-  }
-  // also allow M/D/YYYY
-  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if(m) return {y:+m[3], mo:+m[1], d:+m[2]};
-  return null;
-}
-function parseTime12(s){
-  s=String(s||"12:00 PM").trim(); const m=s.match(/^(\d{1,2}):(\d{2})\s*([AP]M)$/i);
-  if(!m) return {h:12,mi:0};
-  let h=+m[1], mi=+m[2]; const ampm=m[3].toUpperCase();
-  if(ampm==="PM"&&h!==12) h+=12; if(ampm==="AM"&&h===12) h=0;
-  return {h,mi};
-}
 function ETtoLocal(dateStr,timeStr){
-  // First, try the simple ET-hinted parse
-  const direct = tryParseETDirect(dateStr, timeStr);
-  if (direct){
-    const day  = new Intl.DateTimeFormat(undefined,{weekday:'long'}).format(direct);
-    const time = new Intl.DateTimeFormat(undefined,{hour:'numeric',minute:'2-digit'}).format(direct);
-    return {date:direct, day, time, iso:direct.toISOString()};
-  }
-  // Fallback to explicit offset math
-  const d=parseDateToken(dateStr); if(!d) return {date:null,day:"—",time:"—",iso:""};
+  const d=parseDateToken(dateStr);
+  if(!d) return {date:null,day:"—",time:"—",iso:""};
   const t=parseTime12(timeStr);
-  const offMin=getETOffsetMinutes(d.y,d.mo,d.d);
-  const utcMs = Date.UTC(d.y,d.mo-1,d.d,t.h,t.mi) - offMin*60*1000; // Convert ET→UTC
+  const offMin=getETOffsetMinutes(d.y,d.mo,d.d);     // ET offset (e.g., -240 for EDT)
+  const utcMs = Date.UTC(d.y,d.mo-1,d.d,t.h,t.mi) - offMin*60*1000; // ET → UTC
   const dt    = new Date(utcMs);
   if (isNaN(dt.getTime())) return {date:null,day:"—",time:"—",iso:""};
   const day   = new Intl.DateTimeFormat(undefined,{weekday:'long'}).format(dt);
