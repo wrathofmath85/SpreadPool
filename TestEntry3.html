@@ -43,8 +43,6 @@ h2{margin:0 0 12px 0;font-size:20px}
 }
 .badge.required{background:var(--yellow);color:var(--yellowText)}
 .badge.expired{background:#d92d20;color:#fff}
-
-/* utility for toggling pill visibility */
 .is-hidden{display:none !important;}
 
 .answers{display:block;max-width:34rem}
@@ -82,7 +80,7 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
 .btn.ghost{background:#2a3442;color:#d0d7de}
 .statusBox{font-weight:900;border:1px solid var(--border);border-radius:999px;padding:8px 14px}
 .status_bad{background:var(--bad);color:#fff}
-.status_good{background:var(--bearsNavy);color:var(--bearsOrange);border-color:var(--bearsNavy)}
+.status_good{background:#0B162A;color:#DC4405;border-color:#0B162A}
 
 /* demo chip */
 .demo{position:fixed;top:14px;right:14px;background:#a15;color:#fff;border-radius:999px;padding:8px 12px;font-weight:800;z-index:10;box-shadow:0 6px 18px rgba(0,0,0,.35)}
@@ -98,7 +96,9 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
     <div class="grid" style="grid-template-columns:1fr 1fr">
       <div>
         <label for="nameSel" class="small muted">Choose your name</label>
-        <select id="nameSel" style="width:100%;margin-top:6px"></select>
+        <select id="nameSel" style="width:100%;margin-top:6px">
+          <option value="">— Select your name —</option>
+        </select>
       </div>
       <div>
         <label for="emailBox" class="small muted">Your email (auto-filled; editable)</label>
@@ -184,23 +184,52 @@ const EMAILJS_TEMPLATE_ID = "template_o8du7pt";
 const EMAILJS_PUBLIC_KEY  = "YB5J-75APa-V6Giku";
 const DEMO_MODE = true;
 
-/* NEW: Your deployed Apps Script Web App URL (paste after you deploy it) */
-const GOOGLE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxoWqmXLzT2t-SoRaqKw3WMDfif6Rmwu_NjYYFGCxF0N78fBwkeVtiOmPH_J3L-EL-j5Q/exec";
+/* If you deployed the Sheets Web App, paste URL here (else leave empty). */
+const GOOGLE_APPS_SCRIPT_URL = ""; // e.g., "https://script.google.com/macros/s/AKfycbxoWqmXLzT2t-SoRaqKw3WMDfif6Rmwu_NjYYFGCxF0N78fBwkeVtiOmPH_J3L-EL-j5Q/exec"
 /* ======================  END CONFIG  ======================= */
 
-const $ = s => document.querySelector(s);
+const $  = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const escapeHtml = s => String(s??"").replace(/[&<>"]/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[m]));
 
-function fetchCSV(url){
+/* -------- CSV fetch (robust) -------- */
+async function fetchCSV(url){
   const bust = (url.includes("?") ? "&" : "?") + "_=" + Date.now();
-  return fetch(url + bust, {mode: "cors", cache:"no-store"})
-    .then(r => { if(!r.ok) throw new Error("CSV fetch failed: "+r.status); return r.text(); });
+  const res = await fetch(url + bust, {mode:"cors", cache:"no-store", redirect:"follow"});
+  if(!res.ok) throw new Error(`CSV fetch failed (${res.status}) for ${url}`);
+  return await res.text();
 }
+
+/* -------- CSV parser (tolerant) --------
+   - Handles BOM, blank lines, commas inside quotes, and ragged rows.
+*/
 function parseCSV(text){
-  const rows = text.trim().split(/\r?\n/).map(r=>r.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(c=>c.replace(/^"|"$/g,"")));
-  const hdr = rows.shift();
-  return rows.map(r => Object.fromEntries(hdr.map((h,i)=>[h.trim(), (r[i]??"").trim()])));
+  const clean = text.replace(/^\uFEFF/,''); // strip BOM
+  const lines = clean.split(/\r?\n/).filter(l => l.trim().length>0);
+  if(!lines.length) return [];
+
+  const split = (row) => {
+    const out=[]; let cur="", q=false;
+    for(let i=0;i<row.length;i++){
+      const c=row[i];
+      if(c === '"' ){ if(q && row[i+1] === '"'){ cur+='"'; i++; } else { q=!q; } }
+      else if(c === ',' && !q){ out.push(cur); cur=""; }
+      else { cur+=c; }
+    }
+    out.push(cur);
+    return out.map(s=>s.replace(/^"|"$/g,"").trim());
+  };
+
+  const header = split(lines[0]).map(h=>h.trim());
+  const rows = [];
+  for(let i=1;i<lines.length;i++){
+    const cols = split(lines[i]);
+    if(cols.every(c=>c==="")) continue; // skip blank
+    const obj = {};
+    header.forEach((h,idx)=>{ obj[h] = (cols[idx]??"").trim(); });
+    rows.push(obj);
+  }
+  return rows;
 }
 
 /* ---------- Eastern (CSV) → local viewer time ---------- */
@@ -266,13 +295,11 @@ function sortRequiredFirst(arr){
 }
 
 /* ============== STATE ============== */
-let participants=[];
 let gamesA=[], gamesB[];
 
 /* ============== CSV → GAMES (QIDs auto) ============== */
 function normalizeGames(csvRows, prefix){
-  const out=[];
-  let idx=0;
+  const out=[]; let idx=0;
   for(const r of csvRows){
     const away = String(r["Away Team"]||r["Away"]||"").trim();
     const home = String(r["Home Team"]||r["Home"]||"").trim();
@@ -288,8 +315,7 @@ function normalizeGames(csvRows, prefix){
     const t = ETtoLocal(date, time);
     out.push({
       qid: `${prefix}${++idx}`,
-      away, home,
-      tv, loc,
+      away, home, tv, loc,
       spread: spr,
       start: t.date,
       day: t.day, timeText: t.time, iso: t.iso,
@@ -356,7 +382,7 @@ function renderSection(container, list){
   list.forEach(g => container.appendChild(buildRow(g)));
 }
 
-/* sync radios + expired pill using same logic */
+/* Sync radios + expired pill using same logic */
 function refreshExpiryUI(){
   const updateFor = (rows, games) => {
     rows.forEach(row=>{
@@ -369,12 +395,8 @@ function refreshExpiryUI(){
 
       const radios = row.querySelectorAll('input[type="radio"]');
       radios.forEach(i=>{
-        if(expired){
-          i.disabled = true;
-          i.checked = false;
-        }else{
-          i.disabled = false;
-        }
+        if(expired){ i.disabled = true; i.checked = false; }
+        else { i.disabled = false; }
       });
     });
   };
@@ -384,8 +406,6 @@ function refreshExpiryUI(){
 
 /* ============== DOUBLE, SUMMARY, CHECKS ============== */
 function countChecked(container){ return container.querySelectorAll('input[type="radio"]:checked').length; }
-
-/* Double dropdown shows the picked TEAM (with spread) */
 function refreshDoubleChoices(){
   const sel = $("#doubleSel");
   const keep = sel.value;
@@ -412,8 +432,7 @@ function buildSelectionsText(){
   const checked = $$('input[type="radio"]:checked').map(r=>{
     const row = r.closest(".row");
     const qid = row.dataset.qid;
-    const team= r.value === "away" ? row.querySelector(".answers label:nth-child(1)")?.textContent.trim()
-                                   : row.querySelector(".answers label:nth-child(2)")?.textContent.trim();
+    const team= (r.parentElement?.textContent || "").trim();
     return {qid, team};
   }).sort((a,b)=>a.qid.localeCompare(b.qid));
 
@@ -428,8 +447,7 @@ function buildSelectionsText(){
   lines.push("Selections:");
   checked.forEach(o=>{
     const tag = (o.qid===dbl) ? " [DOUBLE]" : "";
-    const teamClean = o.team?.replace(/^away|^home/i,'').trim() || o.team || "";
-    lines.push(`${o.qid}:${teamClean}${tag}`);
+    lines.push(`${o.qid}:${o.team}${tag}`);
   });
 
   return lines.join("\n");
@@ -500,7 +518,6 @@ function validateAll(){
 }
 
 /* ------- Build rows for Google Sheet (one row per pick) ------- */
-/* Sheet headers: Timestamp | Week | Name | Email | QID | Choice | IsDouble */
 function buildRowsForSheet(){
   const timestamp = new Date().toISOString();
   const week = CURRENT_WEEK;
@@ -508,21 +525,16 @@ function buildRowsForSheet(){
   const email = $("#emailBox").value.trim();
   const doubleQID = $("#doubleSel").value;
 
-  const rows = $$('input[type="radio"]:checked').map(r=>{
+  return $$('input[type="radio"]:checked').map(r=>{
     const row = r.closest(".row");
     const qid = row.dataset.qid;
-    const labelText = (r.parentElement?.textContent || "").trim(); // includes spread
-    const choice = labelText;
+    const choice = (r.parentElement?.textContent || "").trim();
     const isDouble = (qid === doubleQID) ? "TRUE" : "FALSE";
     return { Timestamp: timestamp, Week: week, Name: name, Email: email, QID: qid, Choice: choice, IsDouble: isDouble };
   });
-
-  return rows;
 }
-
-/* Post to Apps Script Web App */
 async function pushToGoogleSheet(rows){
-  if(!GOOGLE_APPS_SCRIPT_URL) return; // no-op if URL not set
+  if(!GOOGLE_APPS_SCRIPT_URL) return;
   try{
     await fetch(GOOGLE_APPS_SCRIPT_URL, {
       method: "POST",
@@ -583,9 +595,8 @@ $("#submitBtn").addEventListener("click", async ()=>{
   const participantName = $("#nameSel").selectedOptions[0]?.textContent || "";
   const selectionsText  = buildSelectionsText();
 
-  /* NEW: push picks to Google Sheets (runs in both demo & live) */
   const rowsForSheet = buildRowsForSheet();
-  pushToGoogleSheet(rowsForSheet); // fire-and-forget; logs to console on error
+  pushToGoogleSheet(rowsForSheet); // fire-and-forget
 
   if(DEMO_MODE){
     $("#demoBadge").hidden = false;
@@ -616,21 +627,28 @@ $("#submitBtn").addEventListener("click", async ()=>{
 /* ============== LOAD DATA & EXPIRED UI ============== */
 async function loadAll(){
   try{
-    const pCSV = parseCSV(await fetchCSV(CSV_URL_PARTICIPANTS)); // Name, Email
-    $("#nameSel").innerHTML =
-      `<option value="">— Select your name —</option>` +
-      pCSV.map(p => `<option value="${escapeHtml(p.Name)}" data-email="${escapeHtml(p.Email||"")}">${escapeHtml(p.Name)}</option>`).join("");
+    /* Participants */
+    const pCSVText = await fetchCSV(CSV_URL_PARTICIPANTS);
+    const pCSV = parseCSV(pCSVText);
+    const opts = ['<option value="">— Select your name —</option>']
+      .concat(pCSV.map(p => {
+        const name = (p.Name ?? p.Participant ?? "").trim();
+        const email = (p.Email ?? p.E-mail ?? "").trim();
+        return `<option value="${escapeHtml(name)}" data-email="${escapeHtml(email)}">${escapeHtml(name)}</option>`;
+      }));
+    $("#nameSel").innerHTML = opts.join("");
 
+    /* Games */
     const aRows = parseCSV(await fetchCSV(CSV_URL_NFL));
     const bRows = parseCSV(await fetchCSV(CSV_URL_NCAA));
-    gamesA = normalizeGames(aRows,  "A");
-    gamesB = normalizeGames(bRows,  "B");
+    gamesA = normalizeGames(aRows, "A");
+    gamesB = normalizeGames(bRows, "B");
 
     const hostA = $("#listA"), hostB = $("#listB");
     renderSection(hostA, gamesA);
     renderSection(hostB, gamesB);
 
-    // wire events for new nodes
+    // wire events for newly created nodes
     hostA.querySelectorAll('input[type="radio"]').forEach(r=>{
       r.addEventListener('change', ()=>{ refreshDoubleChoices(); renderSummary(); validateAll(); });
     });
@@ -651,17 +669,21 @@ async function loadAll(){
     renderSummary();
     validateAll();
 
-    // keep fresh once per minute
+    // keep fresh
     setInterval(()=>{ refreshExpiryUI(); refreshDoubleChoices(); validateAll(); }, 60_000);
 
   }catch(e){
     console.error(e);
-    $("#listA").textContent = "Failed to load NFL.";
-    $("#listB").textContent = "Failed to load NCAA.";
+    if($("#listA")) $("#listA").textContent = "Failed to load NFL.";
+    if($("#listB")) $("#listB").textContent = "Failed to load NCAA.";
+    const sel = $("#nameSel");
+    if(sel && sel.options.length === 0){
+      sel.innerHTML = `<option value="">(Failed to load participants)</option>`;
+    }
   }
 }
 
-loadAll();
+document.addEventListener('DOMContentLoaded', loadAll);
 </script>
 </body>
 </html>
