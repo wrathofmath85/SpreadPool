@@ -80,7 +80,7 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
 .btn.ghost{background:#2a3442;color:#d0d7de}
 .statusBox{font-weight:900;border:1px solid var(--border);border-radius:999px;padding:8px 14px}
 .status_bad{background:var(--bad);color:#fff}
-.status_good{background:#0B162A;color:#DC4405;border-color:#0B162A}
+.status_good{background:var(--bearsNavy);color:var(--bearsOrange);border-color:var(--bearsNavy)}
 
 /* demo chip */
 .demo{position:fixed;top:14px;right:14px;background:#a15;color:#fff;border-radius:999px;padding:8px 12px;font-weight:800;z-index:10;box-shadow:0 6px 18px rgba(0,0,0,.35)}
@@ -96,9 +96,7 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
     <div class="grid" style="grid-template-columns:1fr 1fr">
       <div>
         <label for="nameSel" class="small muted">Choose your name</label>
-        <select id="nameSel" style="width:100%;margin-top:6px">
-          <option value="">— Select your name —</option>
-        </select>
+        <select id="nameSel" style="width:100%;margin-top:6px"></select>
       </div>
       <div>
         <label for="emailBox" class="small muted">Your email (auto-filled; editable)</label>
@@ -174,62 +172,36 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
 
 <script>
 /* ===================== CONFIG ===================== */
-const CSV_URL_PARTICIPANTS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTfQ7a2weK5Got7LTe3yVxqhcPR6pa-nPg73PdOMk8rrHwqlr3UeTcPprlgVbFjhFIVpifmMKnb_Tss/pub?gid=0&single=true&output=csv";
-const CSV_URL_NFL          = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSu8cw2ymTbcJGMmBkbcJTNzvxVsl4wh3XH7pbQJ3_pbSz42LFo0HKQHVLcJtHiOqtEDt37-hSegjDK/pub?gid=2109553148&single=true&output=csv";
-const CSV_URL_NCAA         = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSu8cw2ymTbcJGMmBkbcJTNzvxVsl4wh3XH7pbQJ3_pbSz42LFo0HKQHVLcJtHiOqtEDt37-hSegjDK/pub?gid=0&single=true&output=csv";
+const CSV_URL_PARTICIPANTS = "PASTE_PARTICIPANTS_PUBLISH_TO_WEB_CSV";
+const CSV_URL_NFL          = "PASTE_NFL_PUBLISH_TO_WEB_CSV";
+const CSV_URL_NCAA         = "PASTE_NCAA_PUBLISH_TO_WEB_CSV";
+
 const CURRENT_WEEK = 1;
 const PICKS_DEADLINE_UTC = "2025-08-25T17:30:00Z";
+
 const EMAILJS_SERVICE_ID = "service_txqdfck";
 const EMAILJS_TEMPLATE_ID = "template_o8du7pt";
-const EMAILJS_PUBLIC_KEY  = "YB5J-75APa-V6Giku";
-const DEMO_MODE = true;
+const EMAILJS_PUBLIC_KEY  = "YB5J-75APa-V6Giku";   // replace if you changed it
 
-/* If you deployed the Sheets Web App, paste URL here (else leave empty). */
-const GOOGLE_APPS_SCRIPT_URL = ""; // e.g., "https://script.google.com/macros/s/AKfycbxoWqmXLzT2t-SoRaqKw3WMDfif6Rmwu_NjYYFGCxF0N78fBwkeVtiOmPH_J3L-EL-j5Q/exec"
+const DEMO_MODE = false;
+
+/* NEW: Google Apps Script Web App endpoint (deploy your script and paste “/exec” URL) */
+const GSHEETS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxoWqmXLzT2t-SoRaqKw3WMDfif6Rmwu_NjYYFGCxF0N78fBwkeVtiOmPH_J3L-EL-j5Q/exec";
 /* ======================  END CONFIG  ======================= */
 
-const $  = s => document.querySelector(s);
+const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const escapeHtml = s => String(s??"").replace(/[&<>"]/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[m]));
 
-/* -------- CSV fetch (robust) -------- */
-async function fetchCSV(url){
+function fetchCSV(url){
   const bust = (url.includes("?") ? "&" : "?") + "_=" + Date.now();
-  const res = await fetch(url + bust, {mode:"cors", cache:"no-store", redirect:"follow"});
-  if(!res.ok) throw new Error(`CSV fetch failed (${res.status}) for ${url}`);
-  return await res.text();
+  return fetch(url + bust, {mode: "cors", cache:"no-store"})
+    .then(r => { if(!r.ok) throw new Error("CSV fetch failed: "+r.status); return r.text(); });
 }
-
-/* -------- CSV parser (tolerant) --------
-   - Handles BOM, blank lines, commas inside quotes, and ragged rows.
-*/
 function parseCSV(text){
-  const clean = text.replace(/^\uFEFF/,''); // strip BOM
-  const lines = clean.split(/\r?\n/).filter(l => l.trim().length>0);
-  if(!lines.length) return [];
-
-  const split = (row) => {
-    const out=[]; let cur="", q=false;
-    for(let i=0;i<row.length;i++){
-      const c=row[i];
-      if(c === '"' ){ if(q && row[i+1] === '"'){ cur+='"'; i++; } else { q=!q; } }
-      else if(c === ',' && !q){ out.push(cur); cur=""; }
-      else { cur+=c; }
-    }
-    out.push(cur);
-    return out.map(s=>s.replace(/^"|"$/g,"").trim());
-  };
-
-  const header = split(lines[0]).map(h=>h.trim());
-  const rows = [];
-  for(let i=1;i<lines.length;i++){
-    const cols = split(lines[i]);
-    if(cols.every(c=>c==="")) continue; // skip blank
-    const obj = {};
-    header.forEach((h,idx)=>{ obj[h] = (cols[idx]??"").trim(); });
-    rows.push(obj);
-  }
-  return rows;
+  const rows = text.trim().split(/\r?\n/).map(r=>r.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(c=>c.replace(/^"|"$/g,"")));
+  const hdr = rows.shift();
+  return rows.map(r => Object.fromEntries(hdr.map((h,i)=>[h.trim(), (r[i]??"").trim()])));
 }
 
 /* ---------- Eastern (CSV) → local viewer time ---------- */
@@ -295,11 +267,13 @@ function sortRequiredFirst(arr){
 }
 
 /* ============== STATE ============== */
-let gamesA=[], gamesB[];
+let participants=[];
+let gamesA=[], gamesB=[];
 
 /* ============== CSV → GAMES (QIDs auto) ============== */
 function normalizeGames(csvRows, prefix){
-  const out=[]; let idx=0;
+  const out=[];
+  let idx=0;
   for(const r of csvRows){
     const away = String(r["Away Team"]||r["Away"]||"").trim();
     const home = String(r["Home Team"]||r["Home"]||"").trim();
@@ -310,12 +284,13 @@ function normalizeGames(csvRows, prefix){
     const spr  = String(r["Spread"]||r["Line"]||"").trim();
     const req  = /^y/i.test(String(r["Required"]||""));
     if(!away || !home) continue;
-    if(!spr) continue;
+    if(!spr) continue; // only list games with spreads
 
     const t = ETtoLocal(date, time);
     out.push({
       qid: `${prefix}${++idx}`,
-      away, home, tv, loc,
+      away, home,
+      tv, loc,
       spread: spr,
       start: t.date,
       day: t.day, timeText: t.time, iso: t.iso,
@@ -382,7 +357,7 @@ function renderSection(container, list){
   list.forEach(g => container.appendChild(buildRow(g)));
 }
 
-/* Sync radios + expired pill using same logic */
+/* sync radios + expired pill using same logic */
 function refreshExpiryUI(){
   const updateFor = (rows, games) => {
     rows.forEach(row=>{
@@ -395,8 +370,12 @@ function refreshExpiryUI(){
 
       const radios = row.querySelectorAll('input[type="radio"]');
       radios.forEach(i=>{
-        if(expired){ i.disabled = true; i.checked = false; }
-        else { i.disabled = false; }
+        if(expired){
+          i.disabled = true;
+          i.checked = false;
+        }else{
+          i.disabled = false;
+        }
       });
     });
   };
@@ -406,6 +385,8 @@ function refreshExpiryUI(){
 
 /* ============== DOUBLE, SUMMARY, CHECKS ============== */
 function countChecked(container){ return container.querySelectorAll('input[type="radio"]:checked').length; }
+
+/* Double dropdown shows the picked TEAM (with spread) */
 function refreshDoubleChoices(){
   const sel = $("#doubleSel");
   const keep = sel.value;
@@ -432,7 +413,8 @@ function buildSelectionsText(){
   const checked = $$('input[type="radio"]:checked').map(r=>{
     const row = r.closest(".row");
     const qid = row.dataset.qid;
-    const team= (r.parentElement?.textContent || "").trim();
+    const team= r.value === "away" ? row.querySelector(".answers label:nth-child(1)")?.textContent.trim()
+                                   : row.querySelector(".answers label:nth-child(2)")?.textContent.trim();
     return {qid, team};
   }).sort((a,b)=>a.qid.localeCompare(b.qid));
 
@@ -447,7 +429,8 @@ function buildSelectionsText(){
   lines.push("Selections:");
   checked.forEach(o=>{
     const tag = (o.qid===dbl) ? " [DOUBLE]" : "";
-    lines.push(`${o.qid}:${o.team}${tag}`);
+    const teamClean = o.team?.replace(/^away|^home/i,'').trim() || o.team || "";
+    lines.push(`${o.qid}:${teamClean}${tag}`);
   });
 
   return lines.join("\n");
@@ -517,35 +500,6 @@ function validateAll(){
   return allOk;
 }
 
-/* ------- Build rows for Google Sheet (one row per pick) ------- */
-function buildRowsForSheet(){
-  const timestamp = new Date().toISOString();
-  const week = CURRENT_WEEK;
-  const name  = $("#nameSel").selectedOptions[0]?.textContent || "";
-  const email = $("#emailBox").value.trim();
-  const doubleQID = $("#doubleSel").value;
-
-  return $$('input[type="radio"]:checked').map(r=>{
-    const row = r.closest(".row");
-    const qid = row.dataset.qid;
-    const choice = (r.parentElement?.textContent || "").trim();
-    const isDouble = (qid === doubleQID) ? "TRUE" : "FALSE";
-    return { Timestamp: timestamp, Week: week, Name: name, Email: email, QID: qid, Choice: choice, IsDouble: isDouble };
-  });
-}
-async function pushToGoogleSheet(rows){
-  if(!GOOGLE_APPS_SCRIPT_URL) return;
-  try{
-    await fetch(GOOGLE_APPS_SCRIPT_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ rows })
-    });
-  }catch(err){
-    console.error("Sheet push failed:", err);
-  }
-}
-
 /* ============== EVENTS ============== */
 document.addEventListener("change", e=>{
   if(e.target.matches('#nameSel')){
@@ -580,6 +534,43 @@ $("#resetBtn").addEventListener("click", ()=>{
   validateAll();
 });
 
+/* ---------- Build picks array (one row per selection) ---------- */
+function collectPicks(){
+  const name  = $("#nameSel").selectedOptions[0]?.textContent || "";
+  const email = $("#emailBox").value.trim();
+  const dbl   = $("#doubleSel").value;
+
+  return $$('input[type="radio"]:checked').map(r=>{
+    const row = r.closest(".row");
+    const qid = row.dataset.qid;
+    const team= (r.parentElement?.textContent || "").trim(); // includes spread if present
+    return {
+      timestamp: new Date().toISOString(),
+      week: CURRENT_WEEK,
+      name,
+      email,
+      qid,
+      choice: team,
+      isDouble: String(qid === dbl).toUpperCase()
+    };
+  });
+}
+
+/* ---------- Push to Google Sheet via Apps Script ---------- */
+async function pushToSheet(picks){
+  if(!GSHEETS_WEBAPP_URL) return;
+  try{
+    const res = await fetch(GSHEETS_WEBAPP_URL, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ picks })
+    });
+    if(!res.ok) throw new Error("Sheet push failed: " + res.status);
+  }catch(e){
+    console.error("Sheet push error:", e);
+  }
+}
+
 $("#submitBtn").addEventListener("click", async ()=>{
   if(PICKS_DEADLINE_UTC && new Date() > new Date(PICKS_DEADLINE_UTC)){
     alert("The global picks deadline has passed. Submissions are closed.");
@@ -594,12 +585,11 @@ $("#submitBtn").addEventListener("click", async ()=>{
 
   const participantName = $("#nameSel").selectedOptions[0]?.textContent || "";
   const selectionsText  = buildSelectionsText();
-
-  const rowsForSheet = buildRowsForSheet();
-  pushToGoogleSheet(rowsForSheet); // fire-and-forget
+  const picks           = collectPicks();
 
   if(DEMO_MODE){
     $("#demoBadge").hidden = false;
+    await pushToSheet(picks);
     alert("Submitted! (Demo mode — email suppressed)");
     return;
   }
@@ -617,6 +607,9 @@ $("#submitBtn").addEventListener("click", async ()=>{
       participant_name: participantName,
       selections_text: selectionsText
     });
+
+    await pushToSheet(picks);
+
     alert("Submitted! A copy will be CC’d to you.");
   }catch(err){
     console.error("EmailJS error details:",err);
@@ -624,31 +617,23 @@ $("#submitBtn").addEventListener("click", async ()=>{
   }
 });
 
-/* ============== LOAD DATA & EXPIRED UI ============== */
+/* ============== LOAD DATA & EXPIRED UI (same as TestEntry2) ============== */
 async function loadAll(){
   try{
-    /* Participants */
-    const pCSVText = await fetchCSV(CSV_URL_PARTICIPANTS);
-    const pCSV = parseCSV(pCSVText);
-    const opts = ['<option value="">— Select your name —</option>']
-      .concat(pCSV.map(p => {
-        const name = (p.Name ?? p.Participant ?? "").trim();
-        const email = (p.Email ?? p.E-mail ?? "").trim();
-        return `<option value="${escapeHtml(name)}" data-email="${escapeHtml(email)}">${escapeHtml(name)}</option>`;
-      }));
-    $("#nameSel").innerHTML = opts.join("");
+    // Participants CSV: Name,Email
+    const pCSV = parseCSV(await fetchCSV(CSV_URL_PARTICIPANTS));
+    $("#nameSel").innerHTML =
+      `<option value="">— Select your name —</option>` +
+      pCSV.map(p => `<option value="${escapeHtml(p.Name)}" data-email="${escapeHtml(p.Email||"")}">${escapeHtml(p.Name)}</option>`).join("");
 
-    /* Games */
-    const aRows = parseCSV(await fetchCSV(CSV_URL_NFL));
-    const bRows = parseCSV(await fetchCSV(CSV_URL_NCAA));
-    gamesA = normalizeGames(aRows, "A");
-    gamesB = normalizeGames(bRows, "B");
+    // Lines
+    gamesA = normalizeGames(parseCSV(await fetchCSV(CSV_URL_NFL)),  "A");
+    gamesB = normalizeGames(parseCSV(await fetchCSV(CSV_URL_NCAA)),"B");
 
     const hostA = $("#listA"), hostB = $("#listB");
     renderSection(hostA, gamesA);
     renderSection(hostB, gamesB);
 
-    // wire events for newly created nodes
     hostA.querySelectorAll('input[type="radio"]').forEach(r=>{
       r.addEventListener('change', ()=>{ refreshDoubleChoices(); renderSummary(); validateAll(); });
     });
@@ -669,21 +654,17 @@ async function loadAll(){
     renderSummary();
     validateAll();
 
-    // keep fresh
+    // keep fresh once per minute
     setInterval(()=>{ refreshExpiryUI(); refreshDoubleChoices(); validateAll(); }, 60_000);
 
   }catch(e){
     console.error(e);
-    if($("#listA")) $("#listA").textContent = "Failed to load NFL.";
-    if($("#listB")) $("#listB").textContent = "Failed to load NCAA.";
-    const sel = $("#nameSel");
-    if(sel && sel.options.length === 0){
-      sel.innerHTML = `<option value="">(Failed to load participants)</option>`;
-    }
+    $("#listA").textContent = "Failed to load NFL.";
+    $("#listB").textContent = "Failed to load NCAA.";
   }
 }
 
-document.addEventListener('DOMContentLoaded', loadAll);
+loadAll();
 </script>
 </body>
 </html>
