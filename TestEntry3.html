@@ -626,7 +626,8 @@ $("#submitBtn").addEventListener("click", async ()=>{
     emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
     await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
       participant_name: participantName,
-      selections_text: selectionsText
+      selections_text: selectionsText,
+      to_email:         participantEmail,"dan.fox@brighthousefinancial.com"
     });
     alert("Submitted! A copy will be CC’d to you.");
   }catch(err){
