@@ -194,6 +194,11 @@ const REQUIRE_SHEETS_OK   = false;
 
 /* Demo mode only affects EmailJS sending, not Sheets logging */
 const DEMO_MODE = false;
+
+const participantName  = $("#nameSel").selectedOptions[0]?.textContent || "";
+const selectionsText   = buildSelectionsText();
+const participantEmail = $("#emailBox").value.trim();
+
 /* ======================  END CONFIG  ======================= */
 
 const $ = s => document.querySelector(s);
