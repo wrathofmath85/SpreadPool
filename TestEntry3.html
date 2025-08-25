@@ -195,9 +195,7 @@ const REQUIRE_SHEETS_OK   = false;
 /* Demo mode only affects EmailJS sending, not Sheets logging */
 const DEMO_MODE = false;
 
-const participantName  = $("#nameSel").selectedOptions[0]?.textContent || "";
-const selectionsText   = buildSelectionsText();
-const participantEmail = $("#emailBox").value.trim();
+
 
 /* ======================  END CONFIG  ======================= */
 
@@ -613,6 +611,10 @@ $("#submitBtn").addEventListener("click", async ()=>{
     alert("Could not log to Google Sheets. Please try again in a moment.");
     return;
   }
+
+const participantName  = $("#nameSel").selectedOptions[0]?.textContent || "";
+const selectionsText   = buildSelectionsText();
+const participantEmail = $("#emailBox").value.trim();
 
   // 2) EmailJS (optional demo suppression)
   if(DEMO_MODE){
