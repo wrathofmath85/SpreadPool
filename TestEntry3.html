@@ -43,6 +43,8 @@ h2{margin:0 0 12px 0;font-size:20px}
 }
 .badge.required{background:var(--yellow);color:var(--yellowText)}
 .badge.expired{background:#d92d20;color:#fff}
+
+/* utility for toggling pill visibility */
 .is-hidden{display:none !important;}
 
 .answers{display:block;max-width:34rem}
@@ -172,21 +174,26 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
 
 <script>
 /* ===================== CONFIG ===================== */
-const CSV_URL_PARTICIPANTS = "PASTE_PARTICIPANTS_PUBLISH_TO_WEB_CSV";
-const CSV_URL_NFL          = "PASTE_NFL_PUBLISH_TO_WEB_CSV";
-const CSV_URL_NCAA         = "PASTE_NCAA_PUBLISH_TO_WEB_CSV";
+const CSV_URL_PARTICIPANTS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTfQ7a2weK5Got7LTe3yVxqhcPR6pa-nPg73PdOMk8rrHwqlr3UeTcPprlgVbFjhFIVpifmMKnb_Tss/pub?gid=0&single=true&output=csv";
+const CSV_URL_NFL          = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSu8cw2ymTbcJGMmBkbcJTNzvxVsl4wh3XH7pbQJ3_pbSz42LFo0HKQHVLcJtHiOqtEDt37-hSegjDK/pub?gid=2109553148&single=true&output=csv";
+const CSV_URL_NCAA         = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSu8cw2ymTbcJGMmBkbcJTNzvxVsl4wh3XH7pbQJ3_pbSz42LFo0HKQHVLcJtHiOqtEDt37-hSegjDK/pub?gid=0&single=true&output=csv";
 
 const CURRENT_WEEK = 1;
 const PICKS_DEADLINE_UTC = "2025-08-25T17:30:00Z";
 
+/* EmailJS (leave as you have it) */
 const EMAILJS_SERVICE_ID = "service_txqdfck";
 const EMAILJS_TEMPLATE_ID = "template_o8du7pt";
-const EMAILJS_PUBLIC_KEY  = "YB5J-75APa-V6Giku";   // replace if you changed it
+const EMAILJS_PUBLIC_KEY  = "YB5J-75APa-V6Giku";
 
-const DEMO_MODE = false;
+/* Sheets logging — paste your Web App URL here */
+const GSHEET_WEBAPP_URL   = "https://script.google.com/macros/s/AKfycbxoWqmXLzT2t-SoRaqKw3WMDfif6Rmwu_NjYYFGCxF0N78fBwkeVtiOmPH_J3L-EL-j5Q/exec";
 
-/* NEW: Google Apps Script Web App endpoint (deploy your script and paste “/exec” URL) */
-const GSHEETS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxoWqmXLzT2t-SoRaqKw3WMDfif6Rmwu_NjYYFGCxF0N78fBwkeVtiOmPH_J3L-EL-j5Q/exec";
+/* If true, require Sheets write OK before showing “Submitted!” */
+const REQUIRE_SHEETS_OK   = false;
+
+/* Demo mode only affects EmailJS sending, not Sheets logging */
+const DEMO_MODE = true;
 /* ======================  END CONFIG  ======================= */
 
 const $ = s => document.querySelector(s);
@@ -284,7 +291,7 @@ function normalizeGames(csvRows, prefix){
     const spr  = String(r["Spread"]||r["Line"]||"").trim();
     const req  = /^y/i.test(String(r["Required"]||""));
     if(!away || !home) continue;
-    if(!spr) continue; // only list games with spreads
+    if(!spr) continue;
 
     const t = ETtoLocal(date, time);
     out.push({
@@ -386,7 +393,7 @@ function refreshExpiryUI(){
 /* ============== DOUBLE, SUMMARY, CHECKS ============== */
 function countChecked(container){ return container.querySelectorAll('input[type="radio"]:checked').length; }
 
-/* Double dropdown shows the picked TEAM (with spread) */
+/* Show picked TEAM (with spread) in the Double dropdown */
 function refreshDoubleChoices(){
   const sel = $("#doubleSel");
   const keep = sel.value;
@@ -434,6 +441,27 @@ function buildSelectionsText(){
   });
 
   return lines.join("\n");
+}
+function collectSubmission(){
+  const name  = $("#nameSel").selectedOptions[0]?.textContent || "";
+  const email = $("#emailBox").value.trim();
+  const dblQid = $("#doubleSel").value || "";
+  const checked = $$('input[type="radio"]:checked').map(r=>{
+    const row = r.closest(".row");
+    const qid = row.dataset.qid;
+    const team= (r.parentElement?.textContent || "").trim();
+    return { qid, team, isDouble: (qid===dblQid) };
+  }).sort((a,b)=>a.qid.localeCompare(b.qid));
+  const doubleTeam = checked.find(x=>x.isDouble)?.team || "";
+  return {
+    name, email,
+    week: CURRENT_WEEK,
+    timestamp: new Date().toISOString(),
+    double_qid: dblQid,
+    double_team: doubleTeam,
+    picks: checked,
+    summary: buildSelectionsText()
+  };
 }
 function renderSummary(){
   $("#summary").innerHTML = `<pre style="white-space:pre-wrap;margin:0">${escapeHtml(buildSelectionsText())}</pre>`;
@@ -534,40 +562,27 @@ $("#resetBtn").addEventListener("click", ()=>{
   validateAll();
 });
 
-/* ---------- Build picks array (one row per selection) ---------- */
-function collectPicks(){
-  const name  = $("#nameSel").selectedOptions[0]?.textContent || "";
-  const email = $("#emailBox").value.trim();
-  const dbl   = $("#doubleSel").value;
-
-  return $$('input[type="radio"]:checked').map(r=>{
-    const row = r.closest(".row");
-    const qid = row.dataset.qid;
-    const team= (r.parentElement?.textContent || "").trim(); // includes spread if present
-    return {
-      timestamp: new Date().toISOString(),
-      week: CURRENT_WEEK,
-      name,
-      email,
-      qid,
-      choice: team,
-      isDouble: String(qid === dbl).toUpperCase()
-    };
-  });
-}
-
-/* ---------- Push to Google Sheet via Apps Script ---------- */
-async function pushToSheet(picks){
-  if(!GSHEETS_WEBAPP_URL) return;
+/* ---- new: push to Google Sheets ---- */
+async function pushToSheets(payload){
+  if(!GSHEET_WEBAPP_URL || !/^https?:\/\//i.test(GSHEET_WEBAPP_URL)){
+    console.warn('GSHEET_WEBAPP_URL not set; skipping Sheets logging');
+    return { ok:false, skipped:true };
+  }
   try{
-    const res = await fetch(GSHEETS_WEBAPP_URL, {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({ picks })
+    const res = await fetch(GSHEET_WEBAPP_URL, {
+      method: 'POST',
+      mode: 'cors',
+      headers: { 'Content-Type':'application/json' },
+      body: JSON.stringify(payload)
     });
-    if(!res.ok) throw new Error("Sheet push failed: " + res.status);
-  }catch(e){
-    console.error("Sheet push error:", e);
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok || data.ok !== true){
+      throw new Error(`Sheets response not ok: ${res.status} ${JSON.stringify(data)}`);
+    }
+    return { ok:true };
+  }catch(err){
+    console.error('Sheets logging failed:', err);
+    return { ok:false, error:String(err) };
   }
 }
 
@@ -585,15 +600,21 @@ $("#submitBtn").addEventListener("click", async ()=>{
 
   const participantName = $("#nameSel").selectedOptions[0]?.textContent || "";
   const selectionsText  = buildSelectionsText();
-  const picks           = collectPicks();
+  const submission = collectSubmission();
 
-  if(DEMO_MODE){
-    $("#demoBadge").hidden = false;
-    await pushToSheet(picks);
-    alert("Submitted! (Demo mode — email suppressed)");
+  // 1) Push to Google Sheets first
+  const sheetResult = await pushToSheets(submission);
+  if(!sheetResult.ok && REQUIRE_SHEETS_OK){
+    alert("Could not log to Google Sheets. Please try again in a moment.");
     return;
   }
 
+  // 2) EmailJS (optional demo suppression)
+  if(DEMO_MODE){
+    $("#demoBadge").hidden = false;
+    alert("Submitted! (Demo mode — email suppressed)");
+    return;
+  }
   try{
     if(!window.emailjs){
       await new Promise((res,rej)=>{
@@ -607,33 +628,31 @@ $("#submitBtn").addEventListener("click", async ()=>{
       participant_name: participantName,
       selections_text: selectionsText
     });
-
-    await pushToSheet(picks);
-
     alert("Submitted! A copy will be CC’d to you.");
   }catch(err){
     console.error("EmailJS error details:",err);
-    alert("Could not send via EmailJS. Check your EmailJS keys/template.");
+    alert("Submitted! (Email copy failed to send.)");
   }
 });
 
-/* ============== LOAD DATA & EXPIRED UI (same as TestEntry2) ============== */
+/* ============== LOAD DATA & EXPIRED UI ============== */
 async function loadAll(){
   try{
-    // Participants CSV: Name,Email
-    const pCSV = parseCSV(await fetchCSV(CSV_URL_PARTICIPANTS));
+    const pCSV = parseCSV(await fetchCSV(CSV_URL_PARTICIPANTS)); // Name, Email
     $("#nameSel").innerHTML =
       `<option value="">— Select your name —</option>` +
       pCSV.map(p => `<option value="${escapeHtml(p.Name)}" data-email="${escapeHtml(p.Email||"")}">${escapeHtml(p.Name)}</option>`).join("");
 
-    // Lines
-    gamesA = normalizeGames(parseCSV(await fetchCSV(CSV_URL_NFL)),  "A");
-    gamesB = normalizeGames(parseCSV(await fetchCSV(CSV_URL_NCAA)),"B");
+    const aRows = parseCSV(await fetchCSV(CSV_URL_NFL));
+    const bRows = parseCSV(await fetchCSV(CSV_URL_NCAA));
+    gamesA = normalizeGames(aRows,  "A");
+    gamesB = normalizeGames(bRows,  "B");
 
     const hostA = $("#listA"), hostB = $("#listB");
     renderSection(hostA, gamesA);
     renderSection(hostB, gamesB);
 
+    // wire events for new nodes
     hostA.querySelectorAll('input[type="radio"]').forEach(r=>{
       r.addEventListener('change', ()=>{ refreshDoubleChoices(); renderSummary(); validateAll(); });
     });
