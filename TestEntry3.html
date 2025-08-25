@@ -612,9 +612,6 @@ $("#submitBtn").addEventListener("click", async ()=>{
     return;
   }
 
-const participantName  = $("#nameSel").selectedOptions[0]?.textContent || "";
-const selectionsText   = buildSelectionsText();
-const participantEmail = $("#emailBox").value.trim();
 
   // 2) EmailJS (optional demo suppression)
   if(DEMO_MODE){
@@ -631,6 +628,10 @@ const participantEmail = $("#emailBox").value.trim();
       });
     }
     emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+const participantName  = $("#nameSel").selectedOptions[0]?.textContent || "";
+const selectionsText   = buildSelectionsText();
+const participantEmail = $("#emailBox").value.trim();
+
     await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
       participant_name: participantName,
       selections_text: selectionsText,
