@@ -565,7 +565,6 @@ $("#resetBtn").addEventListener("click", ()=>{
   validateAll();
 });
 
-/* ---- new: push to Google Sheets ---- */
 async function pushToSheets(payload){
   if(!GSHEET_WEBAPP_URL || !/^https?:\/\//i.test(GSHEET_WEBAPP_URL)){
     console.warn('GSHEET_WEBAPP_URL not set; skipping Sheets logging');
@@ -574,8 +573,8 @@ async function pushToSheets(payload){
   try{
     const res = await fetch(GSHEET_WEBAPP_URL, {
       method: 'POST',
-      mode: 'cors',
-      headers: { 'Content-Type':'application/json' },
+      // IMPORTANT: use text/plain to skip the browser's OPTIONS preflight
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(payload)
     });
     const data = await res.json().catch(()=>({}));
@@ -588,6 +587,7 @@ async function pushToSheets(payload){
     return { ok:false, error:String(err) };
   }
 }
+
 
 $("#submitBtn").addEventListener("click", async ()=>{
   if(PICKS_DEADLINE_UTC && new Date() > new Date(PICKS_DEADLINE_UTC)){
