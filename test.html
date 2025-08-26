@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>CSV Fetch Tester</title>
+<style>
+  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 20px; }
+  input[type="text"]{ width:100%; padding:10px; border:1px solid #ccc; border-radius:8px; }
+  button{ padding:10px 14px; border:0; border-radius:8px; background:#2563eb; color:#fff; cursor:pointer; margin-top:10px;}
+  button:hover{ opacity:.9 }
+  .row { margin-top:16px; }
+  pre { background:#0b1020; color:#e6edf3; padding:12px; border-radius:8px; overflow:auto; }
+  .ok { color: #15803d; font-weight: 700; }
+  .bad { color: #b91c1c; font-weight: 700; }
+  table{ border-collapse: collapse; margin-top:8px; }
+  td, th{ border:1px solid #ddd; padding:6px 8px; }
+</style>
+</head>
+<body>
+
+<h1>Published CSV Fetch Tester</h1>
+
+<label for="csvUrl">CSV URL</label>
+<input id="csvUrl" type="text" value="https://docs.google.com/spreadsheets/d/e/2PACX-1vRj5ieGlGWurIlGuongV3vJhWWAwCYsEFVhEEtjwOG7RiFwTRZkM_JXtjb8QtwsdzhaXPMDRPyU7qZC/pub?gid=0&single=true&output=csv" />
+<button id="go">Fetch CSV</button>
+
+<div class="row">
+  <div id="status"></div>
+</div>
+
+<div class="row">
+  <h3>First 600 characters (raw):</h3>
+  <pre id="raw">—</pre>
+</div>
+
+<div class="row">
+  <h3>Parsed preview (first 5 rows):</h3>
+  <div id="preview">—</div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+
+// Simple CSV parse that respects quoted commas
+function parseCSV(text){
+  const lines = text.replace(/\r\n/g, '\n').split('\n').filter(l => l.length);
+  const rows = lines.map(line => {
+    const out = [];
+    let cur = '', inQ = false;
+    for (let i=0; i<line.length; i++){
+      const ch = line[i];
+      if (ch === '"'){
+        if (inQ && line[i+1] === '"'){ cur += '"'; i++; } // escaped quote
+        else inQ = !inQ;
+      } else if (ch === ',' && !inQ){
+        out.push(cur); cur = '';
+      } else {
+        cur += ch;
+      }
+    }
+    out.push(cur);
+    return out;
+  });
+  const header = rows[0] || [];
+  const data = rows.slice(1).map(r => {
+    const obj = {};
+    header.forEach((h, i) => obj[h.trim()] = (r[i] || '').trim());
+    return obj;
+  });
+  return { header, data, rows };
+}
+
+async function testFetch(url){
+  $("#status").textContent = "Fetching…";
+  $("#raw").textContent = "—";
+  $("#preview").textContent = "—";
+
+  try{
+    // cache-bust so fresh publishes show up
+    const bust = (url.includes("?") ? "&" : "?") + "_=" + Date.now();
+    const res = await fetch(url + bust, { mode: "cors", cache: "no-store" });
+
+    $("#status").innerHTML = res.ok
+      ? `<span class="ok">HTTP ${res.status} OK</span>`
+      : `<span class="bad">HTTP ${res.status} ${res.statusText}</span>`;
+
+    const text = await res.text().catch(()=>"(no body)");
+    $("#raw").textContent = text.slice(0, 600);
+
+    if(!res.ok){
+      $("#preview").innerHTML = "<span class='bad'>Response not OK — see status above.</span>";
+      return;
+    }
+
+    // Try to parse and show first 5 rows
+    const { header, data } = parseCSV(text);
+    if(header.length === 0){
+      $("#preview").innerHTML = "<span class='bad'>No header row detected — is this the correct tab (gid)?</span>";
+      return;
+    }
+
+    const sample = data.slice(0, 5);
+    if(sample.length === 0){
+      $("#preview").innerHTML = "<span class='bad'>No data rows. Check the sheet has rows and that you published the right tab as CSV.</span>";
+      return;
+    }
+
+    // Render a tiny table
+    const th = header.map(h => `<th>${h}</th>`).join("");
+    const trs = sample.map(r => `<tr>${header.map(h => `<td>${(r[h]||'')}</td>`).join("")}</tr>`).join("");
+    $("#preview").innerHTML = `<table><thead><tr>${th}</tr></thead><tbody>${trs}</tbody></table>`;
+
+  }catch(err){
+    console.error(err);
+    $("#status").innerHTML = `<span class="bad">Network/CORS error: ${String(err)}</span>`;
+    $("#raw").textContent = "";
+    $("#preview").textContent = "";
+  }
+}
+
+$("#go").addEventListener("click", () => testFetch($("#csvUrl").value.trim()));
+// auto-run on load with default URL
+testFetch($("#csvUrl").value.trim());
+</script>
+
+</body>
+</html>
