@@ -28,7 +28,7 @@ h2{margin:0 0 12px 0;font-size:20px}
 
 .row{
   display:grid;
-  grid-template-columns:1fr auto minmax(290px,1fr); /* info | spacer | answers */
+  grid-template-columns:1fr auto minmax(290px,1fr);
   gap:10px;align-items:center;
   padding:10px;border-radius:10px;
   background:rgba(255,255,255,.02);border:1px solid var(--border)
@@ -43,8 +43,6 @@ h2{margin:0 0 12px 0;font-size:20px}
 }
 .badge.required{background:var(--yellow);color:var(--yellowText)}
 .badge.expired{background:#d92d20;color:#fff}
-
-/* utility for toggling pill visibility */
 .is-hidden{display:none !important;}
 
 .answers{display:block;max-width:34rem}
@@ -58,7 +56,6 @@ h2{margin:0 0 12px 0;font-size:20px}
 .clear{display:inline-block;background:transparent;border:1px solid #3b4553;border-radius:8px;color:var(--muted);padding:6px 10px;cursor:pointer;margin-top:8px}
 .clear:hover{background:#2a3442;color:#fff}
 
-/* Checks & Errors list */
 .checklist{margin:8px 0 0 0;padding:0;list-style:none;display:grid;gap:6px}
 .checklist li{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:10px;padding:8px 10px}
 .check-icon{
@@ -69,7 +66,6 @@ h2{margin:0 0 12px 0;font-size:20px}
 .check-bad .check-icon{background:#b42318;color:#fff}
 .check-text{flex:1 1 auto}
 
-/* footer */
 footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
 .footer{
   display:flex;justify-content:space-between;align-items:center;gap:8px;
@@ -84,7 +80,6 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
 .status_bad{background:var(--bad);color:#fff}
 .status_good{background:var(--bearsNavy);color:var(--bearsOrange);border-color:var(--bearsNavy)}
 
-/* demo chip */
 .demo{position:fixed;top:14px;right:14px;background:#a15;color:#fff;border-radius:999px;padding:8px 12px;font-weight:800;z-index:10;box-shadow:0 6px 18px rgba(0,0,0,.35)}
 </style>
 </head>
@@ -181,22 +176,19 @@ const CSV_URL_NCAA         = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS
 const CURRENT_WEEK = 1;
 const PICKS_DEADLINE_UTC = "2025-08-28T17:30:00Z";
 
-/* EmailJS (leave as you have it) */
+/* EmailJS (unchanged) */
 const EMAILJS_SERVICE_ID = "service_txqdfck";
 const EMAILJS_TEMPLATE_ID = "template_o8du7pt";
 const EMAILJS_PUBLIC_KEY  = "YB5J-75APa-V6Giku";
 
-/* Sheets logging — paste your Web App URL here */
-const GSHEET_WEBAPP_URL   = "https://script.google.com/macros/s/AKfycbxfNdktibcACMtdHzd6bJfhu6rCqZpK5-BvsEOuCpHlFjUZAOHWxd7VlmveG-lkHkVFWg/exec";
+/* Google Apps Script Web App URL */
+const GSHEET_WEBAPP_URL   = "https://script.google.com/macros/s/AKfycbwbn6FNiK1clBgO5ZGmvhrMX8KBCmTO0pLbDIU9S3CnjAZ_SgYqHBf0KOOPGbFKOxvxFw/exec";
 
-/* If true, require Sheets write OK before showing “Submitted!” */
+/* Require sheet write? */
 const REQUIRE_SHEETS_OK   = false;
 
-/* Demo mode only affects EmailJS sending, not Sheets logging */
+/* Demo mode only suppresses EmailJS */
 const DEMO_MODE = false;
-
-
-
 /* ======================  END CONFIG  ======================= */
 
 const $ = s => document.querySelector(s);
@@ -214,7 +206,7 @@ function parseCSV(text){
   return rows.map(r => Object.fromEntries(hdr.map((h,i)=>[h.trim(), (r[i]??"").trim()])));
 }
 
-/* ---------- Eastern (CSV) → local viewer time ---------- */
+/* ---------- ET (CSV) → local viewer time ---------- */
 function stripWeekday(dateStr){
   if(!dateStr) return "";
   return String(dateStr)
@@ -280,10 +272,9 @@ function sortRequiredFirst(arr){
 let participants=[];
 let gamesA=[], gamesB=[];
 
-/* ============== CSV → GAMES (QIDs auto) ============== */
+/* ============== CSV → GAMES ============== */
 function normalizeGames(csvRows, prefix){
-  const out=[];
-  let idx=0;
+  const out=[]; let idx=0;
   for(const r of csvRows){
     const away = String(r["Away Team"]||r["Away"]||"").trim();
     const home = String(r["Home Team"]||r["Home"]||"").trim();
@@ -295,22 +286,18 @@ function normalizeGames(csvRows, prefix){
     const req  = /^y/i.test(String(r["Required"]||""));
     if(!away || !home) continue;
     if(!spr) continue;
-
     const t = ETtoLocal(date, time);
     out.push({
       qid: `${prefix}${++idx}`,
-      away, home,
-      tv, loc,
-      spread: spr,
-      start: t.date,
-      day: t.day, timeText: t.time, iso: t.iso,
+      away, home, tv, loc, spread: spr,
+      start: t.date, day: t.day, timeText: t.time, iso: t.iso,
       required: req
     });
   }
   return sortRequiredFirst(out);
 }
 
-/* determine favorite & label text with spread */
+/* favorite & labels with spread */
 function favoriteInfo(away, home, spreadText){
   const s = String(spreadText||"");
   const mNum = s.match(/([+-]?\d+(?:\.\d+)?)/);
@@ -367,7 +354,7 @@ function renderSection(container, list){
   list.forEach(g => container.appendChild(buildRow(g)));
 }
 
-/* sync radios + expired pill using same logic */
+/* expiry UI */
 function refreshExpiryUI(){
   const updateFor = (rows, games) => {
     rows.forEach(row=>{
@@ -396,7 +383,7 @@ function refreshExpiryUI(){
 /* ============== DOUBLE, SUMMARY, CHECKS ============== */
 function countChecked(container){ return container.querySelectorAll('input[type="radio"]:checked').length; }
 
-/* Show picked TEAM (with spread) in the Double dropdown */
+/* Double dropdown shows picked team */
 function refreshDoubleChoices(){
   const sel = $("#doubleSel");
   const keep = sel.value;
@@ -445,27 +432,46 @@ function buildSelectionsText(){
 
   return lines.join("\n");
 }
+
+/* Build payload with a flat rows[] for the sheet */
 function collectSubmission(){
   const name  = $("#nameSel").selectedOptions[0]?.textContent || "";
   const email = $("#emailBox").value.trim();
   const dblQid = $("#doubleSel").value || "";
-  const checked = $$('input[type="radio"]:checked').map(r=>{
+  const timestamp = new Date().toISOString();
+
+  const picks = $$('input[type="radio"]:checked').map(r=>{
     const row = r.closest(".row");
     const qid = row.dataset.qid;
     const team= (r.parentElement?.textContent || "").trim();
     return { qid, team, isDouble: (qid===dblQid) };
   }).sort((a,b)=>a.qid.localeCompare(b.qid));
-  const doubleTeam = checked.find(x=>x.isDouble)?.team || "";
+
+  /* rows exactly match the “per-pick” layout */
+  const rows = picks.map(p => ({
+    timestamp,
+    week: CURRENT_WEEK,
+    name,
+    email,
+    qid: p.qid,
+    choice: p.team,
+    isDouble: !!p.isDouble
+  }));
+
+  const doubleTeam = picks.find(x=>x.isDouble)?.team || "";
+
   return {
     name, email,
     week: CURRENT_WEEK,
-    timestamp: new Date().toISOString(),
+    timestamp,
     double_qid: dblQid,
     double_team: doubleTeam,
-    picks: checked,
+    picks,
+    rows,                         // << new: flat per-pick rows for the Apps Script
     summary: buildSelectionsText()
   };
 }
+
 function renderSummary(){
   $("#summary").innerHTML = `<pre style="white-space:pre-wrap;margin:0">${escapeHtml(buildSelectionsText())}</pre>`;
 }
@@ -565,6 +571,7 @@ $("#resetBtn").addEventListener("click", ()=>{
   validateAll();
 });
 
+/* push to Google Sheets (preflight-free) */
 async function pushToSheets(payload){
   if(!GSHEET_WEBAPP_URL || !/^https?:\/\//i.test(GSHEET_WEBAPP_URL)){
     console.warn('GSHEET_WEBAPP_URL not set; skipping Sheets logging');
@@ -573,7 +580,6 @@ async function pushToSheets(payload){
   try{
     const res = await fetch(GSHEET_WEBAPP_URL, {
       method: 'POST',
-      // IMPORTANT: use text/plain to skip the browser's OPTIONS preflight
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(payload)
     });
@@ -588,7 +594,6 @@ async function pushToSheets(payload){
   }
 }
 
-
 $("#submitBtn").addEventListener("click", async ()=>{
   if(PICKS_DEADLINE_UTC && new Date() > new Date(PICKS_DEADLINE_UTC)){
     alert("The global picks deadline has passed. Submissions are closed.");
@@ -602,18 +607,16 @@ $("#submitBtn").addEventListener("click", async ()=>{
   }
 
   const participantName = $("#nameSel").selectedOptions[0]?.textContent || "";
+  const participantEmail = $("#emailBox").value.trim();
   const selectionsText  = buildSelectionsText();
   const submission = collectSubmission();
 
-  // 1) Push to Google Sheets first
   const sheetResult = await pushToSheets(submission);
   if(!sheetResult.ok && REQUIRE_SHEETS_OK){
     alert("Could not log to Google Sheets. Please try again in a moment.");
     return;
   }
 
-
-  // 2) EmailJS (optional demo suppression)
   if(DEMO_MODE){
     $("#demoBadge").hidden = false;
     alert("Submitted! (Demo mode — email suppressed)");
@@ -628,10 +631,6 @@ $("#submitBtn").addEventListener("click", async ()=>{
       });
     }
     emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
-const participantName  = $("#nameSel").selectedOptions[0]?.textContent || "";
-const selectionsText   = buildSelectionsText();
-const participantEmail = $("#emailBox").value.trim();
-
     await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
       participant_name: participantName,
       selections_text: selectionsText,
@@ -647,7 +646,7 @@ const participantEmail = $("#emailBox").value.trim();
 /* ============== LOAD DATA & EXPIRED UI ============== */
 async function loadAll(){
   try{
-    const pCSV = parseCSV(await fetchCSV(CSV_URL_PARTICIPANTS)); // Name, Email
+    const pCSV = parseCSV(await fetchCSV(CSV_URL_PARTICIPANTS));
     $("#nameSel").innerHTML =
       `<option value="">— Select your name —</option>` +
       pCSV.map(p => `<option value="${escapeHtml(p.Name)}" data-email="${escapeHtml(p.Email||"")}">${escapeHtml(p.Name)}</option>`).join("");
@@ -661,7 +660,6 @@ async function loadAll(){
     renderSection(hostA, gamesA);
     renderSection(hostB, gamesB);
 
-    // wire events for new nodes
     hostA.querySelectorAll('input[type="radio"]').forEach(r=>{
       r.addEventListener('change', ()=>{ refreshDoubleChoices(); renderSummary(); validateAll(); });
     });
@@ -675,14 +673,11 @@ async function loadAll(){
       b.addEventListener('click', ()=>{ const id=b.dataset.clear; $$(`input[name="${CSS.escape(id)}"]`).forEach(i=>i.checked=false); refreshDoubleChoices(); renderSummary(); validateAll(); });
     });
 
-    // first pass: sync pills & radios
     refreshExpiryUI();
-
     refreshDoubleChoices();
     renderSummary();
     validateAll();
 
-    // keep fresh once per minute
     setInterval(()=>{ refreshExpiryUI(); refreshDoubleChoices(); validateAll(); }, 60_000);
 
   }catch(e){
@@ -691,7 +686,6 @@ async function loadAll(){
     $("#listB").textContent = "Failed to load NCAA.";
   }
 }
-
 loadAll();
 </script>
 </body>
