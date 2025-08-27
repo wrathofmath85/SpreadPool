@@ -297,19 +297,32 @@ function normalizeGames(csvRows, prefix){
   return sortRequiredFirst(out);
 }
 
-/* favorite & labels with spread */
+/* -------- FIXED: favorite & labels with true spread (not ranking) -------- */
 function favoriteInfo(away, home, spreadText){
-  const s = String(spreadText||"");
-  const mNum = s.match(/([+-]?\d+(?:\.\d+)?)/);
-  const num = mNum ? mNum[1] : "";
-  const awayFav = s.toLowerCase().includes(away.toLowerCase());
-  const homeFav = s.toLowerCase().includes(home.toLowerCase());
+  const spreadRaw = String(spreadText||"");
+
+  // 1) Extract the **last** signed/decimal number from the spread cell (the line)
+  const nums = spreadRaw.match(/[+-]?\d+(?:\.\d+)?/g);
+  const line = nums ? nums[nums.length - 1] : ""; // last number in the cell
+
+  // 2) Compare using team names with ranks stripped (e.g., "#3 Ohio State" -> "Ohio State")
+  const stripRank = s => String(s||"").replace(/^#\d+\s*/,'').trim().toLowerCase();
+  const awayKey = stripRank(away);
+  const homeKey = stripRank(home);
+  const spreadKey = spreadRaw.replace(/#\d+\s*/g,'').toLowerCase();
+
+  const awayFav = spreadKey.includes(awayKey);
+  const homeFav = spreadKey.includes(homeKey);
+
+  // 3) Build labels; if favorite is known, show (line) next to that team
+  const fmt = n => (String(n).startsWith('-') ? n : `-${n}`); // favorites shown with negative
   return {
-    awayLabel: awayFav && num ? `${away} (${num.startsWith('-')?num:`-${num}`})` : away,
-    homeLabel: homeFav && num ? `${home} (${num.startsWith('-')?num:`-${num}`})` : home,
-    favoriteLine: s || "—"
+    awayLabel: awayFav && line ? `${away} (${fmt(line)})` : away,
+    homeLabel: homeFav && line ? `${home} (${fmt(line)})` : home,
+    favoriteLine: spreadRaw || "—"
   };
 }
+/* ------------------------------------------------------------------------ */
 
 /* ============== UI BUILDERS ============== */
 function buildRow(g){
@@ -447,7 +460,6 @@ function collectSubmission(){
     return { qid, team, isDouble: (qid===dblQid) };
   }).sort((a,b)=>a.qid.localeCompare(b.qid));
 
-  /* rows exactly match the “per-pick” layout */
   const rows = picks.map(p => ({
     timestamp,
     week: CURRENT_WEEK,
@@ -467,7 +479,7 @@ function collectSubmission(){
     double_qid: dblQid,
     double_team: doubleTeam,
     picks,
-    rows,                         // << new: flat per-pick rows for the Apps Script
+    rows,
     summary: buildSelectionsText()
   };
 }
