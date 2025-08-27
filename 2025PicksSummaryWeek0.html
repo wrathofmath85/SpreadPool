@@ -202,22 +202,26 @@ let standingsSort = 'alpha';      // 'alpha' | 'percent' | 'wins'
 /* ======== LOAD & NORMALIZE LINES (two schemas) ======== */
 function normalizeNFL(rows){
   rows.forEach(r=>{
-    const qid   = String(r["QID"]||r["qid"]||"").trim();
+    const qid    = String(r["QID"]||r["qid"]||"").trim();
     if(!qid) return;
-    const line  = String(r["Line"]||r["line"]||"").trim();
-    const away  = String(r["Away"]||r["away"]||"").trim();
-    const home  = String(r["Home"]||r["home"]||"").trim();
-    const win   = String(r["Winner"]||r["winner"]||"").trim();
-    const dtStr = String(r["DateTime"]||r["datetime"]||"").trim();
+    const away   = String(r["Away Team"]||r["Away"]||"").trim();
+    const home   = String(r["Home Team"]||r["Home"]||"").trim();
+    const date   = String(r["Date"]||"").trim();
+    const time   = String(r["Time"]||"").trim();
+    const spread = String(r["Spread"]||r["Line"]||"").trim();
 
-    qidToLine.set(qid, line || `${away} @ ${home}`);
+    // Display line; store spread separately for favorite detection
+    const line = `${away} @ ${home} — ${spread}`.trim();
+
+    qidToLine.set(qid, line);
     qidToAway.set(qid, away);
     qidToHome.set(qid, home);
-    qidToWinner.set(qid, win);
-    qidToDate.set(qid, toDate(dtStr));
-    qidToSpread.set(qid, ""); // line already contains it
+    qidToWinner.set(qid, ""); // no Winner column in this schema
+    qidToDate.set(qid, makeDateFromET(date, time)); // ET → JS Date
+    qidToSpread.set(qid, spread);
   });
 }
+
 
 function normalizeNCAA(rows){
   rows.forEach(r=>{
