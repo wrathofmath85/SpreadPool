@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" /> <title>Spread Pool — Picks</title> <link rel="preconnect" href="https://nam04.safelinks.protection.outlook.com/?url=https%3A%2F%2Fcdn.jsdelivr.net%2F&data=05%7C02%7Cdan.fox%40brighthousefinancial.com%7Ce8a61f7aaddd4ab94a8108dddebff5f6%7C2658e698ac384347a56f3f96a6bfa8ff%7C0%7C0%7C638911638262694978%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=Pgt3MvcLMskRSOfNdZQlPwRp%2FgggCk%2FiPgf49Cu9flA%3D&reserved=0" /> <script src="https://nam04.safelinks.protection.outlook.com/?url=https%3A%2F%2Fcdn.jsdelivr.net%2Fnpm%2Fpapaparse%405.4.1%2Fpapaparse.min.js&data=05%7C02%7Cdan.fox%40brighthousefinancial.com%7Ce8a61f7aaddd4ab94a8108dddebff5f6%7C2658e698ac384347a56f3f96a6bfa8ff%7C0%7C0%7C638911638262721058%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=Ae2qd5B6Wuf7%2BJyDnzfPYo7TuxH%2FAqucvy84aLewuEE%3D&reserved=0"></script>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Spread Pool — Picks</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net/">
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <style>
   :root{
     --bg:#ffffff; --text:#111; --muted:#666; --rule:#ddd; --accent:#0b61ff;
@@ -14,7 +17,6 @@
   h1{margin:0 0 12px}
   #err{display:none;color:#b91c1c;background:#fee2e2;border:1px solid #fecaca;padding:8px 12px;border-radius:8px;margin:8px 0}
 
-  /* Games panel */
   .games{border:1px solid var(--rule);border-radius:10px;padding:12px;margin:8px 0 20px}
   .game{display:grid;grid-template-columns: 1fr auto auto auto;gap:8px;align-items:center;border-bottom:1px solid var(--rule);padding:8px 0}
   .game:last-child{border-bottom:0}
@@ -27,11 +29,9 @@
   .gbtn.tie.active{background:#f3f4f6}
   .note{color:var(--muted);font-size:12px;margin-top:6px}
 
-  /* People grid */
   #list{display:grid;grid-template-columns:repeat(2, minmax(0,1fr));gap:16px}
   @media (max-width: 900px){ #list{grid-template-columns:1fr} }
 
-  /* People cards & tables */
   .person{border:1px solid var(--rule);border-radius:10px;padding:12px}
   .header{display:flex;align-items:center;gap:10px;margin-bottom:8px}
   .pname{font-weight:800;font-size:18px;margin:0}
@@ -54,7 +54,6 @@
   tfoot td{font-weight:700}
   .mono{font-variant-numeric: tabular-nums}
 
-  /* Standings */
   .standings{margin-top:28px}
   .standings h2{margin:8px 0 10px}
   .toolbar{display:flex;gap:8px;margin:8px 0 12px}
@@ -74,14 +73,11 @@
 
   <div id="err"></div>
 
-  <!-- GAME OUTCOME CONTROLS -->
   <div id="gamesPanel" class="games"></div>
   <div class="note">Set the official result per game. If the <strong>Winner</strong> column is filled in the Lines sheet, the game is locked for everyone. Totals & standings update instantly.</div>
 
-  <!-- PEOPLE (2-column) -->
   <div id="list"></div>
 
-  <!-- FULL STANDINGS + SORT FILTERS -->
   <div class="standings" id="standingsWrap" hidden>
     <h2>Standings</h2>
     <div class="toolbar">
@@ -95,22 +91,32 @@
 
 <script>
 /* ================== CONFIG ================== */
-/* Publish each tab as CSV (File → Share → Publish to web → select tab → CSV) and paste URLs here */
-const CSV_URL_LINES        = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTUQWcddGBeI13Qox_fKf1g9dejkd-VyZqimSwHaXPH4nO4AGE9oJo9-FzNacU4X1-xNvFvm0HOFHre/pub?gid=1347498364&single=true&output=csv";        // QID,Line,Away,Home,Winner,DateTime
-const CSV_URL_SUBS         = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRys9xayYsuEqgGB09v1nOrwdD0U5c1Hb1ksLqQxTSBzLi3AKGeg9yPt1-eY1fry_0H-KcZLCQ1h8H6/pub?gid=0&single=true&output=csv";  // Timestamp,Week,Name,Email,QID,Choice,IsDouble
-const CSV_URL_PARTICIPANTS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTfQ7a2weK5Got7LTe3yVxqhcPR6pa-nPg73PdOMk8rrHwqlr3UeTcPprlgVbFjhFIVpifmMKnb_Tss/pub?gid=0&single=true&output=csv"; // Name 
-const DOUBLE_COUNTS_AS = 2; // set to 1 if Double should not count extra
+/* Publish each tab as CSV and paste URLs here */
+const CSV_URL_NCAA_LINES  = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT1sgv7_gnDt5DoVxF3jXAU6KTZB8U7azy8AMDdODEhUnnQf1gLK7hgSTktI-X4tF5Zo7ELzG2PfEDE/pub?gid=0&single=true&output=csv";              // QID, Away Team, Home Team, Date, Time, TV, Location, Spread, Required
+const CSV_URL_NFL_LINES   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT1sgv7_gnDt5DoVxF3jXAU6KTZB8U7azy8AMDdODEhUnnQf1gLK7hgSTktI-X4tF5Zo7ELzG2PfEDE/pub?gid=2109553148&single=true&output=csv";          // QID, Away Team, Home Team, Date, Time, TV, Location, Spread, Required
+const CSV_URL_SUBS        = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRys9xayYsuEqgGB09v1nOrwdD0U5c1Hb1ksLqQxTSBzLi3AKGeg9yPt1-eY1fry_0H-KcZLCQ1h8H6/pub?gid=1991283502&single=true&output=csv";            // Timestamp,Week,Name,Email,QID,Choice,IsDouble
+const CSV_URL_PARTICIPANTS= "https://docs.google.com/spreadsheets/d/e/2PACX-1vRj5ieGlGWurIlGuongV3vJhWWAwCYsEFVhEEtjwOG7RiFwTRZkM_JXtjb8QtwsdzhaXPMDRPyU7qZC/pub?gid=0&single=true&output=csv";                     // Name
+const DOUBLE_COUNTS_AS = 2;
 
-/* ================ HELPERS =================== */ const by = f => (a,b)=> f(a)<f(b)?-1:f(a)>f(b)?1:0; function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+/* ================ HELPERS =================== */
+const by = f => (a,b)=> f(a)<f(b)?-1:f(a)>f(b)?1:0;
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function qidOrder(q){ if(!q) return 9999; const s=q[0], n=parseInt(q.slice(1),10); return (s==='A'?0:1)*1000 + (isFinite(n)?n:999); }
 
 function showErr(msg){
   const box = document.getElementById('err');
   if (!box) return;
-  if (msg) { box.style.display='block'; box.innerHTML = escapeHtml(msg) + '<div style="margin-top:6px;font-size:12px;opacity:.8">Lines: '+escapeHtml(CSV_URL_LINES)+'<br>Subs: '+escapeHtml(CSV_URL_SUBS)+'<br>Participants: '+escapeHtml(CSV_URL_PARTICIPANTS)+'</div>'; }
-  else { box.style.display='none'; box.innerHTML=''; } }
+  if (msg) {
+    box.style.display='block';
+    box.innerHTML = escapeHtml(msg) +
+      '<div style="margin-top:6px;font-size:12px;opacity:.8">NFL Lines: '+escapeHtml(CSV_URL_NFL_LINES)+
+      '<br>NCAA Lines: '+escapeHtml(CSV_URL_NCAA_LINES)+
+      '<br>Subs: '+escapeHtml(CSV_URL_SUBS)+
+      '<br>Participants: '+escapeHtml(CSV_URL_PARTICIPANTS)+'</div>';
+  } else { box.style.display='none'; box.innerHTML=''; }
+}
 
-// Cache-busted CSV fetch with guard against HTML 
+// Cache-busted CSV fetch with HTML guard
 function fetchCSV(url){
   const bust = (url.includes('?') ? '&' : '?') + 'cb=' + Date.now();
   return new Promise((resolve,reject)=>{
@@ -130,53 +136,112 @@ function fetchCSV(url){
   });
 }
 
-// Normalize team for matching
+// Normalize team strings
 function normTeam(s){
   s = String(s||"").trim();
   if(!s) return "";
-  s = s.replace(/\s*\([^)]*\)\s*$/,"").trim(); // drop trailing spread
-  s = s.replace(/^#\d+\s+/,"").trim();         // drop rank
+  s = s.replace(/\s*\([^)]*\)\s*$/,"").trim(); // drop trailing (...) e.g., spreads
+  s = s.replace(/^#\d+\s+/,"").trim();         // drop leading ranks
   return s.toLowerCase();
 }
-function fmtPct(n){ return (isNaN(n) ? "" : (n*100).toFixed(1) + "%"); } function toDate(val){
-  if(!val) return null;
-  const d = new Date(val);
-  return isNaN(+d) ? null : d;
-}
+function fmtPct(n){ return (isNaN(n) ? "" : (n*100).toFixed(1) + "%"); }
+function toDate(val){ if(!val) return null; const d = new Date(val); return isNaN(+d) ? null : d; }
 function escapeRegex(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
 
+/* ---- Parse ET date & time (like "Aug 30, 2025" + "12:00 PM") into a JS Date ---- */
+function getETOffsetMinutes(y,mo,d){
+  const probeUTC = Date.UTC(y,mo-1,d,12,0);
+  const parts = new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',timeZoneName:'shortOffset'}).formatToParts(new Date(probeUTC));
+  const z = (parts.find(p=>p.type==='timeZoneName')||{}).value || 'GMT-05';
+  const m = z.match(/GMT([+-]\d{1,2})(?::(\d{2}))?/); if(!m) return -300;
+  const hr = parseInt(m[1],10), mm = m[2]?parseInt(m[2],10):0;
+  return hr*60 + (hr<0?-mm:mm);
+}
+function parseETDate(dateStr){ // "Aug 30, 2025" or "2025-08-30" or "8/30/2025"
+  const s = String(dateStr||"").trim();
+  let m = s.replace(/\./g,'').match(/^([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})$/);
+  if(m){
+    const L={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,sept:9,oct:10,nov:11,dec:12,august:8,september:9,october:10,november:11,december:12};
+    const mo=L[m[1].toLowerCase()]; if(mo) return {y:+m[3], mo, d:+m[2]};
+  }
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); if(m) return {y:+m[3], mo:+m[1], d:+m[2]};
+  m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);        if(m) return {y:+m[1], mo:+m[2], d:+m[3]};
+  return null;
+}
+function parseETTime(timeStr){ // "12:00 PM"
+  const s = String(timeStr||"").trim();
+  const m = s.match(/^(\d{1,2}):(\d{2})\s*([AP]M)$/i);
+  if(!m) return {h:12,mi:0};
+  let h=+m[1], mi=+m[2]; const ampm=m[3].toUpperCase();
+  if(ampm==="PM"&&h!==12) h+=12; if(ampm==="AM"&&h===12) h=0;
+  return {h,mi};
+}
+function makeDateFromET(dateStr,timeStr){
+  const d = parseETDate(dateStr);
+  if(!d) return null;
+  const t = parseETTime(timeStr);
+  const offMin = getETOffsetMinutes(d.y,d.mo,d.d);
+  const utcMs = Date.UTC(d.y,d.mo-1,d.d,t.h,t.mi) - offMin*60*1000;
+  const dt = new Date(utcMs);
+  return isNaN(+dt) ? null : dt;
+}
+
 /* ============== STATE ============== */
-let qidToLine   = new Map();      // QID -> Line text
+let qidToLine   = new Map();      // QID -> display line
 let qidToAway   = new Map();      // QID -> Away team (raw)
 let qidToHome   = new Map();      // QID -> Home team (raw)
 let qidToWinner = new Map();      // QID -> Winner raw ("Tie" or team) or ""
-let qidToDate   = new Map();      // QID -> Date object (from DateTime)
+let qidToDate   = new Map();      // QID -> Date object
+let qidToSpread = new Map();      // QID -> spread text (may be empty)
 let results     = new Map();      // QID -> 'away' | 'home' | 'tie'
 let people      = [];             // [{name, picks:[{qid, choice, isDouble}], isDefaults?:true}]
 let participantNames = [];        // ["Name A", "Name B", ...]
 let defaultTemplate = null;       // { name:"Default Picks", picks:[...] }
 let standingsSort = 'alpha';      // 'alpha' | 'percent' | 'wins'
 
-/* ============== LOAD & PREP ============== */ function normalizeLines(rows){
+/* ======== LOAD & NORMALIZE LINES (two schemas) ======== */
+function normalizeNFL(rows){
   rows.forEach(r=>{
     const qid   = String(r["QID"]||r["qid"]||"").trim();
+    if(!qid) return;
     const line  = String(r["Line"]||r["line"]||"").trim();
     const away  = String(r["Away"]||r["away"]||"").trim();
     const home  = String(r["Home"]||r["home"]||"").trim();
     const win   = String(r["Winner"]||r["winner"]||"").trim();
     const dtStr = String(r["DateTime"]||r["datetime"]||"").trim();
-    if(qid){
-      qidToLine.set(qid, line || qid);
-      qidToAway.set(qid, away);
-      qidToHome.set(qid, home);
-      qidToWinner.set(qid, win);
-      qidToDate.set(qid, toDate(dtStr));
-    }
+
+    qidToLine.set(qid, line || `${away} @ ${home}`);
+    qidToAway.set(qid, away);
+    qidToHome.set(qid, home);
+    qidToWinner.set(qid, win);
+    qidToDate.set(qid, toDate(dtStr));
+    qidToSpread.set(qid, ""); // line already contains it
   });
 }
 
+function normalizeNCAA(rows){
+  rows.forEach(r=>{
+    const qid   = String(r["QID"]||r["qid"]||"").trim();
+    if(!qid) return;
+    const away  = String(r["Away Team"]||r["Away"]||"").trim();
+    const home  = String(r["Home Team"]||r["Home"]||"").trim();
+    const date  = String(r["Date"]||"").trim();
+    const time  = String(r["Time"]||"").trim();
+    const spread= String(r["Spread"]||r["Line"]||"").trim();
+    // Build a display line; keep spread separate too
+    const line = `${away} @ ${home} — ${spread}`.trim();
+
+    qidToLine.set(qid, line);
+    qidToAway.set(qid, away);
+    qidToHome.set(qid, home);
+    qidToWinner.set(qid, ""); // no Winner column here
+    qidToDate.set(qid, makeDateFromET(date, time));
+    qidToSpread.set(qid, spread);
+  });
+}
+
+/* ============== SUBMISSIONS & PARTICIPANTS ============== */
 function normalizeSubs(rows){
-  // keep latest submission per person
   const latest = new Map(); // name => ts
   rows.forEach(r=>{
     const name = String(r["Name"]||r["name"]||"").trim();
@@ -213,8 +278,10 @@ function normalizeParticipants(rows){
     const nm = String(r["Name"]||r["name"]||"").trim();
     if(nm) set.add(nm);
   });
-  return Array.from(set).sort((a,b)=> a.localeCompare(b, undefined, {sensitivity:'base'})); }
+  return Array.from(set).sort((a,b)=> a.localeCompare(b, undefined, {sensitivity:'base'}));
+}
 
+/* Winner column → outcome (locks games globally) */
 function outcomeFromWinner(qid){
   const w = (qidToWinner.get(qid) || "").trim();
   if(!w) return undefined;
@@ -222,29 +289,43 @@ function outcomeFromWinner(qid){
   const wNorm = normTeam(w);
   if (wNorm && wNorm === normTeam(qidToAway.get(qid)||"")) return 'away';
   if (wNorm && wNorm === normTeam(qidToHome.get(qid)||"")) return 'home';
-  return undefined; // unrecognized
+  return undefined;
 }
 
-/* ---------- Favorite detection from Line text ---------- */ function detectFavorite(qid){
-  const line = qidToLine.get(qid) || "";
-  const away = qidToAway.get(qid) || "";
-  const home = qidToHome.get(qid) || "";
+/* ----- Favorite detection (handles NFL & NCAA formats) ----- */
+function detectFavorite(qid){
+  const line   = qidToLine.get(qid)   || "";
+  const spread = qidToSpread.get(qid) || "";
+  const away   = qidToAway.get(qid)   || "";
+  const home   = qidToHome.get(qid)   || "";
   if(!away || !home) return null;
 
-  const awayRe = new RegExp("\\b"+escapeRegex(away)+"\\s*\\(([-+]?\\d+(?:\\.\\d+)?)\\)", "i");
-  const homeRe = new RegExp("\\b"+escapeRegex(home)+"\\s*\\(([-+]?\\d+(?:\\.\\d+)?)\\)", "i");
+  const stripRank = s => String(s||"").replace(/^#\d+\s*/,'').trim();
+  const awayKey = stripRank(away);
+  const homeKey = stripRank(home);
 
-  const mHome = homeRe.exec(line);
-  if(mHome && parseFloat(mHome[1]) < 0) return home;
+  // Try NFL-style "( -3.5 )" after the team
+  const rxParen = (team)=> new RegExp("\\b"+escapeRegex(team)+"\\s*\\(([-+]?\\d+(?:\\.\\d+)?)\\)","i");
+  const mHomeP = rxParen(homeKey).exec(line);
+  const mAwayP = rxParen(awayKey).exec(line);
+  if(mHomeP && parseFloat(mHomeP[1])<0) return home;
+  if(mAwayP && parseFloat(mAwayP[1])<0) return away;
 
-  const mAway = awayRe.exec(line);
-  if(mAway && parseFloat(mAway[1]) < 0) return away;
+  // Try NCAA-style "Team -3.5" (not in parens)
+  const rxInline = (team)=> new RegExp("\\b"+escapeRegex(team)+"\\b[^\\d-+]*([-+]\\d+(?:\\.\\d+)?)","i");
+  const pool = `${line} ${spread}`;
+  const mHomeI = rxInline(homeKey).exec(pool);
+  const mAwayI = rxInline(awayKey).exec(pool);
+  if(mHomeI && parseFloat(mHomeI[1])<0) return home;
+  if(mAwayI && parseFloat(mAwayI[1])<0) return away;
 
-  if(/\(-\d/.test(line)) return home; // fallback guess
+  // Fallback: if any negative number appears, assume the home
+  if(/\(-\d/.test(line) || /-\d/.test(spread)) return home;
   return null;
 }
 
-/* ---------- Build Default Picks set ---------- */ function computeDefaultPicksSet(){
+/* ---------- Build Default Picks set ---------- */
+function computeDefaultPicksSet(){
   const picks = [];
   const seen = new Set();
   function addFav(qid){
@@ -257,13 +338,13 @@ function outcomeFromWinner(qid){
   }
   // A1 & B1
   addFav('A1'); addFav('B1');
-  // First 2 A games on Sunday (day 0)
+  // First 2 A games on Sunday
   const aSunday = Array.from(qidToLine.keys())
     .filter(q=> q.startsWith('A') && qidToDate.get(q) && qidToDate.get(q).getDay()===0)
     .sort((a,b)=> (qidToDate.get(a)-qidToDate.get(b)) || qidOrder(a)-qidOrder(b))
     .slice(0,2);
   aSunday.forEach(addFav);
-  // First 3 B games on Saturday (day 6)
+  // First 3 B games on Saturday
   const bSaturday = Array.from(qidToLine.keys())
     .filter(q=> q.startsWith('B') && qidToDate.get(q) && qidToDate.get(q).getDay()===6)
     .sort((a,b)=> (qidToDate.get(a)-qidToDate.get(b)) || qidOrder(a)-qidOrder(b))
@@ -274,30 +355,38 @@ function outcomeFromWinner(qid){
   return picks;
 }
 
+/* =================== LOAD ALL =================== */
 async function loadAll(){
   try{
     showErr('');
-    const [lines, subs, parts] = await Promise.all([
-      fetchCSV(CSV_URL_LINES), fetchCSV(CSV_URL_SUBS), fetchCSV(CSV_URL_PARTICIPANTS)
+    const [nflLines, ncaaLines, subs, parts] = await Promise.all([
+      fetchCSV(CSV_URL_NFL_LINES),
+      fetchCSV(CSV_URL_NCAA_LINES),
+      fetchCSV(CSV_URL_SUBS),
+      fetchCSV(CSV_URL_PARTICIPANTS)
     ]);
 
-    qidToLine.clear(); qidToAway.clear(); qidToHome.clear(); qidToWinner.clear(); qidToDate.clear(); results.clear();
-    normalizeLines(lines);
+    // reset maps
+    qidToLine.clear(); qidToAway.clear(); qidToHome.clear(); qidToWinner.clear(); qidToDate.clear(); qidToSpread.clear(); results.clear();
 
-    // prefill locked results from Winner column
+    // merge both line files
+    normalizeNFL(nflLines);
+    normalizeNCAA(ncaaLines);
+
+    // prefill locked results from Winner column (NFL)
     Array.from(qidToLine.keys()).forEach(qid=>{
       const oc = outcomeFromWinner(qid);
       if(oc) results.set(qid, oc);
     });
 
-    // normalize data sets
-    people = normalizeSubs(subs);                 // actual pick submitters
-    participantNames = normalizeParticipants(parts); // full roster
+    // normalize datasets
+    people = normalizeSubs(subs);
+    participantNames = normalizeParticipants(parts);
 
-    // Build the default template (rendered as its own first card)
+    // Default template
     defaultTemplate = { name:"Default Picks", picks: computeDefaultPicksSet(), isDefaults:true };
 
-    // For any participant with no picks, assign defaults to them (and label)
+    // Add defaults for anyone without a submission
     const have = new Set(people.map(p=>p.name.toLowerCase()));
     participantNames.forEach(nm=>{
       if(!have.has(nm.toLowerCase())){
@@ -305,11 +394,10 @@ async function loadAll(){
       }
     });
 
-    // Sort participants alphabetically (the default template card renders separately first)
     people.sort((a,b)=> a.name.localeCompare(b.name, undefined, {sensitivity:'base'}));
 
     renderGames();
-    renderPeople(); // also renders standings with current sort
+    renderPeople();
     hookSortButtons();
   }catch(e){
     console.error(e);
@@ -317,17 +405,17 @@ async function loadAll(){
   }
 }
 
-/* ========= COUNT PICKS PER GAME (for top panel & filter) ========= */ function getPickCounts(qid){
+/* ========= COUNT PICKS PER GAME ========= */
+function getPickCounts(qid){
   const awayNorm = normTeam(qidToAway.get(qid) || "");
   const homeNorm = normTeam(qidToHome.get(qid) || "");
   let away = 0, home = 0;
 
-  // Count across actual people only (not the default template card)
   people.forEach(p=>{
     p.picks.forEach(pk=>{
       if(pk.qid !== qid) return;
       const c = normTeam(pk.choice);
-      const wt = pk.isDouble ? DOUBLE_COUNTS_AS : 1; // set to 1 for unweighted counts
+      const wt = pk.isDouble ? DOUBLE_COUNTS_AS : 1;
       if(c && c === awayNorm) away += wt;
       else if(c && c === homeNorm) home += wt;
     });
@@ -336,7 +424,8 @@ async function loadAll(){
   return { away, home };
 }
 
-/* ============== RENDER: GAMES (controls) ============== */ function renderGames(){
+/* ============== RENDER GAMES ============== */
+function renderGames(){
   const panel = document.getElementById('gamesPanel');
   panel.innerHTML = '';
 
@@ -397,11 +486,12 @@ async function loadAll(){
     row.querySelectorAll('.gbtn').forEach(b=> b.classList.remove('active'));
     if(results.has(qid)) row.querySelector(`.gbtn.${results.get(qid)}`)?.classList.add('active');
 
-    renderPeople(); // re-score (standings re-render with preserved sort)
+    renderPeople(); // re-score
   };
 }
 
-/* ============== SCORING ============== */ function scorePick(qid, choice, isDouble){
+/* ============== SCORING ============== */
+function scorePick(qid, choice, isDouble){
   const outcome = results.get(qid);
   if(!outcome) return { w:0, l:0, t:0 };
 
@@ -422,13 +512,13 @@ async function loadAll(){
   return { w,l,t };
 }
 
-/* ============== RENDER: PEOPLE TABLES + FULL STANDINGS ============== */ function renderPeople(){
+/* ============== RENDER PEOPLE + STANDINGS ============== */
+function renderPeople(){
   const list = document.getElementById('list');
   const stWrap = document.getElementById('standingsWrap');
   list.innerHTML = '';
   let summaries = [];
 
-  /* --- First card: Default Picks template --- */
   if (defaultTemplate && defaultTemplate.picks && defaultTemplate.picks.length){
     const rows = defaultTemplate.picks.map((pk, idx)=>{
       const s = scorePick(pk.qid, pk.choice, pk.isDouble);
@@ -444,7 +534,6 @@ async function loadAll(){
       `;
     }).join('');
 
-    // compute totals for display
     let tw=0, tl=0, tt=0;
     defaultTemplate.picks.forEach(pk=>{
       const s = scorePick(pk.qid, pk.choice, pk.isDouble);
@@ -487,7 +576,6 @@ async function loadAll(){
     list.appendChild(card);
   }
 
-  /* --- Participant cards --- */
   people.forEach(p=>{
     let rowsHtml = '';
     let tw=0, tl=0, tt=0;
@@ -549,10 +637,13 @@ async function loadAll(){
     list.appendChild(card);
   });
 
-  renderStandings(summaries); // honors current standingsSort
-  stWrap.hidden = summaries.length === 0; }
+  renderStandings(summaries);
+  document.getElementById('standingsWrap').hidden = summaries.length === 0;
+}
 
-/* ============== STANDINGS (with sorting) ============== */ function renderStandings(summaries){
+/* ============== STANDINGS (sorting) ============== */
+let standingsSort = 'alpha';
+function renderStandings(summaries){
   const st = document.getElementById('standings');
 
   const valid = summaries.filter(s => s.denom > 0);
@@ -569,12 +660,11 @@ async function loadAll(){
       const ap = isNaN(a.pct)? -1 : a.pct, bp = isNaN(b.pct)? -1 : b.pct;
       if(bp !== ap) return bp - ap;
       return a.name.localeCompare(b.name);
-    } else { // 'alpha'
+    } else { // alpha
       return a.name.localeCompare(b.name);
     }
   });
 
-  // toolbar active state
   document.getElementById('sort-alpha').classList.toggle('active', standingsSort==='alpha');
   document.getElementById('sort-percent').classList.toggle('active', standingsSort==='percent');
   document.getElementById('sort-wins').classList.toggle('active', standingsSort==='wins');
@@ -618,7 +708,6 @@ function hookSortButtons(){
 
 /* ============== GO ============== */
 loadAll();
-// Optional: auto-refresh every 60s
 // setInterval(loadAll, 60000);
 </script>
 </body>
