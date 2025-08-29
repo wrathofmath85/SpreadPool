@@ -44,6 +44,7 @@
     box-shadow:0 0 8px rgba(57,255,20,.6), inset 0 0 2px rgba(0,0,0,.2);
     font-size:12px;
   }
+
   table{width:100%;border-collapse:collapse}
   th,td{padding:7px 8px;vertical-align:top}
   th{text-align:left;border-bottom:2px solid #000}
@@ -56,6 +57,11 @@
   .double::after{content:" ×2";color:var(--chip);font-weight:700}
   tfoot td{font-weight:700}
   .mono{font-variant-numeric: tabular-nums}
+
+  /* Compact picks tables (change #3) */
+  .person table{font-size:13px}
+  .person th{font-size:12px}
+  .col-line,.pickCell{white-space:nowrap}   /* keep Line & Pick on one line */
 
   /* Standings */
   .standings{margin-top:28px}
@@ -104,12 +110,19 @@ const CSV_URL_SUBS         = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR
 const CSV_URL_PARTICIPANTS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRj5ieGlGWurIlGuongV3vJhWWAwCYsEFVhEEtjwOG7RiFwTRZkM_JXtjb8QtwsdzhaXPMDRPyU7qZC/pub?gid=0&single=true&output=csv";
 
 const DOUBLE_COUNTS_AS = 2;
-const WEEK_NUMBER = 0;   // <-- Only use submission rows where Week equals this
+const WEEK_NUMBER = 0;   // Only use submission rows where Week == WEEK_NUMBER
 
 /* ================ HELPERS =================== */
 const by = f => (a,b)=> f(a)<f(b)?-1:f(a)>f(b)?1:0;
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function qidOrder(q){ if(!q) return 9999; const s=q[0], n=parseInt(q.slice(1),10); return (s==='A'?0:1)*1000 + (isFinite(n)?n:999); }
+function lastNameKey(name){
+  const parts = String(name||"").trim().split(/\s+/);
+  const drop = /^(jr\.?|sr\.?|ii|iii|iv)$/i;
+  const core = parts.filter(p=>!drop.test(p)).filter(Boolean);
+  const last = core.length ? core[core.length-1] : (parts[parts.length-1]||"");
+  return (last||"").toLowerCase() + "|" + String(name||"").toLowerCase();
+}
 
 function showErr(msg){
   const box = document.getElementById('err');
@@ -156,7 +169,7 @@ function fmtPct(n){ return (isNaN(n) ? "" : (n*100).toFixed(1) + "%"); }
 function toDate(val){ if(!val) return null; const d = new Date(val); return isNaN(+d) ? null : d; }
 function escapeRegex(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
 
-/* ---- Parse ET date & time (like "Aug 30, 2025" + "12:00 PM") into a JS Date ---- */
+/* ---- Parse ET date & time ---- */
 function getETOffsetMinutes(y,mo,d){
   const probeUTC = Date.UTC(y,mo-1,d,12,0);
   const parts = new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',timeZoneName:'shortOffset'}).formatToParts(new Date(probeUTC));
@@ -205,7 +218,7 @@ let results     = new Map();      // QID -> 'away' | 'home' | 'tie'
 let people      = [];             // [{name, picks:[{qid, choice, isDouble}], isDefaults?:true}]
 let participantNames = [];        // ["Name A", "Name B", ...]
 let defaultTemplate = null;       // { name:"Default Picks", picks:[...] }
-let standingsSort = 'alpha';      // 'alpha' | 'percent' | 'wins'
+let standingsSort = 'alpha';      // for the standings table
 
 /* ----- Favorite parsing from Spread text ----- */
 function parseFavorite(spread, away, home){
@@ -216,7 +229,7 @@ function parseFavorite(spread, away, home){
   const aKey = stripRank(away);
   const hKey = stripRank(home);
 
-  // Try "Team -3.5" style
+  // Look for "Team -3.5"
   const rx = team => new RegExp("\\b"+escapeRegex(team)+"\\b\\s*([-+]\\d+(?:\\.\\d+)?)","i");
   const mA = rx(aKey).exec(s);
   const mH = rx(hKey).exec(s);
@@ -224,14 +237,14 @@ function parseFavorite(spread, away, home){
   if(mA){ const n=parseFloat(mA[1]); return n<0 ? {side:'away', num:Math.abs(n)} : {side:'home', num:null}; }
   if(mH){ const n=parseFloat(mH[1]); return n<0 ? {side:'home', num:Math.abs(n)} : {side:'away', num:null}; }
 
-  // Fallback: any leading negative number without a team? assume home favored
+  // Fallback: any negative number? assume home favored
   const mNum = s.match(/(-\d+(?:\.\d+)?)/);
   if(mNum){ return {side:'home', num:Math.abs(parseFloat(mNum[1]))}; }
 
   return {side:null, num:null};
 }
 
-/* ----- Build display line: Away[-x] @ Home  OR  Away @ Home[-x] ----- */
+/* ----- Build display line with ONLY favorite showing -# ----- */
 function displayLine(qid){
   const away = qidToAway.get(qid)||"Away";
   const home = qidToHome.get(qid)||"Home";
@@ -301,7 +314,8 @@ function normalizeSubs(rows){
 
   const arr = Array.from(byName.values());
   arr.forEach(p => p.picks.sort((a,b)=> qidOrder(a.qid)-qidOrder(b.qid)));
-  arr.sort((a,b)=> a.name.localeCompare(b.name, undefined, {sensitivity:'base'}));
+  // (change #1) sort by last name
+  arr.sort((a,b)=> lastNameKey(a.name).localeCompare(lastNameKey(b.name)));
   return arr;
 }
 
@@ -311,7 +325,9 @@ function normalizeParticipants(rows){
     const nm = String(r["Name"]||r["name"]||"").trim();
     if(nm) set.add(nm);
   });
-  return Array.from(set).sort((a,b)=> a.localeCompare(b, undefined, {sensitivity:'base'}));
+  const all = Array.from(set);
+  all.sort((a,b)=> lastNameKey(a).localeCompare(lastNameKey(b)));  // (change #1)
+  return all;
 }
 
 /* Winner column → outcome (locks games globally) */
@@ -382,7 +398,8 @@ async function loadAll(){
       }
     });
 
-    people.sort((a,b)=> a.name.localeCompare(b.name, undefined, {sensitivity:'base'}));
+    // Re-sort people by last name after filling in missing folks (change #1)
+    people.sort((a,b)=> lastNameKey(a.name).localeCompare(lastNameKey(b.name)));
 
     renderGames();
     renderPeople();
@@ -394,12 +411,14 @@ async function loadAll(){
 }
 
 /* ========= COUNT PICKS PER GAME ========= */
+/* (change #2) count ONLY real submissions (exclude auto-default people) */
 function getPickCounts(qid){
   const awayNorm = normTeam(qidToAway.get(qid) || "");
   const homeNorm = normTeam(qidToHome.get(qid) || "");
   let away = 0, home = 0;
 
   people.forEach(p=>{
+    if (p.isDefaults) return;          // <-- exclude auto-default entries
     p.picks.forEach(pk=>{
       if(pk.qid !== qid) return;
       const c = normTeam(pk.choice);
@@ -422,7 +441,7 @@ function renderGames(){
   const qidsAll = Array.from(qidToAway.keys()).sort((a,b)=> qidOrder(a)-qidOrder(b));
   const qids = qidsAll.filter(q=>{
     const c = getPickCounts(q);
-    return defaultQIDs.has(q) || (c.away + c.home) > 0;
+    return defaultQIDs.has(q) || (c.away + c.home) > 0;   // defaults OR at least one real pick
   });
 
   if(qids.length === 0){
@@ -513,7 +532,6 @@ function renderPeople(){
   if (defaultTemplate && defaultTemplate.picks && defaultTemplate.picks.length){
     const rows = defaultTemplate.picks.map((pk, idx)=>{
       const s = scorePick(pk.qid, pk.choice, pk.isDouble);
-      // show spread on the PICK if (and only if) the pick is the favorite
       const fav = qidToFav.get(pk.qid) || {side:null,num:null};
       let pickLabel = pk.choice;
       if((fav.side==='away' && normTeam(pk.choice)===normTeam(qidToAway.get(pk.qid))) ||
@@ -524,7 +542,7 @@ function renderPeople(){
         <tr>
           <td class="col-idx">${idx+1}</td>
           <td class="col-line">${escapeHtml(displayLine(pk.qid))}</td>
-          <td>${escapeHtml(pickLabel)}${pk.isDouble?'<span class="double"></span>':''}</td>
+          <td class="pickCell">${escapeHtml(pickLabel)}${pk.isDouble?'<span class="double"></span>':''}</td>
           <td>${s.w? s.w : ''}</td>
           <td>${s.l? s.l : ''}</td>
           <td>${s.t? s.t : ''}</td>
@@ -575,7 +593,7 @@ function renderPeople(){
     list.appendChild(card);
   }
 
-  /* --- Participant cards --- */
+  /* --- Participant cards (already last-name sorted) --- */
   people.forEach(p=>{
     let rowsHtml = '';
     let tw=0, tl=0, tt=0;
@@ -586,7 +604,6 @@ function renderPeople(){
 
       const fav = qidToFav.get(pk.qid) || {side:null,num:null};
       let pickLabel = pk.choice;
-      // include spread only if pick is the favorite
       if((fav.side==='away' && normTeam(pk.choice)===normTeam(qidToAway.get(pk.qid))) ||
          (fav.side==='home' && normTeam(pk.choice)===normTeam(qidToHome.get(pk.qid)))){
         if(fav.num!=null) pickLabel += ` (-${fav.num})`;
@@ -597,7 +614,7 @@ function renderPeople(){
         <tr>
           <td class="col-idx">${idx+1}</td>
           <td class="col-line">${escapeHtml(displayLine(pk.qid))}</td>
-          <td class="${cls}">${escapeHtml(pickLabel)}${pk.isDouble?'<span class="double"></span>':''}</td>
+          <td class="pickCell ${cls}">${escapeHtml(pickLabel)}${pk.isDouble?'<span class="double"></span>':''}</td>
           <td>${s.w? s.w : ''}</td>
           <td>${s.l? s.l : ''}</td>
           <td>${s.t? s.t : ''}</td>
@@ -612,111 +629,4 @@ function renderPeople(){
 
     const table = `
       <div class="header">
-        <div class="pname">${escapeHtml(p.name)}</div>
-        ${p.isDefaults ? '<span class="badge-defaults" title="No submission — defaults applied">Defaults</span>' : ''}
-      </div>
-      <table>
-        <thead>
-          <tr>
-            <th class="col-idx">#</th>
-            <th>Line</th>
-            <th>Pick</th>
-            <th>Win</th>
-            <th>Loss</th>
-            <th>Tie</th>
-          </tr>
-        </thead>
-        <tbody>${rowsHtml}</tbody>
-        <tfoot>
-          <tr>
-            <td></td>
-            <td>Total</td>
-            <td class="mono">${fmtPct(pct)}</td>
-            <td class="mono">${tw}</td>
-            <td class="mono">${tl}</td>
-            <td class="mono">${tt}</td>
-          </tr>
-        </tfoot>
-      </table>
-    `;
-
-    const card = document.createElement('div');
-    card.className = 'person';
-    card.innerHTML = table;
-    list.appendChild(card);
-  });
-
-  renderStandings(summaries);
-  stWrap.hidden = summaries.length === 0;
-}
-
-/* ============== STANDINGS (sorting) ============== */
-function renderStandings(summaries){
-  const st = document.getElementById('standings');
-
-  const valid = summaries.filter(s => s.denom > 0);
-  if(valid.length === 0){ st.innerHTML = ""; return; }
-
-  const rows = [...valid].sort((a,b)=>{
-    if (standingsSort === 'percent'){
-      const ap = isNaN(a.pct)? -1 : a.pct, bp = isNaN(b.pct)? -1 : b.pct;
-      if(bp !== ap) return bp - ap;
-      if(b.w !== a.w) return b.w - a.w;
-      return a.name.localeCompare(b.name);
-    } else if (standingsSort === 'wins'){
-      if(b.w !== a.w) return b.w - a.w;
-      const ap = isNaN(a.pct)? -1 : a.pct, bp = isNaN(b.pct)? -1 : b.pct;
-      if(bp !== ap) return bp - ap;
-      return a.name.localeCompare(b.name);
-    } else { // alpha
-      return a.name.localeCompare(b.name);
-    }
-  });
-
-  document.getElementById('sort-alpha').classList.toggle('active', standingsSort==='alpha');
-  document.getElementById('sort-percent').classList.toggle('active', standingsSort==='percent');
-  document.getElementById('sort-wins').classList.toggle('active', standingsSort==='wins');
-
-  const tbody = rows.map((s, i)=>`
-    <tr>
-      <td class="rank">${i+1}.</td>
-      <td>
-        <span class="nameCell">
-          ${escapeHtml(s.name)}
-          ${s.isDefaults ? '<span class="badge-defaults" title="No submission — defaults applied">Defaults</span>' : ''}
-        </span>
-      </td>
-      <td class="stat mono">${fmtPct(s.pct)}</td>
-      <td class="stat mono">${s.w}-${s.l}-${s.t}</td>
-      <td class="stat mono">${s.denom}</td>
-    </tr>
-  `).join("");
-
-  st.innerHTML = `
-    <table>
-      <thead>
-        <tr>
-          <th class="rank">#</th>
-          <th>Name</th>
-          <th class="stat">Win %</th>
-          <th class="stat">W-L-T</th>
-          <th class="stat">Picks</th>
-        </tr>
-      </thead>
-      <tbody>${tbody}</tbody>
-    </table>
-  `;
-}
-
-function hookSortButtons(){
-  document.getElementById('sort-alpha').onclick   = ()=>{ standingsSort='alpha';   renderPeople(); };
-  document.getElementById('sort-percent').onclick = ()=>{ standingsSort='percent'; renderPeople(); };
-  document.getElementById('sort-wins').onclick    = ()=>{ standingsSort='wins';    renderPeople(); };
-}
-
-/* ============== GO ============== */
-loadAll();
-// setInterval(loadAll, 60000);
-</script>
-</body>
-</html>
+        <div class="pname
