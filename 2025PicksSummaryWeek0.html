@@ -17,12 +17,12 @@
   h1{margin:0 0 12px}
   #err{display:none;color:#b91c1c;background:#fee2e2;border:1px solid #fecaca;padding:8px 12px;border-radius:8px;margin:8px 0}
 
-  /* TOP GAMES PANEL */
+  /* Games panel (top) */
   .games{border:1px solid var(--rule);border-radius:10px;padding:12px;margin:8px 0 20px}
   .game{display:grid;grid-template-columns: 1fr auto auto auto;gap:8px;align-items:center;border-bottom:1px solid var(--rule);padding:6px 0}
   .game:last-child{border-bottom:0}
-  .gline{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .gbtn{border:1px solid var(--rule);background:#f7f7f7;border-radius:8px;padding:4px 8px;cursor:pointer;font-weight:600;font-size:12px;white-space:nowrap}
+  .gline{font-weight:700;font-size:14px}
+  .gbtn{border:1px solid var(--rule);background:#f7f7f7;border-radius:8px;padding:4px 8px;cursor:pointer;font-weight:600;font-size:12px}
   .gbtn .count{font-weight:700;color:var(--count);margin-left:4px}
   .gbtn.active{border-color:var(--accent);box-shadow:0 0 0 2px rgba(11,97,255,.15)}
   .gbtn.away.active{background:#eef3ff}
@@ -30,27 +30,26 @@
   .gbtn.tie.active{background:#f3f4f6}
   .note{color:var(--muted);font-size:12px;margin-top:6px}
 
-  /* PEOPLE GRID */
+  /* People grid */
   #list{display:grid;grid-template-columns:repeat(2, minmax(0,1fr));gap:16px}
   @media (max-width: 900px){ #list{grid-template-columns:1fr} }
 
-  /* PEOPLE CARDS & TABLES */
+  /* People cards & tables — compact */
   .person{border:1px solid var(--rule);border-radius:10px;padding:10px}
   .header{display:flex;align-items:center;gap:10px;margin-bottom:6px}
   .pname{font-weight:800;font-size:16px;margin:0}
   .badge-defaults{
     background:var(--neon); color:var(--neonText); font-weight:900;
-    padding:2px 8px; border-radius:999px; text-transform:uppercase; letter-spacing:.5px;
+    padding:1px 6px; border-radius:999px; text-transform:uppercase; letter-spacing:.5px;
     box-shadow:0 0 8px rgba(57,255,20,.6), inset 0 0 2px rgba(0,0,0,.2);
     font-size:11px;
   }
-  table{width:100%;border-collapse:collapse}
-  th,td{padding:6px 6px;vertical-align:top;font-size:12px;line-height:1.1}
+  table{width:100%;border-collapse:collapse;font-size:12px;line-height:1.2}
+  th,td{padding:5px 6px;vertical-align:top}
   th{text-align:left;border-bottom:2px solid #000}
   td{border-bottom:1px solid var(--rule)}
   .col-idx{width:28px;text-align:right;color:var(--muted)}
-  .col-line{width:62%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .col-pick{white-space:nowrap}
+  .col-line{width:60%}
   .result-win{color:var(--green);font-weight:700}
   .result-loss{color:var(--red);font-weight:700}
   .result-tie{color:var(--gray);font-weight:700}
@@ -58,8 +57,8 @@
   tfoot td{font-weight:700}
   .mono{font-variant-numeric: tabular-nums}
 
-  /* STANDINGS */
-  .standings{margin-top:28px}
+  /* Standings */
+  .standings{margin-top:24px}
   .standings h2{margin:8px 0 10px}
   .toolbar{display:flex;gap:8px;margin:8px 0 12px}
   .toolbar button{padding:6px 10px;border:1px solid var(--rule);background:#f7f7f7;border-radius:8px;cursor:pointer}
@@ -78,11 +77,14 @@
 
   <div id="err"></div>
 
+  <!-- GAME OUTCOME CONTROLS -->
   <div id="gamesPanel" class="games"></div>
-  <div class="note">Set the official result per game. If the <strong>Winner</strong> column is filled in a Lines sheet, the game is locked for everyone. Totals & standings update instantly.</div>
+  <div class="note">Set the official result per game. If the <strong>Winner</strong> column is filled in a Lines sheet, the game is locked for everyone. Totals &amp; standings update instantly.</div>
 
+  <!-- PEOPLE (2-column) -->
   <div id="list"></div>
 
+  <!-- FULL STANDINGS + SORT FILTERS -->
   <div class="standings" id="standingsWrap" hidden>
     <h2>Standings</h2>
     <div class="toolbar">
@@ -96,163 +98,172 @@
 
 <script>
 /* ================== CONFIG ================== */
-const WeekNumber = 0;  // filter Submissions to this week
-
-/* CSV tabs */
 const CSV_URL_NCAA_LINES   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT1sgv7_gnDt5DoVxF3jXAU6KTZB8U7azy8AMDdODEhUnnQf1gLK7hgSTktI-X4tF5Zo7ELzG2PfEDE/pub?gid=0&single=true&output=csv";
 const CSV_URL_NFL_LINES    = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT1sgv7_gnDt5DoVxF3jXAU6KTZB8U7azy8AMDdODEhUnnQf1gLK7hgSTktI-X4tF5Zo7ELzG2PfEDE/pub?gid=2109553148&single=true&output=csv";
 const CSV_URL_SUBS         = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRys9xayYsuEqgGB09v1nOrwdD0U5c1Hb1ksLqQxTSBzLi3AKGeg9yPt1-eY1fry_0H-KcZLCQ1h8H6/pub?gid=1991283502&single=true&output=csv";
 const CSV_URL_PARTICIPANTS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRj5ieGlGWurIlGuongV3vJhWWAwCYsEFVhEEtjwOG7RiFwTRZkM_JXtjb8QtwsdzhaXPMDRPyU7qZC/pub?gid=0&single=true&output=csv";
 const DOUBLE_COUNTS_AS = 2;
+const WeekNumber = 0; // filter submissions by this week
 
 /* ================ HELPERS =================== */
 const by = f => (a,b)=> f(a)<f(b)?-1:f(a)>f(b)?1:0;
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function qidOrder(q){ if(!q) return 9999; const s=q[0], n=parseInt(q.slice(1),10); return (s==='A'?0:1)*1000 + (isFinite(n)?n:999); }
+function lastNameKey(nm){ const p=String(nm||'').trim().split(/\s+/); return (p[p.length-1]||'')+'|'+nm; }
+
 function showErr(msg){
   const box = document.getElementById('err');
-  if (!box) return;
-  if (msg) {
+  if(!box) return;
+  if(msg){
     box.style.display='block';
     box.innerHTML = escapeHtml(msg) +
       '<div style="margin-top:6px;font-size:12px;opacity:.8">NFL Lines: '+escapeHtml(CSV_URL_NFL_LINES)+
       '<br>NCAA Lines: '+escapeHtml(CSV_URL_NCAA_LINES)+
       '<br>Subs: '+escapeHtml(CSV_URL_SUBS)+
       '<br>Participants: '+escapeHtml(CSV_URL_PARTICIPANTS)+'</div>';
-  } else { box.style.display='none'; box.innerHTML=''; }
+  }else{ box.style.display='none'; box.innerHTML=''; }
 }
+
+// CSV fetch
 function fetchCSV(url){
   const bust = (url.includes('?') ? '&' : '?') + 'cb=' + Date.now();
   return new Promise((resolve,reject)=>{
-    Papa.parse(url + bust,{
+    Papa.parse(url + bust, {
       download:true, header:true, dynamicTyping:false, skipEmptyLines:true,
       complete:res=>{
-        const row0 = res && res.data && res.data[0] ? res.data[0] : null;
+        const row0 = res?.data?.[0];
         const firstCell = row0 ? String(Object.values(row0)[0] ?? '') : '';
-        if (/^<\s*!?doctype|^<\s*html/i.test(firstCell)) {
+        if(/^<\s*!?doctype|^<\s*html/i.test(firstCell)){
           reject(new Error('Got HTML instead of CSV. Use a "Publish to web → CSV" link.'));
           return;
         }
         resolve(res.data);
       },
-      error:err=>reject(err)
+      error:reject
     });
   });
 }
+
+// Normalize team (strip rank & trailing parens bits) for comparisons
 function normTeam(s){
   s = String(s||"").trim();
   if(!s) return "";
-  s = s.replace(/\s*\([^)]*\)\s*$/,"").trim(); // drop trailing (...) (e.g., lines)
-  s = s.replace(/^#\d+\s+/,"").trim();         // drop rank
+  s = s.replace(/\s*\([^)]*\)\s*$/,"").trim(); // remove trailing "(...)"
+  s = s.replace(/^#\d+\s+/,"").trim();         // remove leading "#N "
   return s.toLowerCase();
 }
 function fmtPct(n){ return (isNaN(n) ? "" : (n*100).toFixed(1) + "%"); }
 function toDate(val){ if(!val) return null; const d = new Date(val); return isNaN(+d) ? null : d; }
 function escapeRegex(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
 
-/* ---- Parse ET date & time ---- */
-function getETOffsetMinutes(y,mo,d){
-  const probeUTC = Date.UTC(y,mo-1,d,12,0);
-  const parts = new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',timeZoneName:'shortOffset'}).formatToParts(new Date(probeUTC));
-  const z = (parts.find(p=>p.type==='timeZoneName')||{}).value || 'GMT-05';
-  const m = z.match(/GMT([+-]\d{1,2})(?::(\d{2}))?/); if(!m) return -300;
-  const hr = parseInt(m[1],10), mm = m[2]?parseInt(m[2],10):0;
-  return hr*60 + (hr<0?-mm:mm);
-}
-function parseETDate(dateStr){
-  const s = String(dateStr||"").trim();
-  let m = s.replace(/\./g,'').match(/^([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})$/);
-  if(m){
-    const L={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,sept:9,oct:10,nov:11,dec:12,august:8,september:9,october:10,november:11,december:12};
-    const mo=L[m[1].toLowerCase()]; if(mo) return {y:+m[3], mo, d:+m[2]};
-  }
-  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); if(m) return {y:+m[3], mo:+m[1], d:+m[2]};
-  m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);        if(m) return {y:+m[1], mo:+m[2], d:+m[3]};
+/* ---------- Favorite detection (works for both sheets) ---------- */
+function detectFavoriteFrom(lineStr, spreadStr, away, home){
+  const stripRank = s => String(s||"").replace(/^#\d+\s*/,'').trim();
+  const awayKey = stripRank(away), homeKey = stripRank(home);
+  const pool = `${lineStr||''} ${spreadStr||''}`;
+
+  // 1) team ( -3.5 )
+  const rxP = (team)=> new RegExp("\\b"+escapeRegex(team)+"\\s*\\(([-+]?\\d+(?:\\.\\d+)?)\\)","i");
+  const mHomeP = rxP(homeKey).exec(pool);
+  const mAwayP = rxP(awayKey).exec(pool);
+  if(mHomeP && parseFloat(mHomeP[1])<0) return {fav:'home', pts:Math.abs(parseFloat(mHomeP[1]))};
+  if(mAwayP && parseFloat(mAwayP[1])<0) return {fav:'away', pts:Math.abs(parseFloat(mAwayP[1]))};
+
+  // 2) team -3.5 (no parens)
+  const rxI = (team)=> new RegExp("\\b"+escapeRegex(team)+"\\b[^-+\\d]*([-+]\\d+(?:\\.\\d+)?)","i");
+  const mHomeI = rxI(homeKey).exec(pool);
+  const mAwayI = rxI(awayKey).exec(pool);
+  if(mHomeI && parseFloat(mHomeI[1])<0) return {fav:'home', pts:Math.abs(parseFloat(mHomeI[1]))};
+  if(mAwayI && parseFloat(mAwayI[1])<0) return {fav:'away', pts:Math.abs(parseFloat(mAwayI[1]))};
+
   return null;
 }
-function parseETTime(timeStr){
-  const s = String(timeStr||"").trim();
-  const m = s.match(/^(\d{1,2}):(\d{2})\s*([AP]M)$/i);
-  if(!m) return {h:12,mi:0};
-  let h=+m[1], mi=+m[2]; const ampm=m[3].toUpperCase();
-  if(ampm==="PM"&&h!==12) h+=12; if(ampm==="AM"&&h===12) h=0;
-  return {h,mi};
+function formatLine(away, home, favInfo){
+  if(!favInfo) return `${away} @ ${home}`;
+  const pts = (favInfo.pts%1===0)? favInfo.pts.toFixed(0) : favInfo.pts.toString();
+  return favInfo.fav==='away'
+    ? `${away} (-${pts}) @ ${home}`
+    : `${away} @ ${home} (-${pts})`;
 }
-function makeDateFromET(dateStr,timeStr){
-  const d = parseETDate(dateStr);
-  if(!d) return null;
-  const t = parseETTime(timeStr);
-  const offMin = getETOffsetMinutes(d.y,d.mo,d.d);
-  const utcMs = Date.UTC(d.y,d.mo-1,d.d,t.h,t.mi) - offMin*60*1000;
-  const dt = new Date(utcMs);
-  return isNaN(+dt) ? null : dt;
+function displayPickLabel(qid, choice){
+  const fav = qidToFav.get(qid);
+  const cNorm = normTeam(choice);
+  if(fav){
+    const favTeam = fav.fav==='away' ? qidToAway.get(qid)||'' : qidToHome.get(qid)||'';
+    if(cNorm && cNorm===normTeam(favTeam)){
+      const pts = (fav.pts%1===0)? fav.pts.toFixed(0) : fav.pts.toString();
+      return `${choice} (-${pts})`;
+    }
+  }
+  return choice; // underdog shows no "+#"
 }
 
 /* ============== STATE ============== */
-const qidToLine   = new Map();
-const qidToAway   = new Map();
-const qidToHome   = new Map();
-const qidToWinner = new Map();
-const qidToDate   = new Map();
-const qidToSpread = new Map();
-const qidToDefault= new Map();   // 'Y' when sheet marks Default
-const results     = new Map();
-let people        = [];
-let participantNames = [];
-let defaultTemplate = null;
-let standingsSort = 'alpha';
+let qidToLine   = new Map();      // QID -> display line (fav only shown with -#)
+let qidToAway   = new Map();      // QID -> Away
+let qidToHome   = new Map();      // QID -> Home
+let qidToWinner = new Map();      // QID -> Winner (locks)
+let qidToDate   = new Map();      // QID -> Date object (if available)
+let qidToSpread = new Map();      // QID -> Spread text from sheet (NCAA), may be ""
+let qidToDefault= new Map();      // QID -> boolean Default="Y"
+let qidToFav    = new Map();      // QID -> {fav:'away'|'home', pts:number}
+let results     = new Map();      // QID -> 'away' | 'home' | 'tie'
+let people      = [];             // [{name, picks:[{qid, choice, isDouble}], isDefaults?:true}]
+let participantNames = [];        // roster
+let defaultTemplate = null;       // { name:"Default Picks", picks:[...] }
+let standingsSort = 'alpha';      // 'alpha' | 'percent' | 'wins'
 
-/* ======== LINES (shared schema) ======== */
-function normalizeLines(rows){
+/* ======== LOAD & NORMALIZE LINES ======== */
+function normalizeNFL(rows){
   rows.forEach(r=>{
-    const qid   = String(r["QID"]||r["qid"]||"").trim();
-    if(!qid) return;
+    const qid   = String(r["QID"]||r["qid"]||"").trim(); if(!qid) return;
+    const line  = String(r["Line"]||r["line"]||"").trim();
+    const away  = String(r["Away"]||r["away"]||"").trim();
+    const home  = String(r["Home"]||r["home"]||"").trim();
+    const win   = String(r["Winner"]||r["winner"]||"").trim();
+    const dtStr = String(r["DateTime"]||r["datetime"]||"").trim();
+    const def   = /^y/i.test(String(r["Default"]||""));
+    const fav   = detectFavoriteFrom(line, "", away, home);
+
+    qidToAway.set(qid, away);
+    qidToHome.set(qid, home);
+    qidToWinner.set(qid, win);
+    qidToDate.set(qid, toDate(dtStr));
+    qidToSpread.set(qid, ""); // NFL spread embedded in line
+    qidToDefault.set(qid, def);
+    if(fav){ qidToFav.set(qid, fav); }
+    qidToLine.set(qid, formatLine(away, home, fav));
+  });
+}
+function normalizeNCAA(rows){
+  rows.forEach(r=>{
+    const qid   = String(r["QID"]||r["qid"]||"").trim(); if(!qid) return;
     const away  = String(r["Away Team"]||r["Away"]||"").trim();
     const home  = String(r["Home Team"]||r["Home"]||"").trim();
     const date  = String(r["Date"]||"").trim();
-    const time  = String(r["Time"]||"").trim();
+    const time  = String(r["Time"]||"").trim(); // not used here for sorting
     const spread= String(r["Spread"]||r["Line"]||"").trim();
-    const deflt = /^y/i.test(String(r["Default"]||""));
-    const winner= String(r["Winner"]||"").trim();
+    const def   = /^y/i.test(String(r["Default"]||""));
+    const fav   = detectFavoriteFrom("", spread, away, home);
 
-    // Build display line: Away (−x if favored) @ Home (−x if favored)
-    const fav = detectFavoriteFromSpread(away, home, spread);
-    const awayTag = fav && fav.team === 'away' ? ` (${fav.minus})` : '';
-    const homeTag = fav && fav.team === 'home' ? ` (${fav.minus})` : '';
-    const line = `${away}${awayTag} @ ${home}${homeTag}`;
-
-    qidToLine.set(qid, line);
     qidToAway.set(qid, away);
     qidToHome.set(qid, home);
-    qidToDate.set(qid, makeDateFromET(date, time));
+    qidToWinner.set(qid, ""); // NCAA sheet has no Winner column
+    qidToDate.set(qid, null);
     qidToSpread.set(qid, spread);
-    qidToDefault.set(qid, deflt ? 'Y' : '');
-    if(winner) qidToWinner.set(qid, winner);
+    qidToDefault.set(qid, def);
+    if(fav){ qidToFav.set(qid, fav); }
+    qidToLine.set(qid, formatLine(away, home, fav));
   });
-}
-
-/* ----- Favorite detection from Spread text (only show − for favorite) ----- */
-function detectFavoriteFromSpread(away, home, spreadText){
-  const s = String(spreadText||"");
-  if(!s) return null;
-  const stripRank = t => String(t||"").replace(/^#\d+\s*/,'').trim();
-  const awayKey = stripRank(away);
-  const homeKey = stripRank(home);
-  const rx = (team)=> new RegExp("\\b"+escapeRegex(team)+"\\b[^-+\\d]*(-\\d+(?:\\.\\d+)?)","i");
-  const mHome = rx(homeKey).exec(s);
-  if(mHome) return { team:'home', minus: mHome[1] };
-  const mAway = rx(awayKey).exec(s);
-  if(mAway) return { team:'away', minus: mAway[1] };
-  const lone = s.match(/-(\d+(?:\.\d+)?)/);
-  if(lone) return { team:'home', minus: '-'+lone[1] };
-  return null;
 }
 
 /* ============== SUBMISSIONS & PARTICIPANTS ============== */
 function normalizeSubs(rows){
-  const filtered = rows.filter(r => String(r["Week"]||r["week"]||"").trim() === String(WeekNumber));
-  const latest = new Map();
-  filtered.forEach(r=>{
+  // filter by WeekNumber first
+  rows = rows.filter(r => String(r["Week"]||r["week"]||"").trim() === String(WeekNumber));
+
+  const latest = new Map(); // name => ts
+  rows.forEach(r=>{
     const name = String(r["Name"]||r["name"]||"").trim();
     if(!name) return;
     const ts = String(r["Timestamp"]||r["timestamp"]||"").trim();
@@ -261,7 +272,7 @@ function normalizeSubs(rows){
   });
 
   const byName = new Map();
-  filtered.forEach(r=>{
+  rows.forEach(r=>{
     const name   = String(r["Name"]||r["name"]||"").trim();
     const ts     = String(r["Timestamp"]||r["timestamp"]||"").trim();
     const qid    = String(r["QID"]||r["qid"]||"").trim();
@@ -269,6 +280,7 @@ function normalizeSubs(rows){
     const isDouble = String(r["IsDouble"]).toUpperCase()==="TRUE";
     if(!name || !qid) return;
     if(latest.get(name) && ts !== latest.get(name)) return;
+
     const p = byName.get(name) || { name, picks: [] };
     p.picks.push({ qid, choice, isDouble });
     byName.set(name, p);
@@ -276,7 +288,8 @@ function normalizeSubs(rows){
 
   const arr = Array.from(byName.values());
   arr.forEach(p => p.picks.sort((a,b)=> qidOrder(a.qid)-qidOrder(b.qid)));
-  arr.sort((a,b)=> lastName(a.name).localeCompare(lastName(b.name)) || a.name.localeCompare(b.name));
+  // sort by last name (defaults card will still render first)
+  arr.sort((a,b)=> lastNameKey(a.name).localeCompare(lastNameKey(b.name), undefined, {sensitivity:'base'}));
   return arr;
 }
 function normalizeParticipants(rows){
@@ -285,43 +298,32 @@ function normalizeParticipants(rows){
     const nm = String(r["Name"]||r["name"]||"").trim();
     if(nm) set.add(nm);
   });
-  return Array.from(set).sort((a,b)=> lastName(a).localeCompare(lastName(b)) || a.localeCompare(b));
-}
-function lastName(full){
-  const parts = String(full||"").trim().split(/\s+/);
-  return parts.length ? parts[parts.length-1].toLowerCase() : "";
+  return Array.from(set).sort((a,b)=> lastNameKey(a).localeCompare(lastNameKey(b), undefined, {sensitivity:'base'}));
 }
 
-/* Winner column → outcome (locks games globally) */
+/* Winner column → outcome */
 function outcomeFromWinner(qid){
   const w = (qidToWinner.get(qid) || "").trim();
   if(!w) return undefined;
-  if (/^tie$/i.test(w)) return 'tie';
+  if(/^tie$/i.test(w)) return 'tie';
   const wNorm = normTeam(w);
-  if (wNorm && wNorm === normTeam(qidToAway.get(qid)||"")) return 'away';
-  if (wNorm && wNorm === normTeam(qidToHome.get(qid)||"")) return 'home';
+  if(wNorm && wNorm===normTeam(qidToAway.get(qid)||"")) return 'away';
+  if(wNorm && wNorm===normTeam(qidToHome.get(qid)||"")) return 'home';
   return undefined;
 }
 
-/* ---------- Default Picks = every game with Default="Y" ---------- */
+/* ---------- Build Default Picks set from Default="Y" ---------- */
 function computeDefaultPicksSet(){
-  const pickFav = (qid)=> {
-    const fav = detectFavoriteFromSpread(qidToAway.get(qid)||"", qidToHome.get(qid)||"", qidToSpread.get(qid)||"");
-    if(!fav) return null;
-    const choice = (fav.team==='home') ? qidToHome.get(qid) : qidToAway.get(qid);
-    return { qid, choice, isDouble:false };
-  };
-
-  const chosen = [];
-  Array.from(qidToLine.keys())
-    .filter(q => qidToDefault.get(q)==='Y')
-    .sort((a,b)=> qidOrder(a)-qidOrder(b))
-    .forEach(q=>{
-      const p = pickFav(q);
-      if(p) chosen.push(p);
-    });
-
-  return chosen;
+  const picks = [];
+  const qids = Array.from(qidToDefault.keys()).filter(q=> qidToDefault.get(q)===true);
+  qids.sort((a,b)=> qidOrder(a)-qidOrder(b));
+  qids.forEach(qid=>{
+    const fav = qidToFav.get(qid);
+    if(!fav) return; // must have a spread we can detect
+    const choice = fav.fav==='away' ? (qidToAway.get(qid)||'') : (qidToHome.get(qid)||'');
+    picks.push({ qid, choice, isDouble:false });
+  });
+  return picks;
 }
 
 /* =================== LOAD ALL =================== */
@@ -335,22 +337,29 @@ async function loadAll(){
       fetchCSV(CSV_URL_PARTICIPANTS)
     ]);
 
+    // reset maps
     qidToLine.clear(); qidToAway.clear(); qidToHome.clear(); qidToWinner.clear();
-    qidToDate.clear(); qidToSpread.clear(); qidToDefault.clear(); results.clear();
+    qidToDate.clear(); qidToSpread.clear(); qidToDefault.clear(); qidToFav.clear();
+    results.clear();
 
-    normalizeLines(nflLines);
-    normalizeLines(ncaaLines);
+    // merge both line files
+    normalizeNFL(nflLines);
+    normalizeNCAA(ncaaLines);
 
+    // prefill locked results from Winner column
     Array.from(qidToLine.keys()).forEach(qid=>{
       const oc = outcomeFromWinner(qid);
       if(oc) results.set(qid, oc);
     });
 
+    // normalize datasets
     people = normalizeSubs(subs);
     participantNames = normalizeParticipants(parts);
 
+    // Default template
     defaultTemplate = { name:"Default Picks", picks: computeDefaultPicksSet(), isDefaults:true };
 
+    // Add defaults for anyone without a submission
     const have = new Set(people.map(p=>p.name.toLowerCase()));
     participantNames.forEach(nm=>{
       if(!have.has(nm.toLowerCase())){
@@ -358,7 +367,8 @@ async function loadAll(){
       }
     });
 
-    people.sort((a,b)=> lastName(a.name).localeCompare(lastName(b.name)) || a.name.localeCompare(b.name));
+    // Sort real participants by last name; defaults card renders separately
+    people.sort((a,b)=> lastNameKey(a.name).localeCompare(lastNameKey(b.name), undefined, {sensitivity:'base'}));
 
     renderGames();
     renderPeople();
@@ -388,16 +398,26 @@ function getPickCounts(qid){
   return { away, home };
 }
 
-/* ============== RENDER GAMES ============== */
+/* ============== RENDER: GAMES (controls) ============== */
 function renderGames(){
   const panel = document.getElementById('gamesPanel');
   panel.innerHTML = '';
 
+  // helper: we only show games with a detectable favorite/spread
+  const hasSpread = (qid)=> !!qidToFav.get(qid);
+
+  // QIDs with at least one pick (including defaults assigned to people)
   const pickedQids = new Set();
   people.forEach(p=>p.picks.forEach(pk=> pickedQids.add(pk.qid)));
-  const defaultQids = new Set((defaultTemplate?.picks||[]).map(p=>p.qid));
-  const qidsAll = new Set([...pickedQids, ...defaultQids]);
 
+  // Defaults (from Default="Y"), still require a spread
+  const defaultQids = new Set((defaultTemplate?.picks||[]).map(p=>p.qid).filter(hasSpread));
+
+  // Final list: defaults ∪ (picked & hasSpread)
+  const qidsAll = new Set([
+    ...defaultQids,
+    ...[...pickedQids].filter(hasSpread)
+  ]);
   const qids = [...qidsAll].sort((a,b)=> qidOrder(a)-qidOrder(b));
 
   if(qids.length === 0){
@@ -409,6 +429,7 @@ function renderGames(){
     const div = document.createElement('div');
     div.className = 'game';
 
+    const lineText = qidToLine.get(qid) || `${qidToAway.get(qid)||'Away'} @ ${qidToHome.get(qid)||'Home'}`;
     const away = qidToAway.get(qid) || 'Away';
     const home = qidToHome.get(qid) || 'Home';
     const counts = getPickCounts(qid);
@@ -417,14 +438,14 @@ function renderGames(){
     if(lockedOutcome){
       const winnerText = lockedOutcome==='tie' ? 'Tie' : (lockedOutcome==='away' ? away : home);
       div.innerHTML = `
-        <div class="gline">${escapeHtml(qid)} — ${escapeHtml(qidToLine.get(qid) || qid)}</div>
+        <div class="gline">${escapeHtml(qid)} — ${escapeHtml(lineText)}</div>
         <div style="grid-column: 2 / span 3; font-weight:700;">
           Result: ${escapeHtml(winnerText)} (locked)
         </div>
       `;
     } else {
       div.innerHTML = `
-        <div class="gline">${escapeHtml(qid)} — ${escapeHtml(qidToLine.get(qid) || qid)}</div>
+        <div class="gline">${escapeHtml(qid)} — ${escapeHtml(lineText)}</div>
         <button class="gbtn away ${results.get(qid)==='away'?'active':''}" data-qid="${qid}" data-val="away">
           ${escapeHtml(away)} <span class="count">(${counts.away})</span>
         </button>
@@ -441,7 +462,7 @@ function renderGames(){
     const btn = e.target.closest('.gbtn');
     if(!btn) return;
     const qid = btn.dataset.qid;
-    if(outcomeFromWinner(qid)) return;
+    if(outcomeFromWinner(qid)) return; // locked
 
     const val = btn.dataset.val;
     const current = results.get(qid);
@@ -451,7 +472,7 @@ function renderGames(){
     row.querySelectorAll('.gbtn').forEach(b=> b.classList.remove('active'));
     if(results.has(qid)) row.querySelector(`.gbtn.${results.get(qid)}`)?.classList.add('active');
 
-    renderPeople();
+    renderPeople(); // re-score
   };
 }
 
@@ -477,28 +498,23 @@ function scorePick(qid, choice, isDouble){
   return { w,l,t };
 }
 
-/* ============== RENDER PEOPLE + STANDINGS ============== */
+/* ============== RENDER: PEOPLE TABLES + STANDINGS ============== */
 function renderPeople(){
   const list = document.getElementById('list');
   const stWrap = document.getElementById('standingsWrap');
   list.innerHTML = '';
-  const summaries = [];
+  let summaries = [];
 
-  /* --- Defaults card --- */
+  /* --- First card: Default Picks template --- */
   if (defaultTemplate && defaultTemplate.picks && defaultTemplate.picks.length){
     const rows = defaultTemplate.picks.map((pk, idx)=>{
       const s = scorePick(pk.qid, pk.choice, pk.isDouble);
-      const fav = detectFavoriteFromSpread(qidToAway.get(pk.qid)||"", qidToHome.get(pk.qid)||"", qidToSpread.get(pk.qid)||"");
-      const showPick = (function(){
-        if(!fav) return pk.choice;
-        const favName = fav.team==='home' ? qidToHome.get(pk.qid) : qidToAway.get(pk.qid);
-        return (normTeam(pk.choice)===normTeam(favName)) ? `${favName} ${fav.minus}` : pk.choice;
-      })();
+      const pickLabel = displayPickLabel(pk.qid, pk.choice);
       return `
         <tr>
           <td class="col-idx">${idx+1}</td>
           <td class="col-line">${escapeHtml(qidToLine.get(pk.qid) || pk.qid)}</td>
-          <td class="col-pick">${escapeHtml(showPick)}${pk.isDouble?'<span class="double"></span>':''}</td>
+          <td>${escapeHtml(pickLabel)}${pk.isDouble?'<span class="double"></span>':''}</td>
           <td>${s.w? s.w : ''}</td>
           <td>${s.l? s.l : ''}</td>
           <td>${s.t? s.t : ''}</td>
@@ -556,20 +572,13 @@ function renderPeople(){
     p.picks.forEach((pk, idx)=>{
       const s = scorePick(pk.qid, pk.choice, pk.isDouble);
       tw += s.w; tl += s.l; tt += s.t;
-
-      const fav = detectFavoriteFromSpread(qidToAway.get(pk.qid)||"", qidToHome.get(pk.qid)||"", qidToSpread.get(pk.qid)||"");
-      const pickDisplay = (function(){
-        if(!fav) return pk.choice;
-        const favName = fav.team==='home' ? qidToHome.get(pk.qid) : qidToAway.get(pk.qid);
-        return (normTeam(pk.choice)===normTeam(favName)) ? `${favName} ${fav.minus}` : pk.choice;
-      })();
-
       const cls = s.w ? 'result-win' : s.l ? 'result-loss' : s.t ? 'result-tie' : '';
+      const pickLabel = displayPickLabel(pk.qid, pk.choice);
       rowsHtml += `
         <tr>
           <td class="col-idx">${idx+1}</td>
           <td class="col-line">${escapeHtml(qidToLine.get(pk.qid) || pk.qid)}</td>
-          <td class="col-pick ${cls}">${escapeHtml(pickDisplay)}${pk.isDouble?'<span class="double"></span>':''}</td>
+          <td class="${cls}">${escapeHtml(pickLabel)}${pk.isDouble?'<span class="double"></span>':''}</td>
           <td>${s.w? s.w : ''}</td>
           <td>${s.l? s.l : ''}</td>
           <td>${s.t? s.t : ''}</td>
@@ -619,7 +628,7 @@ function renderPeople(){
   });
 
   renderStandings(summaries);
-  stWrap.hidden = summaries.length === 0;
+  document.getElementById('standingsWrap').hidden = summaries.length === 0;
 }
 
 /* ============== STANDINGS (sorting) ============== */
@@ -640,8 +649,8 @@ function renderStandings(summaries){
       const ap = isNaN(a.pct)? -1 : a.pct, bp = isNaN(b.pct)? -1 : b.pct;
       if(bp !== ap) return bp - ap;
       return a.name.localeCompare(b.name);
-    } else { // alpha by last name
-      return lastName(a.name).localeCompare(lastName(b.name)) || a.name.localeCompare(b.name);
+    } else { // alpha
+      return a.name.localeCompare(b.name);
     }
   });
 
@@ -679,7 +688,6 @@ function renderStandings(summaries){
     </table>
   `;
 }
-
 function hookSortButtons(){
   document.getElementById('sort-alpha').onclick   = ()=>{ standingsSort='alpha';   renderPeople(); };
   document.getElementById('sort-percent').onclick = ()=>{ standingsSort='percent'; renderPeople(); };
