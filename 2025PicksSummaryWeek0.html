@@ -17,12 +17,12 @@
   h1{margin:0 0 12px}
   #err{display:none;color:#b91c1c;background:#fee2e2;border:1px solid #fecaca;padding:8px 12px;border-radius:8px;margin:8px 0}
 
-  /* Games panel */
+  /* TOP GAMES PANEL */
   .games{border:1px solid var(--rule);border-radius:10px;padding:12px;margin:8px 0 20px}
-  .game{display:grid;grid-template-columns: 1fr auto auto auto;gap:8px;align-items:center;border-bottom:1px solid var(--rule);padding:8px 0}
+  .game{display:grid;grid-template-columns: 1fr auto auto auto;gap:8px;align-items:center;border-bottom:1px solid var(--rule);padding:6px 0}
   .game:last-child{border-bottom:0}
-  .gline{font-weight:700}
-  .gbtn{border:1px solid var(--rule);background:#f7f7f7;border-radius:8px;padding:6px 10px;cursor:pointer;font-weight:600}
+  .gline{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .gbtn{border:1px solid var(--rule);background:#f7f7f7;border-radius:8px;padding:4px 8px;cursor:pointer;font-weight:600;font-size:12px;white-space:nowrap}
   .gbtn .count{font-weight:700;color:var(--count);margin-left:4px}
   .gbtn.active{border-color:var(--accent);box-shadow:0 0 0 2px rgba(11,97,255,.15)}
   .gbtn.away.active{background:#eef3ff}
@@ -30,27 +30,27 @@
   .gbtn.tie.active{background:#f3f4f6}
   .note{color:var(--muted);font-size:12px;margin-top:6px}
 
-  /* People grid */
+  /* PEOPLE GRID */
   #list{display:grid;grid-template-columns:repeat(2, minmax(0,1fr));gap:16px}
   @media (max-width: 900px){ #list{grid-template-columns:1fr} }
 
-  /* People cards & tables */
-  .person{border:1px solid var(--rule);border-radius:10px;padding:12px}
-  .header{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-  .pname{font-weight:800;font-size:18px;margin:0}
+  /* PEOPLE CARDS & TABLES */
+  .person{border:1px solid var(--rule);border-radius:10px;padding:10px}
+  .header{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+  .pname{font-weight:800;font-size:16px;margin:0}
   .badge-defaults{
     background:var(--neon); color:var(--neonText); font-weight:900;
     padding:2px 8px; border-radius:999px; text-transform:uppercase; letter-spacing:.5px;
     box-shadow:0 0 8px rgba(57,255,20,.6), inset 0 0 2px rgba(0,0,0,.2);
-    font-size:12px;
+    font-size:11px;
   }
-
   table{width:100%;border-collapse:collapse}
-  th,td{padding:7px 8px;vertical-align:top}
+  th,td{padding:6px 6px;vertical-align:top;font-size:12px;line-height:1.1}
   th{text-align:left;border-bottom:2px solid #000}
   td{border-bottom:1px solid var(--rule)}
-  .col-idx{width:34px;text-align:right;color:var(--muted)}
-  .col-line{width:55%}
+  .col-idx{width:28px;text-align:right;color:var(--muted)}
+  .col-line{width:62%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .col-pick{white-space:nowrap}
   .result-win{color:var(--green);font-weight:700}
   .result-loss{color:var(--red);font-weight:700}
   .result-tie{color:var(--gray);font-weight:700}
@@ -58,12 +58,7 @@
   tfoot td{font-weight:700}
   .mono{font-variant-numeric: tabular-nums}
 
-  /* Compact picks tables (change #3) */
-  .person table{font-size:13px}
-  .person th{font-size:12px}
-  .col-line,.pickCell{white-space:nowrap}   /* keep Line & Pick on one line */
-
-  /* Standings */
+  /* STANDINGS */
   .standings{margin-top:28px}
   .standings h2{margin:8px 0 10px}
   .toolbar{display:flex;gap:8px;margin:8px 0 12px}
@@ -83,14 +78,11 @@
 
   <div id="err"></div>
 
-  <!-- GAME OUTCOME CONTROLS -->
   <div id="gamesPanel" class="games"></div>
   <div class="note">Set the official result per game. If the <strong>Winner</strong> column is filled in a Lines sheet, the game is locked for everyone. Totals & standings update instantly.</div>
 
-  <!-- PEOPLE (2-column) -->
   <div id="list"></div>
 
-  <!-- FULL STANDINGS + SORT FILTERS -->
   <div class="standings" id="standingsWrap" hidden>
     <h2>Standings</h2>
     <div class="toolbar">
@@ -104,26 +96,19 @@
 
 <script>
 /* ================== CONFIG ================== */
+const WeekNumber = 0;  // <-- filter Submissions to this week
+
+/* Publish each tab as CSV and paste URLs here */
 const CSV_URL_NCAA_LINES   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT1sgv7_gnDt5DoVxF3jXAU6KTZB8U7azy8AMDdODEhUnnQf1gLK7hgSTktI-X4tF5Zo7ELzG2PfEDE/pub?gid=0&single=true&output=csv";
 const CSV_URL_NFL_LINES    = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT1sgv7_gnDt5DoVxF3jXAU6KTZB8U7azy8AMDdODEhUnnQf1gLK7hgSTktI-X4tF5Zo7ELzG2PfEDE/pub?gid=2109553148&single=true&output=csv";
 const CSV_URL_SUBS         = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRys9xayYsuEqgGB09v1nOrwdD0U5c1Hb1ksLqQxTSBzLi3AKGeg9yPt1-eY1fry_0H-KcZLCQ1h8H6/pub?gid=1991283502&single=true&output=csv";
 const CSV_URL_PARTICIPANTS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRj5ieGlGWurIlGuongV3vJhWWAwCYsEFVhEEtjwOG7RiFwTRZkM_JXtjb8QtwsdzhaXPMDRPyU7qZC/pub?gid=0&single=true&output=csv";
-
 const DOUBLE_COUNTS_AS = 2;
-const WEEK_NUMBER = 0;   // Only use submission rows where Week == WEEK_NUMBER
 
 /* ================ HELPERS =================== */
 const by = f => (a,b)=> f(a)<f(b)?-1:f(a)>f(b)?1:0;
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function qidOrder(q){ if(!q) return 9999; const s=q[0], n=parseInt(q.slice(1),10); return (s==='A'?0:1)*1000 + (isFinite(n)?n:999); }
-function lastNameKey(name){
-  const parts = String(name||"").trim().split(/\s+/);
-  const drop = /^(jr\.?|sr\.?|ii|iii|iv)$/i;
-  const core = parts.filter(p=>!drop.test(p)).filter(Boolean);
-  const last = core.length ? core[core.length-1] : (parts[parts.length-1]||"");
-  return (last||"").toLowerCase() + "|" + String(name||"").toLowerCase();
-}
-
 function showErr(msg){
   const box = document.getElementById('err');
   if (!box) return;
@@ -136,8 +121,6 @@ function showErr(msg){
       '<br>Participants: '+escapeHtml(CSV_URL_PARTICIPANTS)+'</div>';
   } else { box.style.display='none'; box.innerHTML=''; }
 }
-
-// Cache-busted CSV fetch with guard against HTML
 function fetchCSV(url){
   const bust = (url.includes('?') ? '&' : '?') + 'cb=' + Date.now();
   return new Promise((resolve,reject)=>{
@@ -156,20 +139,18 @@ function fetchCSV(url){
     });
   });
 }
-
-// Normalize team strings for matching
 function normTeam(s){
   s = String(s||"").trim();
   if(!s) return "";
-  s = s.replace(/\s*\([^)]*\)\s*$/,"").trim(); // drop trailing (...) if any
-  s = s.replace(/^#\d+\s+/,"").trim();         // drop leading ranks like "#3 "
+  s = s.replace(/\s*\([^)]*\)\s*$/,"").trim(); // drop trailing (...) (e.g., lines)
+  s = s.replace(/^#\d+\s+/,"").trim();         // drop rank
   return s.toLowerCase();
 }
 function fmtPct(n){ return (isNaN(n) ? "" : (n*100).toFixed(1) + "%"); }
 function toDate(val){ if(!val) return null; const d = new Date(val); return isNaN(+d) ? null : d; }
 function escapeRegex(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
 
-/* ---- Parse ET date & time ---- */
+/* ---- Parse ET date & time (like "Aug 30, 2025" + "12:00 PM") into a JS Date ---- */
 function getETOffsetMinutes(y,mo,d){
   const probeUTC = Date.UTC(y,mo-1,d,12,0);
   const parts = new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',timeZoneName:'shortOffset'}).formatToParts(new Date(probeUTC));
@@ -208,86 +189,81 @@ function makeDateFromET(dateStr,timeStr){
 }
 
 /* ============== STATE ============== */
-let qidToAway   = new Map();      // QID -> Away team (raw)
-let qidToHome   = new Map();      // QID -> Home team (raw)
-let qidToWinner = new Map();      // QID -> Winner raw ("Tie" or team) or ""
-let qidToDate   = new Map();      // QID -> Date object
-let qidToDefault= new Map();      // QID -> boolean (Default=="Y")
-let qidToFav    = new Map();      // QID -> { side:'away'|'home'|null, num:number|null }
-let results     = new Map();      // QID -> 'away' | 'home' | 'tie'
-let people      = [];             // [{name, picks:[{qid, choice, isDouble}], isDefaults?:true}]
-let participantNames = [];        // ["Name A", "Name B", ...]
-let defaultTemplate = null;       // { name:"Default Picks", picks:[...] }
-let standingsSort = 'alpha';      // for the standings table
+const qidToLine   = new Map();      // QID -> display line
+const qidToAway   = new Map();      // QID -> Away team (raw)
+const qidToHome   = new Map();      // QID -> Home team (raw)
+const qidToWinner = new Map();      // QID -> Winner raw ("Tie" or team) or ""
+const qidToDate   = new Map();      // QID -> Date object
+const qidToSpread = new Map();      // QID -> spread text
+const qidToDefault= new Map();      // QID -> 'Y' if part of defaults list in sheet
+const results     = new Map();      // QID -> 'away' | 'home' | 'tie'
+let people        = [];             // [{name, picks:[{qid, choice, isDouble}], isDefaults?:true}]
+let participantNames = [];          // roster
+let defaultTemplate = null;         // { name:"Default Picks", picks:[...] }
+let standingsSort = 'alpha';        // 'alpha' | 'percent' | 'wins'
 
-/* ----- Favorite parsing from Spread text ----- */
-function parseFavorite(spread, away, home){
-  const s = String(spread||"");
-  if(!s) return {side:null, num:null};
-
-  const stripRank = x => String(x||"").replace(/^#\d+\s*/,'').trim();
-  const aKey = stripRank(away);
-  const hKey = stripRank(home);
-
-  // Look for "Team -3.5"
-  const rx = team => new RegExp("\\b"+escapeRegex(team)+"\\b\\s*([-+]\\d+(?:\\.\\d+)?)","i");
-  const mA = rx(aKey).exec(s);
-  const mH = rx(hKey).exec(s);
-
-  if(mA){ const n=parseFloat(mA[1]); return n<0 ? {side:'away', num:Math.abs(n)} : {side:'home', num:null}; }
-  if(mH){ const n=parseFloat(mH[1]); return n<0 ? {side:'home', num:Math.abs(n)} : {side:'away', num:null}; }
-
-  // Fallback: any negative number? assume home favored
-  const mNum = s.match(/(-\d+(?:\.\d+)?)/);
-  if(mNum){ return {side:'home', num:Math.abs(parseFloat(mNum[1]))}; }
-
-  return {side:null, num:null};
-}
-
-/* ----- Build display line with ONLY favorite showing -# ----- */
-function displayLine(qid){
-  const away = qidToAway.get(qid)||"Away";
-  const home = qidToHome.get(qid)||"Home";
-  const fav  = qidToFav.get(qid) || {side:null,num:null};
-  if(fav.side === 'away' && fav.num!=null){
-    return `${away} (-${fav.num}) @ ${home}`;
-  }else if(fav.side === 'home' && fav.num!=null){
-    return `${away} @ ${home} (-${fav.num})`;
-  }
-  return `${away} @ ${home}`;
-}
-
-/* ======== LOAD & NORMALIZE LINES (same schema for NFL & NCAA) ======== */
-function normalizeLines(rows){
+/* ======== LINES (shared schema) ========
+   Columns expected: QID, Away Team, Home Team, Date, Time, TV, Location, Spread, Required, Default, Winner (optional)
+*/
+function normalizeLines(rows, league){ // league = 'A' (NFL) or 'B' (NCAA) by QID prefix
   rows.forEach(r=>{
     const qid   = String(r["QID"]||r["qid"]||"").trim();
     if(!qid) return;
-
     const away  = String(r["Away Team"]||r["Away"]||"").trim();
     const home  = String(r["Home Team"]||r["Home"]||"").trim();
     const date  = String(r["Date"]||"").trim();
     const time  = String(r["Time"]||"").trim();
-    const spread= String(r["Spread"]||r["Line"]||"").trim();
-    const win   = String(r["Winner"]||r["winner"]||"").trim();
+    const spread= String(r["Spread"]||r["Line"]||"").trim();  // may be like "#3 Ohio State -1.5"
+    const req   = String(r["Required"]||"").trim();
     const deflt = /^y/i.test(String(r["Default"]||""));
+    const winner= String(r["Winner"]||"").trim();
 
+    // Build a display line as "Away (−x if favored) @ Home (−x if favored)"
+    const fav = detectFavoriteFromSpread(away, home, spread);
+    const awayTag = fav && fav.team === 'away' ? ` (${fav.minus})` : '';
+    const homeTag = fav && fav.team === 'home' ? ` (${fav.minus})` : '';
+    const line = `${away}${awayTag} @ ${home}${homeTag}`;
+
+    qidToLine.set(qid, line);
     qidToAway.set(qid, away);
     qidToHome.set(qid, home);
     qidToDate.set(qid, makeDateFromET(date, time));
-    qidToWinner.set(qid, win);
-    qidToDefault.set(qid, deflt);
-
-    const fav = parseFavorite(spread, away, home);
-    qidToFav.set(qid, fav);
+    qidToSpread.set(qid, spread);
+    qidToDefault.set(qid, deflt ? 'Y' : '');
+    if(winner) qidToWinner.set(qid, winner);
   });
+}
+
+/* ----- Favorite detection from Spread text (only show − for favorite) ----- */
+function detectFavoriteFromSpread(away, home, spreadText){
+  const s = String(spreadText||"");
+  if(!s) return null;
+
+  // Try to find "Team -x.x"
+  // Remove ranks in comparison
+  const stripRank = t => String(t||"").replace(/^#\d+\s*/,'').trim();
+  const awayKey = stripRank(away);
+  const homeKey = stripRank(home);
+
+  const rx = (team)=> new RegExp("\\b"+escapeRegex(team)+"\\b[^-+\\d]*(-\\d+(?:\\.\\d+)?)","i");
+  const mHome = rx(homeKey).exec(s);
+  if(mHome) return { team:'home', minus: mHome[1] }; // already includes the minus sign
+  const mAway = rx(awayKey).exec(s);
+  if(mAway) return { team:'away', minus: mAway[1] };
+
+  // If just a raw number appears with a minus, assume home favored
+  const lone = s.match(/-(\d+(?:\.\d+)?)/);
+  if(lone) return { team:'home', minus: '-'+lone[1] };
+
+  return null;
 }
 
 /* ============== SUBMISSIONS & PARTICIPANTS ============== */
 function normalizeSubs(rows){
-  // Restrict to the configured week
-  const filtered = rows.filter(r => String(r["Week"]||r["week"]||"").trim() === String(WEEK_NUMBER));
+  // filter to WeekNumber
+  const filtered = rows.filter(r => String(r["Week"]||r["week"]||"").trim() === String(WeekNumber));
 
-  // keep latest submission per person (by timestamp)
+  // keep latest submission per person
   const latest = new Map(); // name => ts
   filtered.forEach(r=>{
     const name = String(r["Name"]||r["name"]||"").trim();
@@ -314,20 +290,21 @@ function normalizeSubs(rows){
 
   const arr = Array.from(byName.values());
   arr.forEach(p => p.picks.sort((a,b)=> qidOrder(a.qid)-qidOrder(b.qid)));
-  // (change #1) sort by last name
-  arr.sort((a,b)=> lastNameKey(a.name).localeCompare(lastNameKey(b.name)));
+  // sort by LAST NAME
+  arr.sort((a,b)=> lastName(a.name).localeCompare(lastName(b.name)) || a.name.localeCompare(b.name));
   return arr;
 }
-
 function normalizeParticipants(rows){
   const set = new Set();
   rows.forEach(r=>{
     const nm = String(r["Name"]||r["name"]||"").trim();
     if(nm) set.add(nm);
   });
-  const all = Array.from(set);
-  all.sort((a,b)=> lastNameKey(a).localeCompare(lastNameKey(b)));  // (change #1)
-  return all;
+  return Array.from(set).sort((a,b)=> lastName(a).localeCompare(lastName(b)) || a.localeCompare(b));
+}
+function lastName(full){
+  const parts = String(full||"").trim().split(/\s+/);
+  return parts.length ? parts[parts.length-1].toLowerCase() : "";
 }
 
 /* Winner column → outcome (locks games globally) */
@@ -341,21 +318,61 @@ function outcomeFromWinner(qid){
   return undefined;
 }
 
-/* ---------- Build Default Picks set from Default=="Y" ---------- */
+/* ---------- Build Default Picks set (7 games) ---------- */
 function computeDefaultPicksSet(){
-  const picks = [];
-  const qids = Array.from(qidToDefault.keys())
-    .filter(q => qidToDefault.get(q) === true)
-    .sort((a,b)=> qidOrder(a)-qidOrder(b));
+  // Set of qids marked Default="Y" in sheets
+  const allQids = Array.from(qidToLine.keys());
+  const defQids = allQids.filter(q => qidToDefault.get(q)==='Y');
 
-  qids.forEach(qid=>{
-    const fav = qidToFav.get(qid);
-    if(!fav || !fav.side) return;
-    const choice = (fav.side==='away') ? (qidToAway.get(qid)||'') : (qidToHome.get(qid)||'');
-    picks.push({ qid, choice, isDouble:false });
-  });
+  const pickFav = (qid)=> {
+    const fav = detectFavoriteFromSpread(qidToAway.get(qid)||"", qidToHome.get(qid)||"", qidToSpread.get(qid)||"");
+    if(!fav) return null;
+    const choice = (fav.team==='home') ? qidToHome.get(qid) : qidToAway.get(qid);
+    return { qid, choice, isDouble:false };
+  };
 
-  return picks;
+  const chosen = [];
+  const seen = new Set();
+
+  function add(qid){
+    if(!qid || seen.has(qid)) return;
+    const p = pickFav(qid);
+    if(!p) return;
+    chosen.push(p); seen.add(qid);
+  }
+
+  // helpers
+  const isA = q => q.startsWith('A'); // NFL
+  const isB = q => q.startsWith('B'); // NCAA
+
+  // 1) Required College (first one)
+  const reqB = defQids.filter(q=>isB(q)).sort((a,b)=>qidOrder(a)-qidOrder(b));
+  if(reqB.length) add(reqB[0]);
+
+  // 2) Required NFL (first one)
+  const reqA = defQids.filter(q=>isA(q)).sort((a,b)=>qidOrder(a)-qidOrder(b));
+  if(reqA.length) add(reqA[0]);
+
+  // 3) First 2 College games on Saturday
+  const bSat = allQids
+    .filter(q=>isB(q) && qidToDate.get(q) && qidToDate.get(q).getDay()===6)
+    .sort((a,b)=> (qidToDate.get(a)-qidToDate.get(b)) || qidOrder(a)-qidOrder(b));
+  for(const q of bSat){ if(chosen.length>=3) break; add(q); } // after two adds, chosen length will be 3 (1 B required + 2 Sat) or fewer if duplicates
+
+  // 4) First 3 NFL games on Sunday
+  const aSun = allQids
+    .filter(q=>isA(q) && qidToDate.get(q) && qidToDate.get(q).getDay()===0)
+    .sort((a,b)=> (qidToDate.get(a)-qidToDate.get(b)) || qidOrder(a)-qidOrder(b));
+  for(const q of aSun){ if(chosen.length>=7) break; add(q); }
+
+  // Ensure total of 7 (fallback by earliest remaining)
+  if(chosen.length<7){
+    const rest = allQids.filter(q=>!seen.has(q)).sort((a,b)=> qidOrder(a)-qidOrder(b));
+    for(const q of rest){ if(chosen.length>=7) break; add(q); }
+  }
+
+  chosen.sort((a,b)=> qidOrder(a.qid)-qidOrder(b.qid));
+  return chosen;
 }
 
 /* =================== LOAD ALL =================== */
@@ -369,16 +386,15 @@ async function loadAll(){
       fetchCSV(CSV_URL_PARTICIPANTS)
     ]);
 
-    // reset state
-    qidToAway.clear(); qidToHome.clear(); qidToWinner.clear(); qidToDate.clear();
-    qidToDefault.clear(); qidToFav.clear(); results.clear();
+    // reset maps
+    qidToLine.clear(); qidToAway.clear(); qidToHome.clear(); qidToWinner.clear();
+    qidToDate.clear(); qidToSpread.clear(); qidToDefault.clear(); results.clear();
 
-    // merge both line files
-    normalizeLines(nflLines);
-    normalizeLines(ncaaLines);
+    normalizeLines(nflLines, 'A');
+    normalizeLines(ncaaLines, 'B');
 
-    // prefill locked results from Winner column
-    Array.from(qidToAway.keys()).forEach(qid=>{
+    // prefill locked results from Winner column (if present)
+    Array.from(qidToLine.keys()).forEach(qid=>{
       const oc = outcomeFromWinner(qid);
       if(oc) results.set(qid, oc);
     });
@@ -387,7 +403,7 @@ async function loadAll(){
     people = normalizeSubs(subs);
     participantNames = normalizeParticipants(parts);
 
-    // Default template (driven by Default column)
+    // Default template
     defaultTemplate = { name:"Default Picks", picks: computeDefaultPicksSet(), isDefaults:true };
 
     // Add defaults for anyone without a submission
@@ -398,8 +414,8 @@ async function loadAll(){
       }
     });
 
-    // Re-sort people by last name after filling in missing folks (change #1)
-    people.sort((a,b)=> lastNameKey(a.name).localeCompare(lastNameKey(b.name)));
+    // Sort participants by LAST NAME (defaults card still renders first separately)
+    people.sort((a,b)=> lastName(a.name).localeCompare(lastName(b.name)) || a.name.localeCompare(b.name));
 
     renderGames();
     renderPeople();
@@ -411,14 +427,12 @@ async function loadAll(){
 }
 
 /* ========= COUNT PICKS PER GAME ========= */
-/* (change #2) count ONLY real submissions (exclude auto-default people) */
 function getPickCounts(qid){
   const awayNorm = normTeam(qidToAway.get(qid) || "");
   const homeNorm = normTeam(qidToHome.get(qid) || "");
   let away = 0, home = 0;
 
   people.forEach(p=>{
-    if (p.isDefaults) return;          // <-- exclude auto-default entries
     p.picks.forEach(pk=>{
       if(pk.qid !== qid) return;
       const c = normTeam(pk.choice);
@@ -431,18 +445,18 @@ function getPickCounts(qid){
   return { away, home };
 }
 
-/* ============== RENDER GAMES ============== */
+/* ============== RENDER GAMES (defaults + any game picked) ============== */
 function renderGames(){
   const panel = document.getElementById('gamesPanel');
   panel.innerHTML = '';
 
-  const defaultQIDs = new Set((defaultTemplate?.picks||[]).map(p=>p.qid));
+  // union of default QIDs and all QIDs that have at least one pick
+  const pickedQids = new Set();
+  people.forEach(p=>p.picks.forEach(pk=> pickedQids.add(pk.qid)));
+  const defaultQids = new Set((defaultTemplate?.picks||[]).map(p=>p.qid));
+  const qidsAll = new Set([...pickedQids, ...defaultQids]);
 
-  const qidsAll = Array.from(qidToAway.keys()).sort((a,b)=> qidOrder(a)-qidOrder(b));
-  const qids = qidsAll.filter(q=>{
-    const c = getPickCounts(q);
-    return defaultQIDs.has(q) || (c.away + c.home) > 0;   // defaults OR at least one real pick
-  });
+  const qids = [...qidsAll].sort((a,b)=> qidOrder(a)-qidOrder(b));
 
   if(qids.length === 0){
     panel.innerHTML = `<div class="note">No picks yet.</div>`;
@@ -461,14 +475,14 @@ function renderGames(){
     if(lockedOutcome){
       const winnerText = lockedOutcome==='tie' ? 'Tie' : (lockedOutcome==='away' ? away : home);
       div.innerHTML = `
-        <div class="gline">${escapeHtml(qid)} — ${escapeHtml(displayLine(qid))}</div>
+        <div class="gline">${escapeHtml(qid)} — ${escapeHtml(qidToLine.get(qid) || qid)}</div>
         <div style="grid-column: 2 / span 3; font-weight:700;">
           Result: ${escapeHtml(winnerText)} (locked)
         </div>
       `;
     } else {
       div.innerHTML = `
-        <div class="gline">${escapeHtml(qid)} — ${escapeHtml(displayLine(qid))}</div>
+        <div class="gline">${escapeHtml(qid)} — ${escapeHtml(qidToLine.get(qid) || qid)}</div>
         <button class="gbtn away ${results.get(qid)==='away'?'active':''}" data-qid="${qid}" data-val="away">
           ${escapeHtml(away)} <span class="count">(${counts.away})</span>
         </button>
@@ -526,23 +540,24 @@ function renderPeople(){
   const list = document.getElementById('list');
   const stWrap = document.getElementById('standingsWrap');
   list.innerHTML = '';
-  let summaries = [];
+  const summaries = [];
 
   /* --- First card: Default Picks template --- */
   if (defaultTemplate && defaultTemplate.picks && defaultTemplate.picks.length){
     const rows = defaultTemplate.picks.map((pk, idx)=>{
       const s = scorePick(pk.qid, pk.choice, pk.isDouble);
-      const fav = qidToFav.get(pk.qid) || {side:null,num:null};
-      let pickLabel = pk.choice;
-      if((fav.side==='away' && normTeam(pk.choice)===normTeam(qidToAway.get(pk.qid))) ||
-         (fav.side==='home' && normTeam(pk.choice)===normTeam(qidToHome.get(pk.qid)))){
-        if(fav.num!=null) pickLabel += ` (-${fav.num})`;
-      }
+      const fav = detectFavoriteFromSpread(qidToAway.get(pk.qid)||"", qidToHome.get(pk.qid)||"", qidToSpread.get(pk.qid)||"");
+      const showPick = (function(){
+        if(!fav) return pk.choice;
+        const favName = fav.team==='home' ? qidToHome.get(pk.qid) : qidToAway.get(pk.qid);
+        // include −spread only when pick is the favorite
+        return (normTeam(pk.choice)===normTeam(favName)) ? `${favName} ${fav.minus}` : pk.choice;
+      })();
       return `
         <tr>
           <td class="col-idx">${idx+1}</td>
-          <td class="col-line">${escapeHtml(displayLine(pk.qid))}</td>
-          <td class="pickCell">${escapeHtml(pickLabel)}${pk.isDouble?'<span class="double"></span>':''}</td>
+          <td class="col-line">${escapeHtml(qidToLine.get(pk.qid) || pk.qid)}</td>
+          <td class="col-pick">${escapeHtml(showPick)}${pk.isDouble?'<span class="double"></span>':''}</td>
           <td>${s.w? s.w : ''}</td>
           <td>${s.l? s.l : ''}</td>
           <td>${s.t? s.t : ''}</td>
@@ -550,7 +565,6 @@ function renderPeople(){
       `;
     }).join('');
 
-    // totals
     let tw=0, tl=0, tt=0;
     defaultTemplate.picks.forEach(pk=>{
       const s = scorePick(pk.qid, pk.choice, pk.isDouble);
@@ -593,7 +607,7 @@ function renderPeople(){
     list.appendChild(card);
   }
 
-  /* --- Participant cards (already last-name sorted) --- */
+  /* --- Participant cards (last-name order already) --- */
   people.forEach(p=>{
     let rowsHtml = '';
     let tw=0, tl=0, tt=0;
@@ -602,19 +616,19 @@ function renderPeople(){
       const s = scorePick(pk.qid, pk.choice, pk.isDouble);
       tw += s.w; tl += s.l; tt += s.t;
 
-      const fav = qidToFav.get(pk.qid) || {side:null,num:null};
-      let pickLabel = pk.choice;
-      if((fav.side==='away' && normTeam(pk.choice)===normTeam(qidToAway.get(pk.qid))) ||
-         (fav.side==='home' && normTeam(pk.choice)===normTeam(qidToHome.get(pk.qid)))){
-        if(fav.num!=null) pickLabel += ` (-${fav.num})`;
-      }
+      const fav = detectFavoriteFromSpread(qidToAway.get(pk.qid)||"", qidToHome.get(pk.qid)||"", qidToSpread.get(pk.qid)||"");
+      const pickDisplay = (function(){
+        if(!fav) return pk.choice;
+        const favName = fav.team==='home' ? qidToHome.get(pk.qid) : qidToAway.get(pk.qid);
+        return (normTeam(pk.choice)===normTeam(favName)) ? `${favName} ${fav.minus}` : pk.choice;
+      })();
 
       const cls = s.w ? 'result-win' : s.l ? 'result-loss' : s.t ? 'result-tie' : '';
       rowsHtml += `
         <tr>
           <td class="col-idx">${idx+1}</td>
-          <td class="col-line">${escapeHtml(displayLine(pk.qid))}</td>
-          <td class="pickCell ${cls}">${escapeHtml(pickLabel)}${pk.isDouble?'<span class="double"></span>':''}</td>
+          <td class="col-line">${escapeHtml(qidToLine.get(pk.qid) || pk.qid)}</td>
+          <td class="col-pick ${cls}">${escapeHtml(pickDisplay)}${pk.isDouble?'<span class="double"></span>':''}</td>
           <td>${s.w? s.w : ''}</td>
           <td>${s.l? s.l : ''}</td>
           <td>${s.t? s.t : ''}</td>
@@ -629,4 +643,111 @@ function renderPeople(){
 
     const table = `
       <div class="header">
-        <div class="pname
+        <div class="pname">${escapeHtml(p.name)}</div>
+        ${p.isDefaults ? '<span class="badge-defaults" title="No submission — defaults applied">Defaults</span>' : ''}
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th class="col-idx">#</th>
+            <th>Line</th>
+            <th>Pick</th>
+            <th>Win</th>
+            <th>Loss</th>
+            <th>Tie</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+        <tfoot>
+          <tr>
+            <td></td>
+            <td>Total</td>
+            <td class="mono">${fmtPct(pct)}</td>
+            <td class="mono">${tw}</td>
+            <td class="mono">${tl}</td>
+            <td class="mono">${tt}</td>
+          </tr>
+        </tfoot>
+      </table>
+    `;
+
+    const card = document.createElement('div');
+    card.className = 'person';
+    card.innerHTML = table;
+    list.appendChild(card);
+  });
+
+  renderStandings(summaries);
+  stWrap.hidden = summaries.length === 0;
+}
+
+/* ============== STANDINGS (sorting) ============== */
+function renderStandings(summaries){
+  const st = document.getElementById('standings');
+
+  const valid = summaries.filter(s => s.denom > 0);
+  if(valid.length === 0){ st.innerHTML = ""; return; }
+
+  const rows = [...valid].sort((a,b)=>{
+    if (standingsSort === 'percent'){
+      const ap = isNaN(a.pct)? -1 : a.pct, bp = isNaN(b.pct)? -1 : b.pct;
+      if(bp !== ap) return bp - ap;
+      if(b.w !== a.w) return b.w - a.w;
+      return a.name.localeCompare(b.name);
+    } else if (standingsSort === 'wins'){
+      if(b.w !== a.w) return b.w - a.w;
+      const ap = isNaN(a.pct)? -1 : a.pct, bp = isNaN(b.pct)? -1 : b.pct;
+      if(bp !== ap) return bp - ap;
+      return a.name.localeCompare(b.name);
+    } else { // alpha by last name
+      return lastName(a.name).localeCompare(lastName(b.name)) || a.name.localeCompare(b.name);
+    }
+  });
+
+  document.getElementById('sort-alpha').classList.toggle('active', standingsSort==='alpha');
+  document.getElementById('sort-percent').classList.toggle('active', standingsSort==='percent');
+  document.getElementById('sort-wins').classList.toggle('active', standingsSort==='wins');
+
+  const tbody = rows.map((s, i)=>`
+    <tr>
+      <td class="rank">${i+1}.</td>
+      <td>
+        <span class="nameCell">
+          ${escapeHtml(s.name)}
+          ${s.isDefaults ? '<span class="badge-defaults" title="No submission — defaults applied">Defaults</span>' : ''}
+        </span>
+      </td>
+      <td class="stat mono">${fmtPct(s.pct)}</td>
+      <td class="stat mono">${s.w}-${s.l}-${s.t}</td>
+      <td class="stat mono">${s.denom}</td>
+    </tr>
+  `).join("");
+
+  st.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th class="rank">#</th>
+          <th>Name</th>
+          <th class="stat">Win %</th>
+          <th class="stat">W-L-T</th>
+          <th class="stat">Picks</th>
+        </tr>
+      </thead>
+      <tbody>${tbody}</tbody>
+    </table>
+  `;
+}
+
+function hookSortButtons(){
+  document.getElementById('sort-alpha').onclick   = ()=>{ standingsSort='alpha';   renderPeople(); };
+  document.getElementById('sort-percent').onclick = ()=>{ standingsSort='percent'; renderPeople(); };
+  document.getElementById('sort-wins').onclick    = ()=>{ standingsSort='wins';    renderPeople(); };
+}
+
+/* ============== GO ============== */
+loadAll();
+// setInterval(loadAll, 60000);
+</script>
+</body>
+</html>
