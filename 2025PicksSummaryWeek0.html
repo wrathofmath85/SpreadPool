@@ -96,9 +96,9 @@
 
 <script>
 /* ================== CONFIG ================== */
-const WeekNumber = 0;  // <-- filter Submissions to this week
+const WeekNumber = 0;  // filter Submissions to this week
 
-/* Publish each tab as CSV and paste URLs here */
+/* CSV tabs */
 const CSV_URL_NCAA_LINES   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT1sgv7_gnDt5DoVxF3jXAU6KTZB8U7azy8AMDdODEhUnnQf1gLK7hgSTktI-X4tF5Zo7ELzG2PfEDE/pub?gid=0&single=true&output=csv";
 const CSV_URL_NFL_LINES    = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT1sgv7_gnDt5DoVxF3jXAU6KTZB8U7azy8AMDdODEhUnnQf1gLK7hgSTktI-X4tF5Zo7ELzG2PfEDE/pub?gid=2109553148&single=true&output=csv";
 const CSV_URL_SUBS         = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRys9xayYsuEqgGB09v1nOrwdD0U5c1Hb1ksLqQxTSBzLi3AKGeg9yPt1-eY1fry_0H-KcZLCQ1h8H6/pub?gid=1991283502&single=true&output=csv";
@@ -150,7 +150,7 @@ function fmtPct(n){ return (isNaN(n) ? "" : (n*100).toFixed(1) + "%"); }
 function toDate(val){ if(!val) return null; const d = new Date(val); return isNaN(+d) ? null : d; }
 function escapeRegex(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
 
-/* ---- Parse ET date & time (like "Aug 30, 2025" + "12:00 PM") into a JS Date ---- */
+/* ---- Parse ET date & time ---- */
 function getETOffsetMinutes(y,mo,d){
   const probeUTC = Date.UTC(y,mo-1,d,12,0);
   const parts = new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',timeZoneName:'shortOffset'}).formatToParts(new Date(probeUTC));
@@ -189,23 +189,21 @@ function makeDateFromET(dateStr,timeStr){
 }
 
 /* ============== STATE ============== */
-const qidToLine   = new Map();      // QID -> display line
-const qidToAway   = new Map();      // QID -> Away team (raw)
-const qidToHome   = new Map();      // QID -> Home team (raw)
-const qidToWinner = new Map();      // QID -> Winner raw ("Tie" or team) or ""
-const qidToDate   = new Map();      // QID -> Date object
-const qidToSpread = new Map();      // QID -> spread text
-const qidToDefault= new Map();      // QID -> 'Y' if part of defaults list in sheet
-const results     = new Map();      // QID -> 'away' | 'home' | 'tie'
-let people        = [];             // [{name, picks:[{qid, choice, isDouble}], isDefaults?:true}]
-let participantNames = [];          // roster
-let defaultTemplate = null;         // { name:"Default Picks", picks:[...] }
-let standingsSort = 'alpha';        // 'alpha' | 'percent' | 'wins'
+const qidToLine   = new Map();
+const qidToAway   = new Map();
+const qidToHome   = new Map();
+const qidToWinner = new Map();
+const qidToDate   = new Map();
+const qidToSpread = new Map();
+const qidToDefault= new Map();   // 'Y' when sheet marks Default
+const results     = new Map();
+let people        = [];
+let participantNames = [];
+let defaultTemplate = null;
+let standingsSort = 'alpha';
 
-/* ======== LINES (shared schema) ========
-   Columns expected: QID, Away Team, Home Team, Date, Time, TV, Location, Spread, Required, Default, Winner (optional)
-*/
-function normalizeLines(rows, league){ // league = 'A' (NFL) or 'B' (NCAA) by QID prefix
+/* ======== LINES (shared schema) ======== */
+function normalizeLines(rows){
   rows.forEach(r=>{
     const qid   = String(r["QID"]||r["qid"]||"").trim();
     if(!qid) return;
@@ -213,12 +211,11 @@ function normalizeLines(rows, league){ // league = 'A' (NFL) or 'B' (NCAA) by QI
     const home  = String(r["Home Team"]||r["Home"]||"").trim();
     const date  = String(r["Date"]||"").trim();
     const time  = String(r["Time"]||"").trim();
-    const spread= String(r["Spread"]||r["Line"]||"").trim();  // may be like "#3 Ohio State -1.5"
-    const req   = String(r["Required"]||"").trim();
+    const spread= String(r["Spread"]||r["Line"]||"").trim();
     const deflt = /^y/i.test(String(r["Default"]||""));
     const winner= String(r["Winner"]||"").trim();
 
-    // Build a display line as "Away (−x if favored) @ Home (−x if favored)"
+    // Build display line: Away (−x if favored) @ Home (−x if favored)
     const fav = detectFavoriteFromSpread(away, home, spread);
     const awayTag = fav && fav.team === 'away' ? ` (${fav.minus})` : '';
     const homeTag = fav && fav.team === 'home' ? ` (${fav.minus})` : '';
@@ -238,33 +235,23 @@ function normalizeLines(rows, league){ // league = 'A' (NFL) or 'B' (NCAA) by QI
 function detectFavoriteFromSpread(away, home, spreadText){
   const s = String(spreadText||"");
   if(!s) return null;
-
-  // Try to find "Team -x.x"
-  // Remove ranks in comparison
   const stripRank = t => String(t||"").replace(/^#\d+\s*/,'').trim();
   const awayKey = stripRank(away);
   const homeKey = stripRank(home);
-
   const rx = (team)=> new RegExp("\\b"+escapeRegex(team)+"\\b[^-+\\d]*(-\\d+(?:\\.\\d+)?)","i");
   const mHome = rx(homeKey).exec(s);
-  if(mHome) return { team:'home', minus: mHome[1] }; // already includes the minus sign
+  if(mHome) return { team:'home', minus: mHome[1] };
   const mAway = rx(awayKey).exec(s);
   if(mAway) return { team:'away', minus: mAway[1] };
-
-  // If just a raw number appears with a minus, assume home favored
   const lone = s.match(/-(\d+(?:\.\d+)?)/);
   if(lone) return { team:'home', minus: '-'+lone[1] };
-
   return null;
 }
 
 /* ============== SUBMISSIONS & PARTICIPANTS ============== */
 function normalizeSubs(rows){
-  // filter to WeekNumber
   const filtered = rows.filter(r => String(r["Week"]||r["week"]||"").trim() === String(WeekNumber));
-
-  // keep latest submission per person
-  const latest = new Map(); // name => ts
+  const latest = new Map();
   filtered.forEach(r=>{
     const name = String(r["Name"]||r["name"]||"").trim();
     if(!name) return;
@@ -282,7 +269,6 @@ function normalizeSubs(rows){
     const isDouble = String(r["IsDouble"]).toUpperCase()==="TRUE";
     if(!name || !qid) return;
     if(latest.get(name) && ts !== latest.get(name)) return;
-
     const p = byName.get(name) || { name, picks: [] };
     p.picks.push({ qid, choice, isDouble });
     byName.set(name, p);
@@ -290,7 +276,6 @@ function normalizeSubs(rows){
 
   const arr = Array.from(byName.values());
   arr.forEach(p => p.picks.sort((a,b)=> qidOrder(a.qid)-qidOrder(b.qid)));
-  // sort by LAST NAME
   arr.sort((a,b)=> lastName(a.name).localeCompare(lastName(b.name)) || a.name.localeCompare(b.name));
   return arr;
 }
@@ -318,12 +303,8 @@ function outcomeFromWinner(qid){
   return undefined;
 }
 
-/* ---------- Build Default Picks set (7 games) ---------- */
+/* ---------- Default Picks = every game with Default="Y" ---------- */
 function computeDefaultPicksSet(){
-  // Set of qids marked Default="Y" in sheets
-  const allQids = Array.from(qidToLine.keys());
-  const defQids = allQids.filter(q => qidToDefault.get(q)==='Y');
-
   const pickFav = (qid)=> {
     const fav = detectFavoriteFromSpread(qidToAway.get(qid)||"", qidToHome.get(qid)||"", qidToSpread.get(qid)||"");
     if(!fav) return null;
@@ -332,46 +313,14 @@ function computeDefaultPicksSet(){
   };
 
   const chosen = [];
-  const seen = new Set();
+  Array.from(qidToLine.keys())
+    .filter(q => qidToDefault.get(q)==='Y')
+    .sort((a,b)=> qidOrder(a)-qidOrder(b))
+    .forEach(q=>{
+      const p = pickFav(q);
+      if(p) chosen.push(p);
+    });
 
-  function add(qid){
-    if(!qid || seen.has(qid)) return;
-    const p = pickFav(qid);
-    if(!p) return;
-    chosen.push(p); seen.add(qid);
-  }
-
-  // helpers
-  const isA = q => q.startsWith('A'); // NFL
-  const isB = q => q.startsWith('B'); // NCAA
-
-  // 1) Required College (first one)
-  const reqB = defQids.filter(q=>isB(q)).sort((a,b)=>qidOrder(a)-qidOrder(b));
-  if(reqB.length) add(reqB[0]);
-
-  // 2) Required NFL (first one)
-  const reqA = defQids.filter(q=>isA(q)).sort((a,b)=>qidOrder(a)-qidOrder(b));
-  if(reqA.length) add(reqA[0]);
-
-  // 3) First 2 College games on Saturday
-  const bSat = allQids
-    .filter(q=>isB(q) && qidToDate.get(q) && qidToDate.get(q).getDay()===6)
-    .sort((a,b)=> (qidToDate.get(a)-qidToDate.get(b)) || qidOrder(a)-qidOrder(b));
-  for(const q of bSat){ if(chosen.length>=3) break; add(q); } // after two adds, chosen length will be 3 (1 B required + 2 Sat) or fewer if duplicates
-
-  // 4) First 3 NFL games on Sunday
-  const aSun = allQids
-    .filter(q=>isA(q) && qidToDate.get(q) && qidToDate.get(q).getDay()===0)
-    .sort((a,b)=> (qidToDate.get(a)-qidToDate.get(b)) || qidOrder(a)-qidOrder(b));
-  for(const q of aSun){ if(chosen.length>=7) break; add(q); }
-
-  // Ensure total of 7 (fallback by earliest remaining)
-  if(chosen.length<7){
-    const rest = allQids.filter(q=>!seen.has(q)).sort((a,b)=> qidOrder(a)-qidOrder(b));
-    for(const q of rest){ if(chosen.length>=7) break; add(q); }
-  }
-
-  chosen.sort((a,b)=> qidOrder(a.qid)-qidOrder(b.qid));
   return chosen;
 }
 
@@ -386,27 +335,22 @@ async function loadAll(){
       fetchCSV(CSV_URL_PARTICIPANTS)
     ]);
 
-    // reset maps
     qidToLine.clear(); qidToAway.clear(); qidToHome.clear(); qidToWinner.clear();
     qidToDate.clear(); qidToSpread.clear(); qidToDefault.clear(); results.clear();
 
-    normalizeLines(nflLines, 'A');
-    normalizeLines(ncaaLines, 'B');
+    normalizeLines(nflLines);
+    normalizeLines(ncaaLines);
 
-    // prefill locked results from Winner column (if present)
     Array.from(qidToLine.keys()).forEach(qid=>{
       const oc = outcomeFromWinner(qid);
       if(oc) results.set(qid, oc);
     });
 
-    // normalize datasets
     people = normalizeSubs(subs);
     participantNames = normalizeParticipants(parts);
 
-    // Default template
     defaultTemplate = { name:"Default Picks", picks: computeDefaultPicksSet(), isDefaults:true };
 
-    // Add defaults for anyone without a submission
     const have = new Set(people.map(p=>p.name.toLowerCase()));
     participantNames.forEach(nm=>{
       if(!have.has(nm.toLowerCase())){
@@ -414,7 +358,6 @@ async function loadAll(){
       }
     });
 
-    // Sort participants by LAST NAME (defaults card still renders first separately)
     people.sort((a,b)=> lastName(a.name).localeCompare(lastName(b.name)) || a.name.localeCompare(b.name));
 
     renderGames();
@@ -445,12 +388,11 @@ function getPickCounts(qid){
   return { away, home };
 }
 
-/* ============== RENDER GAMES (defaults + any game picked) ============== */
+/* ============== RENDER GAMES ============== */
 function renderGames(){
   const panel = document.getElementById('gamesPanel');
   panel.innerHTML = '';
 
-  // union of default QIDs and all QIDs that have at least one pick
   const pickedQids = new Set();
   people.forEach(p=>p.picks.forEach(pk=> pickedQids.add(pk.qid)));
   const defaultQids = new Set((defaultTemplate?.picks||[]).map(p=>p.qid));
@@ -499,7 +441,7 @@ function renderGames(){
     const btn = e.target.closest('.gbtn');
     if(!btn) return;
     const qid = btn.dataset.qid;
-    if(outcomeFromWinner(qid)) return; // locked globally
+    if(outcomeFromWinner(qid)) return;
 
     const val = btn.dataset.val;
     const current = results.get(qid);
@@ -509,7 +451,7 @@ function renderGames(){
     row.querySelectorAll('.gbtn').forEach(b=> b.classList.remove('active'));
     if(results.has(qid)) row.querySelector(`.gbtn.${results.get(qid)}`)?.classList.add('active');
 
-    renderPeople(); // re-score
+    renderPeople();
   };
 }
 
@@ -542,7 +484,7 @@ function renderPeople(){
   list.innerHTML = '';
   const summaries = [];
 
-  /* --- First card: Default Picks template --- */
+  /* --- Defaults card --- */
   if (defaultTemplate && defaultTemplate.picks && defaultTemplate.picks.length){
     const rows = defaultTemplate.picks.map((pk, idx)=>{
       const s = scorePick(pk.qid, pk.choice, pk.isDouble);
@@ -550,7 +492,6 @@ function renderPeople(){
       const showPick = (function(){
         if(!fav) return pk.choice;
         const favName = fav.team==='home' ? qidToHome.get(pk.qid) : qidToAway.get(pk.qid);
-        // include −spread only when pick is the favorite
         return (normTeam(pk.choice)===normTeam(favName)) ? `${favName} ${fav.minus}` : pk.choice;
       })();
       return `
@@ -607,7 +548,7 @@ function renderPeople(){
     list.appendChild(card);
   }
 
-  /* --- Participant cards (last-name order already) --- */
+  /* --- Participant cards --- */
   people.forEach(p=>{
     let rowsHtml = '';
     let tw=0, tl=0, tt=0;
