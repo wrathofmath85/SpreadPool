@@ -103,7 +103,7 @@ const CSV_URL_NFL_LINES    = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT
 const CSV_URL_SUBS         = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRys9xayYsuEqgGB09v1nOrwdD0U5c1Hb1ksLqQxTSBzLi3AKGeg9yPt1-eY1fry_0H-KcZLCQ1h8H6/pub?gid=1991283502&single=true&output=csv";
 const CSV_URL_PARTICIPANTS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRj5ieGlGWurIlGuongV3vJhWWAwCYsEFVhEEtjwOG7RiFwTRZkM_JXtjb8QtwsdzhaXPMDRPyU7qZC/pub?gid=0&single=true&output=csv";
 const DOUBLE_COUNTS_AS = 2;
-const WeekNumber = 0; // filter submissions by this week
+const WeekNumber = 0; // only use submissions where Week == WeekNumber
 
 /* ================ HELPERS =================== */
 const by = f => (a,b)=> f(a)<f(b)?-1:f(a)>f(b)?1:0;
@@ -156,25 +156,22 @@ function fmtPct(n){ return (isNaN(n) ? "" : (n*100).toFixed(1) + "%"); }
 function toDate(val){ if(!val) return null; const d = new Date(val); return isNaN(+d) ? null : d; }
 function escapeRegex(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
 
-/* ---------- Favorite detection (works for both sheets) ---------- */
-function detectFavoriteFrom(lineStr, spreadStr, away, home){
+/* ---------- Favorite detection from SPREAD text ---------- */
+function detectFavoriteFrom(spreadText, away, home){
   const stripRank = s => String(s||"").replace(/^#\d+\s*/,'').trim();
   const awayKey = stripRank(away), homeKey = stripRank(home);
-  const pool = `${lineStr||''} ${spreadStr||''}`;
+  const pool = String(spreadText||"");
 
-  // 1) team ( -3.5 )
+  // Accept "Team (-3.5)" or "Team -3.5"
   const rxP = (team)=> new RegExp("\\b"+escapeRegex(team)+"\\s*\\(([-+]?\\d+(?:\\.\\d+)?)\\)","i");
-  const mHomeP = rxP(homeKey).exec(pool);
-  const mAwayP = rxP(awayKey).exec(pool);
-  if(mHomeP && parseFloat(mHomeP[1])<0) return {fav:'home', pts:Math.abs(parseFloat(mHomeP[1]))};
-  if(mAwayP && parseFloat(mAwayP[1])<0) return {fav:'away', pts:Math.abs(parseFloat(mAwayP[1]))};
-
-  // 2) team -3.5 (no parens)
   const rxI = (team)=> new RegExp("\\b"+escapeRegex(team)+"\\b[^-+\\d]*([-+]\\d+(?:\\.\\d+)?)","i");
-  const mHomeI = rxI(homeKey).exec(pool);
-  const mAwayI = rxI(awayKey).exec(pool);
-  if(mHomeI && parseFloat(mHomeI[1])<0) return {fav:'home', pts:Math.abs(parseFloat(mHomeI[1]))};
-  if(mAwayI && parseFloat(mAwayI[1])<0) return {fav:'away', pts:Math.abs(parseFloat(mAwayI[1]))};
+
+  let m;
+  m = rxP(homeKey).exec(pool); if(m && parseFloat(m[1])<0) return {fav:'home', pts:Math.abs(parseFloat(m[1]))};
+  m = rxP(awayKey).exec(pool); if(m && parseFloat(m[1])<0) return {fav:'away', pts:Math.abs(parseFloat(m[1]))};
+
+  m = rxI(homeKey).exec(pool); if(m && parseFloat(m[1])<0) return {fav:'home', pts:Math.abs(parseFloat(m[1]))};
+  m = rxI(awayKey).exec(pool); if(m && parseFloat(m[1])<0) return {fav:'away', pts:Math.abs(parseFloat(m[1]))};
 
   return null;
 }
@@ -203,8 +200,7 @@ let qidToLine   = new Map();      // QID -> display line (fav only shown with -#
 let qidToAway   = new Map();      // QID -> Away
 let qidToHome   = new Map();      // QID -> Home
 let qidToWinner = new Map();      // QID -> Winner (locks)
-let qidToDate   = new Map();      // QID -> Date object (if available)
-let qidToSpread = new Map();      // QID -> Spread text from sheet (NCAA), may be ""
+let qidToDate   = new Map();      // QID -> Date object (if provided)
 let qidToDefault= new Map();      // QID -> boolean Default="Y"
 let qidToFav    = new Map();      // QID -> {fav:'away'|'home', pts:number}
 let results     = new Map();      // QID -> 'away' | 'home' | 'tie'
@@ -213,45 +209,25 @@ let participantNames = [];        // roster
 let defaultTemplate = null;       // { name:"Default Picks", picks:[...] }
 let standingsSort = 'alpha';      // 'alpha' | 'percent' | 'wins'
 
-/* ======== LOAD & NORMALIZE LINES ======== */
-function normalizeNFL(rows){
-  rows.forEach(r=>{
-    const qid   = String(r["QID"]||r["qid"]||"").trim(); if(!qid) return;
-    const line  = String(r["Line"]||r["line"]||"").trim();
-    const away  = String(r["Away"]||r["away"]||"").trim();
-    const home  = String(r["Home"]||r["home"]||"").trim();
-    const win   = String(r["Winner"]||r["winner"]||"").trim();
-    const dtStr = String(r["DateTime"]||r["datetime"]||"").trim();
-    const def   = /^y/i.test(String(r["Default"]||""));
-    const fav   = detectFavoriteFrom(line, "", away, home);
-
-    qidToAway.set(qid, away);
-    qidToHome.set(qid, home);
-    qidToWinner.set(qid, win);
-    qidToDate.set(qid, toDate(dtStr));
-    qidToSpread.set(qid, ""); // NFL spread embedded in line
-    qidToDefault.set(qid, def);
-    if(fav){ qidToFav.set(qid, fav); }
-    qidToLine.set(qid, formatLine(away, home, fav));
-  });
-}
-function normalizeNCAA(rows){
+/* ======== UNIFIED LINES NORMALIZER (for BOTH sheets) ======== */
+function normalizeLines(rows){
   rows.forEach(r=>{
     const qid   = String(r["QID"]||r["qid"]||"").trim(); if(!qid) return;
     const away  = String(r["Away Team"]||r["Away"]||"").trim();
     const home  = String(r["Home Team"]||r["Home"]||"").trim();
-    const date  = String(r["Date"]||"").trim();
-    const time  = String(r["Time"]||"").trim(); // not used here for sorting
-    const spread= String(r["Spread"]||r["Line"]||"").trim();
+    const spread= String(r["Spread"]||r["Line"]||"").trim();  // we prefer Spread; Line kept for compatibility
+    const winner= String(r["Winner"]||r["winner"]||"").trim();
     const def   = /^y/i.test(String(r["Default"]||""));
-    const fav   = detectFavoriteFrom("", spread, away, home);
+    const dt    = String(r["DateTime"]||r["datetime"]||r["Date"]||"").trim();
+
+    const fav   = detectFavoriteFrom(spread, away, home);
 
     qidToAway.set(qid, away);
     qidToHome.set(qid, home);
-    qidToWinner.set(qid, ""); // NCAA sheet has no Winner column
-    qidToDate.set(qid, null);
-    qidToSpread.set(qid, spread);
+    qidToWinner.set(qid, winner);
     qidToDefault.set(qid, def);
+    if(dt) qidToDate.set(qid, toDate(dt)); else qidToDate.set(qid, null);
+
     if(fav){ qidToFav.set(qid, fav); }
     qidToLine.set(qid, formatLine(away, home, fav));
   });
@@ -319,7 +295,7 @@ function computeDefaultPicksSet(){
   qids.sort((a,b)=> qidOrder(a)-qidOrder(b));
   qids.forEach(qid=>{
     const fav = qidToFav.get(qid);
-    if(!fav) return; // must have a spread we can detect
+    if(!fav) return; // must have a detectable spread
     const choice = fav.fav==='away' ? (qidToAway.get(qid)||'') : (qidToHome.get(qid)||'');
     picks.push({ qid, choice, isDouble:false });
   });
@@ -339,12 +315,11 @@ async function loadAll(){
 
     // reset maps
     qidToLine.clear(); qidToAway.clear(); qidToHome.clear(); qidToWinner.clear();
-    qidToDate.clear(); qidToSpread.clear(); qidToDefault.clear(); qidToFav.clear();
-    results.clear();
+    qidToDate.clear(); qidToDefault.clear(); qidToFav.clear(); results.clear();
 
-    // merge both line files
-    normalizeNFL(nflLines);
-    normalizeNCAA(ncaaLines);
+    // merge both line files with unified parser
+    normalizeLines(nflLines);
+    normalizeLines(ncaaLines);
 
     // prefill locked results from Winner column
     Array.from(qidToLine.keys()).forEach(qid=>{
@@ -403,7 +378,7 @@ function renderGames(){
   const panel = document.getElementById('gamesPanel');
   panel.innerHTML = '';
 
-  // helper: we only show games with a detectable favorite/spread
+  // Only show games with a detectable favorite/spread
   const hasSpread = (qid)=> !!qidToFav.get(qid);
 
   // QIDs with at least one pick (including defaults assigned to people)
