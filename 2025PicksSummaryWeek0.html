@@ -44,12 +44,13 @@
     box-shadow:0 0 8px rgba(57,255,20,.6), inset 0 0 2px rgba(0,0,0,.2);
     font-size:11px;
   }
-  table{width:100%;border-collapse:collapse;font-size:12px;line-height:1.2}
+  table{width:100%;border-collapse:collapse;font-size:12px;line-height:1.2;table-layout:auto}
   th,td{padding:5px 6px;vertical-align:top}
   th{text-align:left;border-bottom:2px solid #000}
   td{border-bottom:1px solid var(--rule)}
   .col-idx{width:28px;text-align:right;color:var(--muted)}
-  .col-line{width:60%}
+  .col-line{width:52%}          /* slightly smaller so Pick can grow */
+  .col-pick{width:38%;white-space:nowrap}  /* make Pick wider & keep to one line */
   .result-win{color:var(--green);font-weight:700}
   .result-loss{color:var(--red);font-weight:700}
   .result-tie{color:var(--gray);font-weight:700}
@@ -215,7 +216,7 @@ function normalizeLines(rows){
     const qid   = String(r["QID"]||r["qid"]||"").trim(); if(!qid) return;
     const away  = String(r["Away Team"]||r["Away"]||"").trim();
     const home  = String(r["Home Team"]||r["Home"]||"").trim();
-    const spread= String(r["Spread"]||r["Line"]||"").trim();  // we prefer Spread; Line kept for compatibility
+    const spread= String(r["Spread"]||r["Line"]||"").trim();  // prefer Spread
     const winner= String(r["Winner"]||r["winner"]||"").trim();
     const def   = /^y/i.test(String(r["Default"]||""));
     const dt    = String(r["DateTime"]||r["datetime"]||r["Date"]||"").trim();
@@ -263,8 +264,12 @@ function normalizeSubs(rows){
   });
 
   const arr = Array.from(byName.values());
-  arr.forEach(p => p.picks.sort((a,b)=> qidOrder(a.qid)-qidOrder(b.qid)));
-  // sort by last name (defaults card will still render first)
+  arr.forEach(p => {
+    // keep only picks whose QID exists in current Lines (prevents mismatches)
+    p.picks = p.picks.filter(pk => qidToLine.has(pk.qid));
+    p.picks.sort((a,b)=> qidOrder(a.qid)-qidOrder(b.qid));
+  });
+  // sort by last name (defaults card still renders first)
   arr.sort((a,b)=> lastNameKey(a.name).localeCompare(lastNameKey(b.name), undefined, {sensitivity:'base'}));
   return arr;
 }
@@ -328,6 +333,7 @@ async function loadAll(){
     });
 
     // normalize datasets
+    // NOTE: normalizeSubs now uses the built qidToLine to filter unknown QIDs
     people = normalizeSubs(subs);
     participantNames = normalizeParticipants(parts);
 
@@ -342,7 +348,7 @@ async function loadAll(){
       }
     });
 
-    // Sort real participants by last name; defaults card renders separately
+    // Sort real participants by last name; defaults card renders separately first
     people.sort((a,b)=> lastNameKey(a.name).localeCompare(lastNameKey(b.name), undefined, {sensitivity:'base'}));
 
     renderGames();
@@ -489,7 +495,7 @@ function renderPeople(){
         <tr>
           <td class="col-idx">${idx+1}</td>
           <td class="col-line">${escapeHtml(qidToLine.get(pk.qid) || pk.qid)}</td>
-          <td>${escapeHtml(pickLabel)}${pk.isDouble?'<span class="double"></span>':''}</td>
+          <td class="col-pick">${escapeHtml(pickLabel)}${pk.isDouble?'<span class="double"></span>':''}</td>
           <td>${s.w? s.w : ''}</td>
           <td>${s.l? s.l : ''}</td>
           <td>${s.t? s.t : ''}</td>
@@ -553,7 +559,7 @@ function renderPeople(){
         <tr>
           <td class="col-idx">${idx+1}</td>
           <td class="col-line">${escapeHtml(qidToLine.get(pk.qid) || pk.qid)}</td>
-          <td class="${cls}">${escapeHtml(pickLabel)}${pk.isDouble?'<span class="double"></span>':''}</td>
+          <td class="col-pick ${cls}">${escapeHtml(pickLabel)}${pk.isDouble?'<span class="double"></span>':''}</td>
           <td>${s.w? s.w : ''}</td>
           <td>${s.l? s.l : ''}</td>
           <td>${s.t? s.t : ''}</td>
