@@ -196,6 +196,25 @@
   }
   /* spacer so footer doesn't overlap last content */
   .footer-spacer{height:64px}
+/* Mobile layout for the top Games panel */
+@media (max-width: 640px){
+  .game{
+    /* 3 equal columns for buttons; game title sits on its own row */
+    grid-template-columns: repeat(3, 1fr);
+    align-items: stretch;
+    gap: 8px;
+  }
+  .gline{
+    grid-column: 1 / -1;   /* title spans full width */
+    font-size: 13px;       /* optional: slightly smaller on mobile */
+  }
+  .gbtn{
+    width: 100%;
+    text-align: center;
+    padding: 8px 10px;     /* a touch larger for fingers */
+  }
+}
+
 </style>
 </head>
 <body>
