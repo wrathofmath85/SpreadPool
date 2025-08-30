@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Spread Pool Week 0 Picks</title>
+<title>Spread Pool — Picks</title>
 <link rel="preconnect" href="https://cdn.jsdelivr.net/">
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <style>
@@ -183,12 +183,18 @@ function formatLine(away, home, favInfo){
     ? `${away} (-${pts}) @ ${home}`
     : `${away} @ ${home} (-${pts})`;
 }
+
+/* NEW: append (-#) only if it isn't already in the submitted choice */
 function displayPickLabel(qid, choice){
   const fav = qidToFav.get(qid);
   const cNorm = normTeam(choice);
   if(fav){
     const favTeam = fav.fav==='away' ? qidToAway.get(qid)||'' : qidToHome.get(qid)||'';
     if(cNorm && cNorm===normTeam(favTeam)){
+      // If choice already contains a negative spread (e.g., "Team (-3.5)"), don't add it again
+      if(/\(-\d+(?:\.\d+)?\)/.test(String(choice))){
+        return choice;
+      }
       const pts = (fav.pts%1===0)? fav.pts.toFixed(0) : fav.pts.toString();
       return `${choice} (-${pts})`;
     }
@@ -333,7 +339,6 @@ async function loadAll(){
     });
 
     // normalize datasets
-    // NOTE: normalizeSubs now uses the built qidToLine to filter unknown QIDs
     people = normalizeSubs(subs);
     participantNames = normalizeParticipants(parts);
 
