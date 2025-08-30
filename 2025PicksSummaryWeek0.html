@@ -13,6 +13,9 @@
     --neon:#39ff14; --neonText:#062b00;
   }
   html,body{background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-serif;margin:0}
+  /* Smooth anchor scrolling */
+  html{scroll-behavior:smooth}
+
   .wrap{max-width:1200px;margin:28px auto;padding:0 16px 64px}
   h1{margin:0 0 12px}
   #err{display:none;color:#b91c1c;background:#fee2e2;border:1px solid #fecaca;padding:8px 12px;border-radius:8px;margin:8px 0}
@@ -49,8 +52,8 @@
   th{text-align:left;border-bottom:2px solid #000}
   td{border-bottom:1px solid var(--rule)}
   .col-idx{width:28px;text-align:right;color:var(--muted)}
-  .col-line{width:52%}          /* slightly smaller so Pick can grow */
-  .col-pick{width:38%;white-space:nowrap}  /* make Pick wider & keep to one line */
+  .col-line{width:52%}
+  .col-pick{width:38%;white-space:nowrap}
   .result-win{color:var(--green);font-weight:700}
   .result-loss{color:var(--red);font-weight:700}
   .result-tie{color:var(--gray);font-weight:700}
@@ -70,10 +73,27 @@
   .rank{width:42px;text-align:right;color:#888}
   .stat{width:100px;text-align:right}
   .nameCell{display:flex;align-items:center;gap:8px}
+
+  /* --- Quick Nav Footer (new) --- */
+  .quicknav{
+    position:fixed;left:0;right:0;bottom:0;
+    background:#f7f7f7;border-top:1px solid var(--rule);
+    display:flex;gap:10px;justify-content:center;align-items:center;
+    padding:8px 12px;z-index:50;
+  }
+  .quicknav a{
+    border:1px solid var(--rule);background:#fff;border-radius:999px;
+    padding:8px 14px;font-weight:700;color:#111;text-decoration:none;
+  }
+  /* spacer so footer doesn't overlap last content */
+  .footer-spacer{height:54px}
 </style>
 </head>
 <body>
 <div class="wrap">
+  <!-- top anchor -->
+  <div id="topAnchor"></div>
+
   <h1>Spread Pool — Picks</h1>
 
   <div id="err"></div>
@@ -82,10 +102,15 @@
   <div id="gamesPanel" class="games"></div>
   <div class="note">Set the official result per game. If the <strong>Winner</strong> column is filled in a Lines sheet, the game is locked for everyone. Totals &amp; standings update instantly.</div>
 
+  <!-- anchor for start of individual picks -->
+  <div id="picksAnchor"></div>
+
   <!-- PEOPLE (2-column) -->
   <div id="list"></div>
 
   <!-- FULL STANDINGS + SORT FILTERS -->
+  <!-- anchor for summary/standings -->
+  <div id="summaryAnchor"></div>
   <div class="standings" id="standingsWrap" hidden>
     <h2>Standings</h2>
     <div class="toolbar">
@@ -95,6 +120,16 @@
     </div>
     <div id="standings"></div>
   </div>
+
+  <!-- spacer so sticky footer doesn't cover content -->
+  <div class="footer-spacer"></div>
+</div>
+
+<!-- Quick Nav Footer -->
+<div class="quicknav" aria-label="Quick navigation">
+  <a href="#topAnchor"     title="Go to top">Top</a>
+  <a href="#picksAnchor"   title="Go to picks">Picks</a>
+  <a href="#summaryAnchor" title="Go to summary">Summary</a>
 </div>
 
 <script>
@@ -191,7 +226,6 @@ function displayPickLabel(qid, choice){
   if(fav){
     const favTeam = fav.fav==='away' ? qidToAway.get(qid)||'' : qidToHome.get(qid)||'';
     if(cNorm && cNorm===normTeam(favTeam)){
-      // If choice already contains a negative spread (e.g., "Team (-3.5)"), don't add it again
       if(/\(-\d+(?:\.\d+)?\)/.test(String(choice))){
         return choice;
       }
