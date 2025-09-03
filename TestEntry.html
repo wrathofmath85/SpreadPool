@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Spread Pool — Week 0</title>
+<title>Spread Pool — Week 1</title>
 
 <style>
 :root{
@@ -81,6 +81,27 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
 .status_good{background:var(--bearsNavy);color:var(--bearsOrange);border-color:var(--bearsNavy)}
 
 .demo{position:fixed;top:14px;right:14px;background:#a15;color:#fff;border-radius:999px;padding:8px 12px;font-weight:800;z-index:10;box-shadow:0 6px 18px rgba(0,0,0,.35)}
+
+/* Loud/annoying payment alert */
+.pay-alert{
+  margin-top:10px;
+  background:#ff0044;
+  color:#fff;
+  border:2px dashed #fff;
+  border-radius:10px;
+  padding:10px 12px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:.5px;
+  box-shadow:0 0 0 3px rgba(255,0,68,.25), 0 6px 16px rgba(0,0,0,.35);
+  animation: waggle .9s ease-in-out infinite;
+}
+@keyframes waggle{
+  0%,100%{ transform:rotate(0deg) }
+  25%{ transform:rotate(1.5deg) }
+  50%{ transform:rotate(0deg) }
+  75%{ transform:rotate(-1.5deg) }
+}
 </style>
 </head>
 <body>
@@ -100,6 +121,10 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
         <input id="emailBox" type="email" placeholder="you@example.com" style="width:100%;margin-top:6px;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text)" />
       </div>
     </div>
+
+    <!-- Payment alert (hidden by default) -->
+    <div id="paymentAlert" class="pay-alert" hidden>Payment still needed</div>
+
     <p class="small muted" style="margin-top:8px">One email is sent to the organizer and you’ll be CC’d.</p>
   </section>
 
@@ -173,7 +198,7 @@ const CSV_URL_PARTICIPANTS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR
 const CSV_URL_NFL          = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRB9bXyC3PBzUhxALXDBAfdsKUAarhukkrtwHEeR64Sj7tB3kb5FZO-PvFOVX57srWOoVNPFO7yjpUf/pub?gid=2109553148&single=true&output=csv";
 const CSV_URL_NCAA         = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRB9bXyC3PBzUhxALXDBAfdsKUAarhukkrtwHEeR64Sj7tB3kb5FZO-PvFOVX57srWOoVNPFO7yjpUf/pub?gid=0&single=true&output=csv";
 
-const CURRENT_WEEK = 0;
+const CURRENT_WEEK = 1;
 const PICKS_DEADLINE_UTC = "2025-08-29T21:30:00Z";
 
 /* EmailJS (unchanged) */
@@ -195,6 +220,7 @@ const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const escapeHtml = s => String(s??"").replace(/[&<>"]/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[m]));
 
+/* ---- CSV helpers ---- */
 function fetchCSV(url){
   const bust = (url.includes("?") ? "&" : "?") + "_=" + Date.now();
   return fetch(url + bust, {mode: "cors", cache:"no-store"})
@@ -269,8 +295,8 @@ function sortRequiredFirst(arr){
 }
 
 /* ============== STATE ============== */
-let participants=[];
 let gamesA=[], gamesB=[];
+let paymentByName = new Map(); // name -> payment string ("" means unpaid)
 
 /* ============== CSV → GAMES ============== */
 function normalizeGames(csvRows, prefix){
@@ -297,15 +323,13 @@ function normalizeGames(csvRows, prefix){
   return sortRequiredFirst(out);
 }
 
-/* -------- FIXED: favorite & labels with true spread (not ranking) -------- */
+/* -------- Favorite & labels with true spread -------- */
 function favoriteInfo(away, home, spreadText){
   const spreadRaw = String(spreadText||"");
 
-  // 1) Extract the **last** signed/decimal number from the spread cell (the line)
   const nums = spreadRaw.match(/[+-]?\d+(?:\.\d+)?/g);
-  const line = nums ? nums[nums.length - 1] : ""; // last number in the cell
+  const line = nums ? nums[nums.length - 1] : "";
 
-  // 2) Compare using team names with ranks stripped (e.g., "#3 Ohio State" -> "Ohio State")
   const stripRank = s => String(s||"").replace(/^#\d+\s*/,'').trim().toLowerCase();
   const awayKey = stripRank(away);
   const homeKey = stripRank(home);
@@ -314,15 +338,13 @@ function favoriteInfo(away, home, spreadText){
   const awayFav = spreadKey.includes(awayKey);
   const homeFav = spreadKey.includes(homeKey);
 
-  // 3) Build labels; if favorite is known, show (line) next to that team
-  const fmt = n => (String(n).startsWith('-') ? n : `-${n}`); // favorites shown with negative
+  const fmt = n => (String(n).startsWith('-') ? n : `-${n}`);
   return {
     awayLabel: awayFav && line ? `${away} (${fmt(line)})` : away,
     homeLabel: homeFav && line ? `${home} (${fmt(line)})` : home,
     favoriteLine: spreadRaw || "—"
   };
 }
-/* ------------------------------------------------------------------------ */
 
 /* ============== UI BUILDERS ============== */
 function buildRow(g){
@@ -554,6 +576,12 @@ document.addEventListener("change", e=>{
   if(e.target.matches('#nameSel')){
     const em = e.target.selectedOptions[0]?.dataset.email || "";
     if(em) $("#emailBox").value = em;
+
+    // Show/hide payment alert for the selected name
+    const chosenName = e.target.value || "";
+    const paymentVal = (paymentByName.get(chosenName) || "").trim(); // blank => needs payment
+    $("#paymentAlert").hidden = !(chosenName && paymentVal === "");
+
     renderSummary(); validateAll();
   }
   if(e.target.matches('input[type="radio"]')){
@@ -658,10 +686,22 @@ $("#submitBtn").addEventListener("click", async ()=>{
 /* ============== LOAD DATA & EXPIRED UI ============== */
 async function loadAll(){
   try{
-    const pCSV = parseCSV(await fetchCSV(CSV_URL_PARTICIPANTS));
+    const raw = await fetchCSV(CSV_URL_PARTICIPANTS);
+    const pCSV = parseCSV(raw);
+
+    // Find the Payment column (case-insensitive), default to "Payment"
+    const paymentKey = Object.keys(pCSV[0] || {}).find(k => k.toLowerCase() === "payment") || "Payment";
+
+    // Build dropdown and fill the payment map
     $("#nameSel").innerHTML =
       `<option value="">— Select your name —</option>` +
-      pCSV.map(p => `<option value="${escapeHtml(p.Name)}" data-email="${escapeHtml(p.Email||"")}">${escapeHtml(p.Name)}</option>`).join("");
+      pCSV.map(p => {
+        const nm  = p.Name || "";
+        const em  = p.Email || "";
+        const pay = (p[paymentKey] || ""); // may be blank
+        paymentByName.set(nm, pay);
+        return `<option value="${escapeHtml(nm)}" data-email="${escapeHtml(em)}">${escapeHtml(nm)}</option>`;
+      }).join("");
 
     const aRows = parseCSV(await fetchCSV(CSV_URL_NFL));
     const bRows = parseCSV(await fetchCSV(CSV_URL_NCAA));
@@ -684,6 +724,9 @@ async function loadAll(){
     hostB.querySelectorAll('.clear').forEach(b=>{
       b.addEventListener('click', ()=>{ const id=b.dataset.clear; $$(`input[name="${CSS.escape(id)}"]`).forEach(i=>i.checked=false); refreshDoubleChoices(); renderSummary(); validateAll(); });
     });
+
+    // Hide alert on initial load
+    $("#paymentAlert").hidden = true;
 
     refreshExpiryUI();
     refreshDoubleChoices();
