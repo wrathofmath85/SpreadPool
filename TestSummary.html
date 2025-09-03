@@ -4,10 +4,71 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Spread Pool — Picks</title>
-<link rel="preconnect" href="https://cdn.jsdelivr.net" />
+<link rel="preconnect" href="https://cdn.jsdelivr.net/">
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <style>
-  /* (your CSS unchanged) */
+  :root{
+    --bg:#ffffff; --text:#111; --muted:#666; --rule:#ddd; --accent:#0b61ff;
+    --green:#16a34a; --red:#dc2626; --gray:#6b7280; --chip:#0b5; --count:#b45309;
+    --neon:#39ff14; --neonText:#062b00;
+  }
+  html,body{background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-serif;margin:0}
+  .wrap{max-width:1200px;margin:28px auto;padding:0 16px 64px}
+  h1{margin:0 0 12px}
+  #err{display:none;color:#b91c1c;background:#fee2e2;border:1px solid #fecaca;padding:8px 12px;border-radius:8px;margin:8px 0}
+
+  /* Games panel */
+  .games{border:1px solid var(--rule);border-radius:10px;padding:12px;margin:8px 0 20px}
+  .game{display:grid;grid-template-columns: 1fr auto auto auto;gap:8px;align-items:center;border-bottom:1px solid var(--rule);padding:8px 0}
+  .game:last-child{border-bottom:0}
+  .gline{font-weight:700}
+  .gbtn{border:1px solid var(--rule);background:#f7f7f7;border-radius:8px;padding:6px 10px;cursor:pointer;font-weight:600}
+  .gbtn .count{font-weight:700;color:var(--count);margin-left:4px}
+  .gbtn.active{border-color:var(--accent);box-shadow:0 0 0 2px rgba(11,97,255,.15)}
+  .gbtn.away.active{background:#eef3ff}
+  .gbtn.home.active{background:#eefaf0}
+  .gbtn.tie.active{background:#f3f4f6}
+  .note{color:var(--muted);font-size:12px;margin-top:6px}
+
+  /* People grid */
+  #list{display:grid;grid-template-columns:repeat(2, minmax(0,1fr));gap:16px}
+  @media (max-width: 900px){ #list{grid-template-columns:1fr} }
+
+  /* People cards & tables */
+  .person{border:1px solid var(--rule);border-radius:10px;padding:12px}
+  .header{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .pname{font-weight:800;font-size:18px;margin:0}
+  .badge-defaults{
+    background:var(--neon); color:var(--neonText); font-weight:900;
+    padding:2px 8px; border-radius:999px; text-transform:uppercase; letter-spacing:.5px;
+    box-shadow:0 0 8px rgba(57,255,20,.6), inset 0 0 2px rgba(0,0,0,.2);
+    font-size:12px;
+  }
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:7px 8px;vertical-align:top}
+  th{text-align:left;border-bottom:2px solid #000}
+  td{border-bottom:1px solid var(--rule)}
+  .col-idx{width:34px;text-align:right;color:var(--muted)}
+  .col-line{width:55%}
+  .result-win{color:var(--green);font-weight:700}
+  .result-loss{color:var(--red);font-weight:700}
+  .result-tie{color:var(--gray);font-weight:700}
+  .double::after{content:" ×2";color:var(--chip);font-weight:700}
+  tfoot td{font-weight:700}
+  .mono{font-variant-numeric: tabular-nums}
+
+  /* Standings */
+  .standings{margin-top:28px}
+  .standings h2{margin:8px 0 10px}
+  .toolbar{display:flex;gap:8px;margin:8px 0 12px}
+  .toolbar button{padding:6px 10px;border:1px solid var(--rule);background:#f7f7f7;border-radius:8px;cursor:pointer}
+  .toolbar button.active{border-color:var(--accent);box-shadow:0 0 0 2px rgba(11,97,255,.15)}
+  .standings table{width:100%}
+  .standings td,.standings th{padding:8px;border-bottom:1px solid var(--rule)}
+  .standings th{text-align:left;border-bottom:2px solid #000}
+  .rank{width:42px;text-align:right;color:#888}
+  .stat{width:100px;text-align:right}
+  .nameCell{display:flex;align-items:center;gap:8px}
 </style>
 </head>
 <body>
@@ -15,9 +76,15 @@
   <h1 id="pageTitle">Spread Pool — Picks</h1>
 
   <div id="err"></div>
+
+  <!-- GAME OUTCOME CONTROLS -->
   <div id="gamesPanel" class="games"></div>
-  <div class="note">Set the official result per game. If the <strong>Winner</strong> column is filled in the Lines sheet, the game is locked for everyone. Totals & standings update instantly.</div>
+  <div class="note">Set the official result per game. If the <strong>Winner</strong> column is filled in the Lines sheet, the game is locked for everyone. Totals &amp; standings update instantly.</div>
+
+  <!-- PEOPLE (2-column) -->
   <div id="list"></div>
+
+  <!-- FULL STANDINGS + SORT FILTERS -->
   <div class="standings" id="standingsWrap" hidden>
     <h2>Standings</h2>
     <div class="toolbar">
@@ -31,51 +98,110 @@
 
 <script>
 /* ================== CONFIG ================== */
-const WEEK = 1;  // <<<<<<<<<<<<<<<<<<< week selector
+/* Set the active week — used in header and to filter submissions */
+const WEEK = 1;
 
-const CSV_URL_LINES_NFL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRB9bXyC3PBzUhxALXDBAfdsKUAarhukkrtwHEeR64Sj7tB3kb5FZO-PvFOVX57srWOoVNPFO7yjpUf/pub?gid=2109553148&single=true&output=csv";
-const CSV_URL_LINES_NCAA= "https://docs.google.com/spreadsheets/d/e/2PACX-1vRB9bXyC3PBzUhxALXDBAfdsKUAarhukkrtwHEeR64Sj7tB3kb5FZO-PvFOVX57srWOoVNPFO7yjpUf/pub?gid=0&single=true&output=csv";
-const CSV_URL_SUBS      = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRys9xayYsuEqgGB09v1nOrwdD0U5c1Hb1ksLqQxTSBzLi3AKGeg9yPt1-eY1fry_0H-KcZLCQ1h8H6/pub?gid=0&single=true&output=csv";
-const CSV_URL_PARTICIPANTS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRj5ieGlGWurIlGuongV3vJhWWAwCYsEFVhEEtjwOG7RiFwTRZkM_JXtjb8QtwsdzhaXPMDRPyU7qZC/pub?gid=0&single=true&output=csv";
+/* Publish each tab as CSV (File → Share → Publish to web → select tab → CSV) and paste URLs here */
+const CSV_URL_LINES_NFL    = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTUQWcddGBeI13Qox_fKf1g9dejkd-VyZqimSwHaXPH4nO4AGE9oJo9-FzNacU4X1-xNvFvm0HOFHre/pub?gid=1347498364&single=true&output=csv"; // expects: QID,Line,Away,Home,Winner,DateTime,Default
+const CSV_URL_LINES_NCAA   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTUQWcddGBeI13Qox_fKf1g9dejkd-VyZqimSwHaXPH4nO4AGE9oJo9-FzNacU4X1-xNvFvm0HOFHre/pub?gid=999999999&single=true&output=csv";     // expects: QID,Line,Away,Home,Winner,DateTime,Default
+const CSV_URL_SUBS         = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRys9xayYsuEqgGB09v1nOrwdD0U5c1Hb1ksLqQxTSBzLi3AKGeg9yPt1-eY1fry_0H-KcZLCQ1h8H6/pub?gid=0&single=true&output=csv";  // Timestamp,Week,Name,Email,QID,Choice,IsDouble
+const CSV_URL_PARTICIPANTS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTfQ7a2weK5Got7LTe3yVxqhcPR6pa-nPg73PdOMk8rrHwqlr3UeTcPprlgVbFjhFIVpifmMKnb_Tss/pub?gid=0&single=true&output=csv"; // Name
+const DOUBLE_COUNTS_AS = 2; // set to 1 if Double should not count extra
 
-const DOUBLE_COUNTS_AS = 2;
-/* ============================================ */
+/* Update the heading for the selected week */
+document.getElementById('pageTitle').textContent = `Spread Pool — Week ${WEEK} Picks`;
 
-document.getElementById("pageTitle").textContent = `Spread Pool — Week ${WEEK} Picks`;
-
+/* ================ HELPERS =================== */
 const by = f => (a,b)=> f(a)<f(b)?-1:f(a)>f(b)?1:0;
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function qidOrder(q){ if(!q) return 9999; const s=q[0], n=parseInt(q.slice(1),10); return (s==='A'?0:1)*1000 + (isFinite(n)?n:999); }
 
-function showErr(msg){ /* unchanged */ }
+function showErr(msg){
+  const box = document.getElementById('err');
+  if (!box) return;
+  if (msg) {
+    box.style.display='block';
+    box.innerHTML = escapeHtml(msg) +
+      '<div style="margin-top:6px;font-size:12px;opacity:.8">NFL Lines: '+escapeHtml(CSV_URL_LINES_NFL)+
+      '<br>NCAA Lines: '+escapeHtml(CSV_URL_LINES_NCAA)+
+      '<br>Subs: '+escapeHtml(CSV_URL_SUBS)+
+      '<br>Participants: '+escapeHtml(CSV_URL_PARTICIPANTS)+'</div>';
+  } else { box.style.display='none'; box.innerHTML=''; }
+}
 
-function fetchCSV(url){ /* unchanged */ }
+// Cache-busted CSV fetch with guard against HTML
+function fetchCSV(url){
+  const bust = (url.includes('?') ? '&' : '?') + 'cb=' + Date.now();
+  return new Promise((resolve,reject)=>{
+    Papa.parse(url + bust,{
+      download:true, header:true, dynamicTyping:false, skipEmptyLines:true,
+      complete:res=>{
+        const row0 = res && res.data && res.data[0] ? res.data[0] : null;
+        const firstCell = row0 ? String(Object.values(row0)[0] ?? '') : '';
+        if (/^<\s*!?doctype|^<\s*html/i.test(firstCell)) {
+          reject(new Error('Got HTML instead of CSV. Use a "Publish to web → CSV" link.'));
+          return;
+        }
+        resolve(res.data);
+      },
+      error:err=>reject(err)
+    });
+  });
+}
 
-function normTeam(s){ /* unchanged */ }
+// Normalize team for matching
+function normTeam(s){
+  s = String(s||"").trim();
+  if(!s) return "";
+  s = s.replace(/\s*\([^)]*\)\s*$/,"").trim(); // drop trailing spread
+  s = s.replace(/^#\d+\s+/,"").trim();         // drop rank
+  return s.toLowerCase();
+}
 function fmtPct(n){ return (isNaN(n) ? "" : (n*100).toFixed(1) + "%"); }
-function toDate(val){ /* unchanged */ }
-function escapeRegex(s){ /* unchanged */ }
+function toDate(val){ if(!val) return null; const d = new Date(val); return isNaN(+d) ? null : d; }
+function escapeRegex(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
 
 /* ============== STATE ============== */
-let qidToLine   = new Map();
-let qidToAway   = new Map();
-let qidToHome   = new Map();
-let qidToWinner = new Map();
-let qidToDate   = new Map();
-let results     = new Map();
-let people      = [];
-let participantNames = [];
-let defaultTemplate = null;
-let standingsSort = 'alpha';
+let qidToLine    = new Map();     // QID -> Line text
+let qidToAway    = new Map();     // QID -> Away team (raw)
+let qidToHome    = new Map();     // QID -> Home team (raw)
+let qidToWinner  = new Map();     // QID -> Winner raw ("Tie" or team) or ""
+let qidToDate    = new Map();     // QID -> Date object (from DateTime)
+let qidToDefault = new Map();     // QID -> boolean Default="Y"
+let results      = new Map();     // QID -> 'away' | 'home' | 'tie'
+let people       = [];            // [{name, picks:[{qid, choice, isDouble}], isDefaults?:true}]
+let participantNames = [];        // ["Name A", "Name B", ...]
+let defaultTemplate = null;       // { name:"Default Picks", picks:[...] }
+let standingsSort = 'alpha';      // 'alpha' | 'percent' | 'wins'
 
 /* ============== LOAD & PREP ============== */
-function normalizeLines(rows){ /* unchanged */ }
+function normalizeLines(rows){
+  rows.forEach(r=>{
+    const qid   = String(r["QID"]||r["qid"]||"").trim();
+    const line  = String(r["Line"]||r["line"]||"").trim();
+    const away  = String(r["Away"]||r["away"]||"").trim();
+    const home  = String(r["Home"]||r["home"]||"").trim();
+    const win   = String(r["Winner"]||r["winner"]||"").trim();
+    const dtStr = String(r["DateTime"]||r["datetime"]||"").trim();
+    const def   = /^y/i.test(String(r["Default"]||""));
+
+    if(qid){
+      qidToLine.set(qid, line || qid);
+      qidToAway.set(qid, away);
+      qidToHome.set(qid, home);
+      qidToWinner.set(qid, win);
+      qidToDate.set(qid, toDate(dtStr));
+      qidToDefault.set(qid, def);
+    }
+  });
+}
 
 function normalizeSubs(rows){
-  // filter to this WEEK
+  // keep only this WEEK
   rows = rows.filter(r => String(r["Week"]||r["week"]||"").trim() === String(WEEK));
 
-  const latest = new Map();
+  // keep latest submission per person
+  const latest = new Map(); // name => ts
   rows.forEach(r=>{
     const name = String(r["Name"]||r["name"]||"").trim();
     if(!name) return;
@@ -105,11 +231,60 @@ function normalizeSubs(rows){
   return arr;
 }
 
-function normalizeParticipants(rows){ /* unchanged */ }
-function outcomeFromWinner(qid){ /* unchanged */ }
-function detectFavorite(qid){ /* unchanged */ }
-function computeDefaultPicksSet(){ /* unchanged */ }
+function normalizeParticipants(rows){
+  const set = new Set();
+  rows.forEach(r=>{
+    const nm = String(r["Name"]||r["name"]||"").trim();
+    if(nm) set.add(nm);
+  });
+  return Array.from(set).sort((a,b)=> a.localeCompare(b, undefined, {sensitivity:'base'}));
+}
 
+function outcomeFromWinner(qid){
+  const w = (qidToWinner.get(qid) || "").trim();
+  if(!w) return undefined;
+  if (/^tie$/i.test(w)) return 'tie';
+  const wNorm = normTeam(w);
+  if (wNorm && wNorm === normTeam(qidToAway.get(qid)||"")) return 'away';
+  if (wNorm && wNorm === normTeam(qidToHome.get(qid)||"")) return 'home';
+  return undefined;
+}
+
+/* ---------- Favorite detection from Line text ---------- */
+function detectFavorite(qid){
+  const line = qidToLine.get(qid) || "";
+  const away = qidToAway.get(qid) || "";
+  const home = qidToHome.get(qid) || "";
+  if(!away || !home) return null;
+
+  // pattern: "Team (-3.5)" after team name
+  const awayRe = new RegExp("\\b"+escapeRegex(away)+"\\s*\\(([-+]?\\d+(?:\\.\\d+)?)\\)", "i");
+  const homeRe = new RegExp("\\b"+escapeRegex(home)+"\\s*\\(([-+]?\\d+(?:\\.\\d+)?)\\)", "i");
+
+  const mHome = homeRe.exec(line);
+  if(mHome && parseFloat(mHome[1]) < 0) return home;
+
+  const mAway = awayRe.exec(line);
+  if(mAway && parseFloat(mAway[1]) < 0) return away;
+
+  if(/\(-\d/.test(line)) return home; // weak fallback
+  return null;
+}
+
+/* ---------- Build Default Picks set from Default="Y" (NFL + NCAA) ---------- */
+function computeDefaultPicksSet(){
+  const picks = [];
+  const qids = Array.from(qidToDefault.keys()).filter(q=> qidToDefault.get(q)===true);
+  qids.sort((a,b)=> qidOrder(a)-qidOrder(b));
+  qids.forEach(qid=>{
+    const fav = detectFavorite(qid);
+    if(!fav) return; // must have a detectable favorite
+    picks.push({ qid, choice: fav, isDouble: false });
+  });
+  return picks;
+}
+
+/* =================== LOAD ALL =================== */
 async function loadAll(){
   try{
     showErr('');
@@ -120,20 +295,24 @@ async function loadAll(){
       fetchCSV(CSV_URL_PARTICIPANTS)
     ]);
 
-    qidToLine.clear(); qidToAway.clear(); qidToHome.clear(); qidToWinner.clear(); qidToDate.clear(); results.clear();
+    qidToLine.clear(); qidToAway.clear(); qidToHome.clear(); qidToWinner.clear(); qidToDate.clear(); qidToDefault.clear(); results.clear();
     normalizeLines(linesNFL);
     normalizeLines(linesNCAA);
 
+    // prefill locked results from Winner column
     Array.from(qidToLine.keys()).forEach(qid=>{
       const oc = outcomeFromWinner(qid);
       if(oc) results.set(qid, oc);
     });
 
-    people = normalizeSubs(subs);
-    participantNames = normalizeParticipants(parts);
+    // normalize datasets
+    people = normalizeSubs(subs);                 // actual pick submitters for this WEEK
+    participantNames = normalizeParticipants(parts); // full roster
 
+    // Build the default template (rendered as its own first card)
     defaultTemplate = { name:"Default Picks", picks: computeDefaultPicksSet(), isDefaults:true };
 
+    // For any participant with no picks, assign defaults to them (and label)
     const have = new Set(people.map(p=>p.name.toLowerCase()));
     participantNames.forEach(nm=>{
       if(!have.has(nm.toLowerCase())){
@@ -141,10 +320,11 @@ async function loadAll(){
       }
     });
 
+    // Sort participants alphabetically (the default template card renders separately first)
     people.sort((a,b)=> a.name.localeCompare(b.name, undefined, {sensitivity:'base'}));
 
     renderGames();
-    renderPeople();
+    renderPeople(); // also renders standings with current sort
     hookSortButtons();
   }catch(e){
     console.error(e);
@@ -152,9 +332,313 @@ async function loadAll(){
   }
 }
 
-/* === rest of your renderGames, scorePick, renderPeople, renderStandings, hookSortButtons unchanged === */
+/* ========= COUNT PICKS PER GAME ========= */
+function getPickCounts(qid){
+  const awayNorm = normTeam(qidToAway.get(qid) || "");
+  const homeNorm = normTeam(qidToHome.get(qid) || "");
+  let away = 0, home = 0;
 
+  people.forEach(p=>{
+    p.picks.forEach(pk=>{
+      if(pk.qid !== qid) return;
+      const c = normTeam(pk.choice);
+      const wt = pk.isDouble ? DOUBLE_COUNTS_AS : 1; // or 1 for unweighted
+      if(c && c === awayNorm) away += wt;
+      else if(c && c === homeNorm) home += wt;
+    });
+  });
+
+  return { away, home };
+}
+
+/* ============== RENDER: GAMES (controls) ============== */
+function renderGames(){
+  const panel = document.getElementById('gamesPanel');
+  panel.innerHTML = '';
+
+  const qidsAll = Array.from(qidToLine.keys()).sort((a,b)=> qidOrder(a)-qidOrder(b));
+  const qids = qidsAll.filter(q=>{
+    const c = getPickCounts(q);
+    return (c.away + c.home) > 0;
+  });
+
+  if(qids.length === 0){
+    panel.innerHTML = `<div class="note">No picks yet.</div>`;
+    return;
+  }
+
+  qids.forEach(qid=>{
+    const div = document.createElement('div');
+    div.className = 'game';
+
+    const away = qidToAway.get(qid) || 'Away';
+    const home = qidToHome.get(qid) || 'Home';
+    const counts = getPickCounts(qid);
+    const lockedOutcome = outcomeFromWinner(qid);
+
+    if(lockedOutcome){
+      const winnerText = lockedOutcome==='tie' ? 'Tie' : (lockedOutcome==='away' ? away : home);
+      div.innerHTML = `
+        <div class="gline">${escapeHtml(qid)} — ${escapeHtml(qidToLine.get(qid) || qid)}</div>
+        <div style="grid-column: 2 / span 3; font-weight:700;">
+          Result: ${escapeHtml(winnerText)} (locked)
+        </div>
+      `;
+    } else {
+      div.innerHTML = `
+        <div class="gline">${escapeHtml(qid)} — ${escapeHtml(qidToLine.get(qid) || qid)}</div>
+        <button class="gbtn away ${results.get(qid)==='away'?'active':''}" data-qid="${qid}" data-val="away">
+          ${escapeHtml(away)} <span class="count">(${counts.away})</span>
+        </button>
+        <button class="gbtn home ${results.get(qid)==='home'?'active':''}" data-qid="${qid}" data-val="home">
+          ${escapeHtml(home)} <span class="count">(${counts.home})</span>
+        </button>
+        <button class="gbtn tie  ${results.get(qid)==='tie'?'active':''}"  data-qid="${qid}" data-val="tie">Tie</button>
+      `;
+    }
+    panel.appendChild(div);
+  });
+
+  panel.onclick = (e)=>{
+    const btn = e.target.closest('.gbtn');
+    if(!btn) return;
+    const qid = btn.dataset.qid;
+    if(outcomeFromWinner(qid)) return; // locked globally
+
+    const val = btn.dataset.val;
+    const current = results.get(qid);
+    if(current === val){ results.delete(qid); } else { results.set(qid, val); }
+
+    const row = btn.closest('.game');
+    row.querySelectorAll('.gbtn').forEach(b=> b.classList.remove('active'));
+    if(results.has(qid)) row.querySelector(`.gbtn.${results.get(qid)}`)?.classList.add('active');
+
+    renderPeople(); // re-score (standings re-render with preserved sort)
+  };
+}
+
+/* ============== SCORING ============== */
+function scorePick(qid, choice, isDouble){
+  const outcome = results.get(qid);
+  if(!outcome) return { w:0, l:0, t:0 };
+
+  const awayNorm = normTeam(qidToAway.get(qid) || '');
+  const homeNorm = normTeam(qidToHome.get(qid) || '');
+  const cNorm = normTeam(choice);
+
+  let w=0,l=0,t=0;
+  const weight = isDouble ? DOUBLE_COUNTS_AS : 1;
+
+  if(outcome === 'tie'){
+    t = weight;
+  } else if(outcome === 'away'){
+    if(cNorm && cNorm === awayNorm) w = weight; else l = weight;
+  } else if(outcome === 'home'){
+    if(cNorm && cNorm === homeNorm) w = weight; else l = weight;
+  }
+  return { w,l,t };
+}
+
+/* ============== RENDER: PEOPLE TABLES + FULL STANDINGS ============== */
+function renderPeople(){
+  const list = document.getElementById('list');
+  const stWrap = document.getElementById('standingsWrap');
+  list.innerHTML = '';
+  let summaries = [];
+
+  /* --- First card: Default Picks template --- */
+  if (defaultTemplate && defaultTemplate.picks && defaultTemplate.picks.length){
+    const rows = defaultTemplate.picks.map((pk, idx)=>{
+      const s = scorePick(pk.qid, pk.choice, pk.isDouble);
+      return `
+        <tr>
+          <td class="col-idx">${idx+1}</td>
+          <td class="col-line">${escapeHtml(qidToLine.get(pk.qid) || pk.qid)}</td>
+          <td>${escapeHtml(pk.choice)}${pk.isDouble?'<span class="double"></span>':''}</td>
+          <td>${s.w? s.w : ''}</td>
+          <td>${s.l? s.l : ''}</td>
+          <td>${s.t? s.t : ''}</td>
+        </tr>
+      `;
+    }).join('');
+
+    // compute totals for display
+    let tw=0, tl=0, tt=0;
+    defaultTemplate.picks.forEach(pk=>{
+      const s = scorePick(pk.qid, pk.choice, pk.isDouble);
+      tw+=s.w; tl+=s.l; tt+=s.t;
+    });
+    const denom = tw+tl+tt;
+    const pct = denom>0 ? (tw + 0.5*tt)/denom : NaN;
+
+    const card = document.createElement('div');
+    card.className = 'person';
+    card.innerHTML = `
+      <div class="header">
+        <div class="pname">${escapeHtml(defaultTemplate.name)}</div>
+        <span class="badge-defaults">Defaults</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th class="col-idx">#</th>
+            <th>Line</th>
+            <th>Pick</th>
+            <th>Win</th>
+            <th>Loss</th>
+            <th>Tie</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+        <tfoot>
+          <tr>
+            <td></td>
+            <td>Total</td>
+            <td class="mono">${fmtPct(pct)}</td>
+            <td class="mono">${tw}</td>
+            <td class="mono">${tl}</td>
+            <td class="mono">${tt}</td>
+          </tr>
+        </tfoot>
+      </table>
+    `;
+    list.appendChild(card);
+  }
+
+  /* --- Participant cards --- */
+  people.forEach(p=>{
+    let rowsHtml = '';
+    let tw=0, tl=0, tt=0;
+
+    p.picks.forEach((pk, idx)=>{
+      const s = scorePick(pk.qid, pk.choice, pk.isDouble);
+      tw += s.w; tl += s.l; tt += s.t;
+      const cls = s.w ? 'result-win' : s.l ? 'result-loss' : s.t ? 'result-tie' : '';
+      rowsHtml += `
+        <tr>
+          <td class="col-idx">${idx+1}</td>
+          <td class="col-line">${escapeHtml(qidToLine.get(pk.qid) || pk.qid)}</td>
+          <td class="${cls}">${escapeHtml(pk.choice)}${pk.isDouble?'<span class="double"></span>':''}</td>
+          <td>${s.w? s.w : ''}</td>
+          <td>${s.l? s.l : ''}</td>
+          <td>${s.t? s.t : ''}</td>
+        </tr>
+      `;
+    });
+
+    const denom = tw + tl + tt;
+    const pct = denom > 0 ? (tw + 0.5*tt) / denom : NaN;
+
+    summaries.push({ name:p.name, w:tw, l:tl, t:tt, pct, denom, isDefaults: !!p.isDefaults });
+
+    const table = `
+      <div class="header">
+        <div class="pname">${escapeHtml(p.name)}</div>
+        ${p.isDefaults ? '<span class="badge-defaults" title="No submission — defaults applied">Defaults</span>' : ''}
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th class="col-idx">#</th>
+            <th>Line</th>
+            <th>Pick</th>
+            <th>Win</th>
+            <th>Loss</th>
+            <th>Tie</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+        <tfoot>
+          <tr>
+            <td></td>
+            <td>Total</td>
+            <td class="mono">${fmtPct(pct)}</td>
+            <td class="mono">${tw}</td>
+            <td class="mono">${tl}</td>
+            <td class="mono">${tt}</td>
+          </tr>
+        </tfoot>
+      </table>
+    `;
+
+    const card = document.createElement('div');
+    card.className = 'person';
+    card.innerHTML = table;
+    list.appendChild(card);
+  });
+
+  renderStandings(summaries); // honors current standingsSort
+  stWrap.hidden = summaries.length === 0;
+}
+
+/* ============== STANDINGS (with sorting) ============== */
+function renderStandings(summaries){
+  const st = document.getElementById('standings');
+
+  const valid = summaries.filter(s => s.denom > 0);
+  if(valid.length === 0){ st.innerHTML = ""; return; }
+
+  const rows = [...valid].sort((a,b)=>{
+    if (standingsSort === 'percent'){
+      const ap = isNaN(a.pct)? -1 : a.pct, bp = isNaN(b.pct)? -1 : b.pct;
+      if(bp !== ap) return bp - ap;
+      if(b.w !== a.w) return b.w - a.w;
+      return a.name.localeCompare(b.name);
+    } else if (standingsSort === 'wins'){
+      if(b.w !== a.w) return b.w - a.w;
+      const ap = isNaN(a.pct)? -1 : a.pct, bp = isNaN(b.pct)? -1 : b.pct;
+      if(bp !== ap) return bp - ap;
+      return a.name.localeCompare(b.name);
+    } else { // 'alpha'
+      return a.name.localeCompare(b.name);
+    }
+  });
+
+  document.getElementById('sort-alpha').classList.toggle('active', standingsSort==='alpha');
+  document.getElementById('sort-percent').classList.toggle('active', standingsSort==='percent');
+  document.getElementById('sort-wins').classList.toggle('active', standingsSort==='wins');
+
+  const tbody = rows.map((s, i)=>`
+    <tr>
+      <td class="rank">${i+1}.</td>
+      <td>
+        <span class="nameCell">
+          ${escapeHtml(s.name)}
+          ${s.isDefaults ? '<span class="badge-defaults" title="No submission — defaults applied">Defaults</span>' : ''}
+        </span>
+      </td>
+      <td class="stat mono">${fmtPct(s.pct)}</td>
+      <td class="stat mono">${s.w}-${s.l}-${s.t}</td>
+      <td class="stat mono">${s.denom}</td>
+    </tr>
+  `).join("");
+
+  st.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th class="rank">#</th>
+          <th>Name</th>
+          <th class="stat">Win %</th>
+          <th class="stat">W-L-T</th>
+          <th class="stat">Picks</th>
+        </tr>
+      </thead>
+      <tbody>${tbody}</tbody>
+    </table>
+  `;
+}
+
+function hookSortButtons(){
+  document.getElementById('sort-alpha').onclick   = ()=>{ standingsSort='alpha';   renderPeople(); };
+  document.getElementById('sort-percent').onclick = ()=>{ standingsSort='percent'; renderPeople(); };
+  document.getElementById('sort-wins').onclick    = ()=>{ standingsSort='wins';    renderPeople(); };
+}
+
+/* ============== GO ============== */
 loadAll();
+// Optional: auto-refresh every 60s
+// setInterval(loadAll, 60000);
 </script>
 </body>
 </html>
