@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="en">
 <head>
 <meta charset="utf-8" />
@@ -323,28 +323,60 @@ function normalizeGames(csvRows, prefix){
   return sortRequiredFirst(out);
 }
 
-/* -------- Favorite & labels with true spread -------- */
+/* -------- FIXED favorite & labels (no partial “Iowa” vs “Iowa St.”) -------- */
 function favoriteInfo(away, home, spreadText){
   const spreadRaw = String(spreadText||"");
 
+  // 1) Extract the **last** signed/decimal number from the spread cell (the line)
   const nums = spreadRaw.match(/[+-]?\d+(?:\.\d+)?/g);
   const line = nums ? nums[nums.length - 1] : "";
 
-  const stripRank = s => String(s||"").replace(/^#\d+\s*/,'').trim().toLowerCase();
-  const awayKey = stripRank(away);
-  const homeKey = stripRank(home);
-  const spreadKey = spreadRaw.replace(/#\d+\s*/g,'').toLowerCase();
+  // Canonicalize words: remove rank, punctuation; normalize "st./state"
+  const canon = s => String(s||"")
+    .replace(/#\d+\s*/g,'')         // drop ranks like "#16 "
+    .toLowerCase()
+    .replace(/[()]/g,'')
+    .replace(/\bsta?te\b/g,'state') // "state" stays "state"
+    .replace(/\bst\.?\b/g,'state')  // "st." -> "state"
+    .replace(/[^a-z0-9]+/g,' ')     // non-alnum -> space
+    .trim();
 
-  const awayFav = spreadKey.includes(awayKey);
-  const homeFav = spreadKey.includes(homeKey);
+  const toTokens = s => canon(s).split(/\s+/).filter(Boolean);
 
-  const fmt = n => (String(n).startsWith('-') ? n : `-${n}`);
+  const spreadTokens = toTokens(spreadRaw);
+  const awayTokens   = toTokens(away);
+  const homeTokens   = toTokens(home);
+
+  // check if team tokens appear as a contiguous phrase in spreadTokens
+  function phraseHitLen(teamTok, hay){
+    if(teamTok.length === 0 || hay.length === 0) return 0;
+    for(let i=0;i<=hay.length - teamTok.length;i++){
+      let ok=true;
+      for(let j=0;j<teamTok.length;j++){
+        if(hay[i+j] !== teamTok[j]){ ok=false; break; }
+      }
+      if(ok) return teamTok.length; // return match length as score
+    }
+    return 0;
+  }
+
+  const awayHit = phraseHitLen(awayTokens, spreadTokens);
+  const homeHit = phraseHitLen(homeTokens, spreadTokens);
+
+  // Prefer the team with the longer phrase match (disambiguates "iowa" vs "iowa state")
+  let awayFav=false, homeFav=false;
+  if(awayHit > homeHit) awayFav = true;
+  else if(homeHit > awayHit) homeFav = true;
+  // if equal (or neither), we can't decide — show no annotation
+
+  const fmt = n => (String(n).startsWith('-') ? n : `-${n}`); // favorites shown with negative
   return {
     awayLabel: awayFav && line ? `${away} (${fmt(line)})` : away,
     homeLabel: homeFav && line ? `${home} (${fmt(line)})` : home,
     favoriteLine: spreadRaw || "—"
   };
 }
+/* ------------------------------------------------------------------------- */
 
 /* ============== UI BUILDERS ============== */
 function buildRow(g){
