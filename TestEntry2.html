@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="en">
 <head>
 <meta charset="utf-8" />
@@ -28,7 +28,7 @@ h2{margin:0 0 12px 0;font-size:20px}
 
 .row{
   display:grid;
-  grid-template-columns:1fr auto minmax(290px,1fr); /* info | spacer | answers */
+  grid-template-columns:1fr auto minmax(290px,1fr);
   gap:10px;align-items:center;
   padding:10px;border-radius:10px;
   background:rgba(255,255,255,.02);border:1px solid var(--border)
@@ -43,8 +43,6 @@ h2{margin:0 0 12px 0;font-size:20px}
 }
 .badge.required{background:var(--yellow);color:var(--yellowText)}
 .badge.expired{background:#d92d20;color:#fff}
-
-/* utility for toggling pill visibility */
 .is-hidden{display:none !important;}
 
 .answers{display:block;max-width:34rem}
@@ -58,7 +56,6 @@ h2{margin:0 0 12px 0;font-size:20px}
 .clear{display:inline-block;background:transparent;border:1px solid #3b4553;border-radius:8px;color:var(--muted);padding:6px 10px;cursor:pointer;margin-top:8px}
 .clear:hover{background:#2a3442;color:#fff}
 
-/* Checks & Errors list */
 .checklist{margin:8px 0 0 0;padding:0;list-style:none;display:grid;gap:6px}
 .checklist li{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:10px;padding:8px 10px}
 .check-icon{
@@ -69,7 +66,6 @@ h2{margin:0 0 12px 0;font-size:20px}
 .check-bad .check-icon{background:#b42318;color:#fff}
 .check-text{flex:1 1 auto}
 
-/* footer */
 footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
 .footer{
   display:flex;justify-content:space-between;align-items:center;gap:8px;
@@ -82,10 +78,53 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
 .btn.ghost{background:#2a3442;color:#d0d7de}
 .statusBox{font-weight:900;border:1px solid var(--border);border-radius:999px;padding:8px 14px}
 .status_bad{background:var(--bad);color:#fff}
-.status_good{background:var(--bearsNavy);color:var(--bearsOrange);border-color:var(--bearsNavy)}
+.status_good{background:#0B162A;color:#DC4405;border-color:#0B162A}
 
-/* demo chip */
 .demo{position:fixed;top:14px;right:14px;background:#a15;color:#fff;border-radius:999px;padding:8px 12px;font-weight:800;z-index:10;box-shadow:0 6px 18px rgba(0,0,0,.35)}
+
+/* Loud/annoying payment alert */
+.pay-alert{
+  margin-top:10px;
+  background:#ff0044;
+  color:#fff;
+  border:2px dashed #fff;
+  border-radius:10px;
+  padding:10px 12px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:.5px;
+  box-shadow:0 0 0 3px rgba(255,0,68,.25), 0 6px 16px rgba(0,0,0,.35);
+  animation: waggle .9s ease-in-out infinite;
+}
+@keyframes waggle{
+  0%,100%{ transform:rotate(0deg) }
+  25%{ transform:rotate(1.5deg) }
+  50%{ transform:rotate(0deg) }
+  75%{ transform:rotate(-1.5deg) }
+}
+
+/* ---- SUBMIT OVERLAY (new) ---- */
+#submitOverlay{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,.55);
+  display:flex;align-items:center;justify-content:center;
+  z-index:9999;
+}
+#submitOverlay[hidden]{display:none}
+.loader{
+  display:flex;flex-direction:column;align-items:center;gap:12px;
+  background:rgba(17,24,39,.9);
+  border:1px solid var(--border);
+  padding:18px 22px;border-radius:14px;
+  box-shadow:0 10px 30px rgba(0,0,0,.45);
+}
+.spinner{
+  width:42px;height:42px;border-radius:50%;
+  border:4px solid rgba(255,255,255,.2);
+  border-top-color:#fff;
+  animation: spin .9s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
@@ -105,6 +144,10 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
         <input id="emailBox" type="email" placeholder="you@example.com" style="width:100%;margin-top:6px;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text)" />
       </div>
     </div>
+
+    <!-- Payment alert (hidden by default) -->
+    <div id="paymentAlert" class="pay-alert" hidden>Payment still needed</div>
+
     <p class="small muted" style="margin-top:8px">One email is sent to the organizer and you’ll be CC’d.</p>
   </section>
 
@@ -172,23 +215,43 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
 
 <div id="demoBadge" class="demo" hidden>DEMO MODE</div>
 
+<!-- Submitting overlay (new) -->
+<div id="submitOverlay" hidden aria-live="polite" aria-label="Submitting">
+  <div class="loader">
+    <div class="spinner" role="status" aria-hidden="true"></div>
+    <div>Submitting… please wait</div>
+  </div>
+</div>
+
 <script>
 /* ===================== CONFIG ===================== */
 const CSV_URL_PARTICIPANTS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRj5ieGlGWurIlGuongV3vJhWWAwCYsEFVhEEtjwOG7RiFwTRZkM_JXtjb8QtwsdzhaXPMDRPyU7qZC/pub?gid=0&single=true&output=csv";
-const CSV_URL_NFL          = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSu8cw2ymTbcJGMmBkbcJTNzvxVsl4wh3XH7pbQJ3_pbSz42LFo0HKQHVLcJtHiOqtEDt37-hSegjDK/pub?gid=2109553148&single=true&output=csv";
-const CSV_URL_NCAA         = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSu8cw2ymTbcJGMmBkbcJTNzvxVsl4wh3XH7pbQJ3_pbSz42LFo0HKQHVLcJtHiOqtEDt37-hSegjDK/pub?gid=0&single=true&output=csv";
-const CURRENT_WEEK = 1;
-const PICKS_DEADLINE_UTC = "2025-08-25T17:30:00Z";
+const CSV_URL_NFL          = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRB9bXyC3PBzUhxALXDBAfdsKUAarhukkrtwHEeR64Sj7tB3kb5FZO-PvFOVX57srWOoVNPFO7yjpUf/pub?gid=2109553148&single=true&output=csv";
+const CSV_URL_NCAA         = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRB9bXyC3PBzUhxALXDBAfdsKUAarhukkrtwHEeR64Sj7tB3kb5FZO-PvFOVX57srWOoVNPFO7yjpUf/pub?gid=0&single=true&output=csv";
+
+const CURRENT_WEEK = 0;
+const PICKS_DEADLINE_UTC = "2025-09-05T21:30:00Z";
+
+/* EmailJS (unchanged) */
 const EMAILJS_SERVICE_ID = "service_txqdfck";
 const EMAILJS_TEMPLATE_ID = "template_o8du7pt";
 const EMAILJS_PUBLIC_KEY  = "YB5J-75APa-V6Giku";
-const DEMO_MODE = true;
+
+/* Google Apps Script Web App URL */
+const GSHEET_WEBAPP_URL   = "https://script.google.com/macros/s/AKfycbwbn6FNiK1clBgO5ZGmvhrMX8KBCmTO0pLbDIU9S3CnjAZ_SgYqHBf0KOOPGbFKOxvxFw/exec";
+
+/* Require sheet write? */
+const REQUIRE_SHEETS_OK   = false;
+
+/* Demo mode only suppresses EmailJS */
+const DEMO_MODE = false;
 /* ======================  END CONFIG  ======================= */
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const escapeHtml = s => String(s??"").replace(/[&<>"]/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[m]));
 
+/* ---- CSV helpers ---- */
 function fetchCSV(url){
   const bust = (url.includes("?") ? "&" : "?") + "_=" + Date.now();
   return fetch(url + bust, {mode: "cors", cache:"no-store"})
@@ -200,7 +263,7 @@ function parseCSV(text){
   return rows.map(r => Object.fromEntries(hdr.map((h,i)=>[h.trim(), (r[i]??"").trim()])));
 }
 
-/* ---------- Eastern (CSV) → local viewer time ---------- */
+/* ---------- ET (CSV) → local viewer time ---------- */
 function stripWeekday(dateStr){
   if(!dateStr) return "";
   return String(dateStr)
@@ -263,13 +326,12 @@ function sortRequiredFirst(arr){
 }
 
 /* ============== STATE ============== */
-let participants=[];
 let gamesA=[], gamesB=[];
+let paymentByName = new Map(); // name -> payment string ("" means unpaid)
 
-/* ============== CSV → GAMES (QIDs auto) ============== */
+/* ============== CSV → GAMES ============== */
 function normalizeGames(csvRows, prefix){
-  const out=[];
-  let idx=0;
+  const out=[]; let idx=0;
   for(const r of csvRows){
     const away = String(r["Away Team"]||r["Away"]||"").trim();
     const home = String(r["Home Team"]||r["Home"]||"").trim();
@@ -281,32 +343,63 @@ function normalizeGames(csvRows, prefix){
     const req  = /^y/i.test(String(r["Required"]||""));
     if(!away || !home) continue;
     if(!spr) continue;
-
     const t = ETtoLocal(date, time);
     out.push({
       qid: `${prefix}${++idx}`,
-      away, home,
-      tv, loc,
-      spread: spr,
-      start: t.date,
-      day: t.day, timeText: t.time, iso: t.iso,
+      away, home, tv, loc, spread: spr,
+      start: t.date, day: t.day, timeText: t.time, iso: t.iso,
       required: req
     });
   }
   return sortRequiredFirst(out);
 }
 
-/* determine favorite & label text with spread */
+/* -------- Fixed favorite & labels (disambiguates e.g. Iowa vs Iowa St.) -------- */
 function favoriteInfo(away, home, spreadText){
-  const s = String(spreadText||"");
-  const mNum = s.match(/([+-]?\d+(?:\.\d+)?)/);
-  const num = mNum ? mNum[1] : "";
-  const awayFav = s.toLowerCase().includes(away.toLowerCase());
-  const homeFav = s.toLowerCase().includes(home.toLowerCase());
+  const spreadRaw = String(spreadText||"");
+
+  const nums = spreadRaw.match(/[+-]?\d+(?:\.\d+)?/g);
+  const line = nums ? nums[nums.length - 1] : "";
+
+  const canon = s => String(s||"")
+    .replace(/#\d+\s*/g,'')
+    .toLowerCase()
+    .replace(/[()]/g,'')
+    .replace(/\bsta?te\b/g,'state')
+    .replace(/\bst\.?\b/g,'state')
+    .replace(/[^a-z0-9]+/g,' ')
+    .trim();
+
+  const toTokens = s => canon(s).split(/\s+/).filter(Boolean);
+
+  const spreadTokens = toTokens(spreadRaw);
+  const awayTokens   = toTokens(away);
+  const homeTokens   = toTokens(home);
+
+  function phraseHitLen(teamTok, hay){
+    if(teamTok.length === 0 || hay.length === 0) return 0;
+    for(let i=0;i<=hay.length - teamTok.length;i++){
+      let ok=true;
+      for(let j=0;j<teamTok.length;j++){
+        if(hay[i+j] !== teamTok[j]){ ok=false; break; }
+      }
+      if(ok) return teamTok.length;
+    }
+    return 0;
+  }
+
+  const awayHit = phraseHitLen(awayTokens, spreadTokens);
+  const homeHit = phraseHitLen(homeTokens, spreadTokens);
+
+  let awayFav=false, homeFav=false;
+  if(awayHit > homeHit) awayFav = true;
+  else if(homeHit > awayHit) homeFav = true;
+
+  const fmt = n => (String(n).startsWith('-') ? n : `-${n}`);
   return {
-    awayLabel: awayFav && num ? `${away} (${num.startsWith('-')?num:`-${num}`})` : away,
-    homeLabel: homeFav && num ? `${home} (${num.startsWith('-')?num:`-${num}`})` : home,
-    favoriteLine: s || "—"
+    awayLabel: awayFav && line ? `${away} (${fmt(line)})` : away,
+    homeLabel: homeFav && line ? `${home} (${fmt(line)})` : home,
+    favoriteLine: spreadRaw || "—"
   };
 }
 
@@ -353,7 +446,7 @@ function renderSection(container, list){
   list.forEach(g => container.appendChild(buildRow(g)));
 }
 
-/* sync radios + expired pill using same logic */
+/* expiry UI */
 function refreshExpiryUI(){
   const updateFor = (rows, games) => {
     rows.forEach(row=>{
@@ -382,14 +475,14 @@ function refreshExpiryUI(){
 /* ============== DOUBLE, SUMMARY, CHECKS ============== */
 function countChecked(container){ return container.querySelectorAll('input[type="radio"]:checked').length; }
 
-/* CHANGED: show picked TEAM (with spread) in the Double dropdown */
+/* Double dropdown shows picked team */
 function refreshDoubleChoices(){
   const sel = $("#doubleSel");
   const keep = sel.value;
 
   const chosen = $$('input[type="radio"]:checked').map(r => {
       const row = r.closest(".row");
-      const teamLabel = (r.parentElement?.textContent || "").trim(); // label text = picked team (+ spread)
+      const teamLabel = (r.parentElement?.textContent || "").trim();
       return { qid: r.name, teamLabel, row };
     })
     .filter(o => !o.row.querySelector('.badge.expired:not(.is-hidden)'));
@@ -431,6 +524,45 @@ function buildSelectionsText(){
 
   return lines.join("\n");
 }
+
+/* Build payload with a flat rows[] for the sheet */
+function collectSubmission(){
+  const name  = $("#nameSel").selectedOptions[0]?.textContent || "";
+  const email = $("#emailBox").value.trim();
+  const dblQid = $("#doubleSel").value || "";
+  const timestamp = new Date().toISOString();
+
+  const picks = $$('input[type="radio"]:checked').map(r=>{
+    const row = r.closest(".row");
+    const qid = row.dataset.qid;
+    const team= (r.parentElement?.textContent || "").trim();
+    return { qid, team, isDouble: (qid===dblQid) };
+  }).sort((a,b)=>a.qid.localeCompare(b.qid));
+
+  const rows = picks.map(p => ({
+    timestamp,
+    week: CURRENT_WEEK,
+    name,
+    email,
+    qid: p.qid,
+    choice: p.team,
+    isDouble: !!p.isDouble
+  }));
+
+  const doubleTeam = picks.find(x=>x.isDouble)?.team || "";
+
+  return {
+    name, email,
+    week: CURRENT_WEEK,
+    timestamp,
+    double_qid: dblQid,
+    double_team: doubleTeam,
+    picks,
+    rows,
+    summary: buildSelectionsText()
+  };
+}
+
 function renderSummary(){
   $("#summary").innerHTML = `<pre style="white-space:pre-wrap;margin:0">${escapeHtml(buildSelectionsText())}</pre>`;
 }
@@ -501,6 +633,12 @@ document.addEventListener("change", e=>{
   if(e.target.matches('#nameSel')){
     const em = e.target.selectedOptions[0]?.dataset.email || "";
     if(em) $("#emailBox").value = em;
+
+    // Show/hide payment alert for the selected name
+    const chosenName = e.target.value || "";
+    const paymentVal = (paymentByName.get(chosenName) || "").trim(); // blank => needs payment
+    $("#paymentAlert").hidden = !(chosenName && paymentVal === "");
+
     renderSummary(); validateAll();
   }
   if(e.target.matches('input[type="radio"]')){
@@ -529,22 +667,76 @@ $("#resetBtn").addEventListener("click", ()=>{
   refreshDoubleChoices();
   validateAll();
 });
+
+/* push to Google Sheets (preflight-free) */
+async function pushToSheets(payload){
+  if(!GSHEET_WEBAPP_URL || !/^https?:\/\//i.test(GSHEET_WEBAPP_URL)){
+    console.warn('GSHEET_WEBAPP_URL not set; skipping Sheets logging');
+    return { ok:false, skipped:true };
+  }
+  try{
+    const res = await fetch(GSHEET_WEBAPP_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok || data.ok !== true){
+      throw new Error(`Sheets response not ok: ${res.status} ${JSON.stringify(data)}`);
+    }
+    return { ok:true };
+  }catch(err){
+    console.error('Sheets logging failed:', err);
+    return { ok:false, error:String(err) };
+  }
+}
+
+/* ---- Submitting overlay helpers (new) ---- */
+function startSubmitting(){
+  $("#submitOverlay").hidden = false;
+  $("#submitBtn").disabled = true;
+  $("#resetBtn").disabled  = true;
+}
+function stopSubmitting(){
+  $("#submitOverlay").hidden = true;
+  $("#submitBtn").disabled = false;
+  $("#resetBtn").disabled  = false;
+}
+
 $("#submitBtn").addEventListener("click", async ()=>{
+  startSubmitting(); // show loader immediately to block double-clicks
+
   if(PICKS_DEADLINE_UTC && new Date() > new Date(PICKS_DEADLINE_UTC)){
+    stopSubmitting();
     alert("The global picks deadline has passed. Submissions are closed.");
     return;
   }
   const ok = validateAll();
-  if(!ok){ alert("Please fix the items in Checks & Errors before submitting."); return; }
+  if(!ok){
+    stopSubmitting();
+    alert("Please fix the items in Checks & Errors before submitting.");
+    return;
+  }
   if(!$("#doubleSel").value){
     const okNoDouble = confirm("Submit with NO Double?");
-    if(!okNoDouble) return;
+    if(!okNoDouble){ stopSubmitting(); return; }
   }
+
   const participantName = $("#nameSel").selectedOptions[0]?.textContent || "";
+  const participantEmail = $("#emailBox").value.trim();
   const selectionsText  = buildSelectionsText();
+  const submission = collectSubmission();
+
+  const sheetResult = await pushToSheets(submission);
+  if(!sheetResult.ok && REQUIRE_SHEETS_OK){
+    stopSubmitting();
+    alert("Could not log to Google Sheets. Please try again in a moment.");
+    return;
+  }
 
   if(DEMO_MODE){
     $("#demoBadge").hidden = false;
+    stopSubmitting();
     alert("Submitted! (Demo mode — email suppressed)");
     return;
   }
@@ -559,22 +751,37 @@ $("#submitBtn").addEventListener("click", async ()=>{
     emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
     await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
       participant_name: participantName,
-      selections_text: selectionsText
+      selections_text: selectionsText,
+      to_email:         participantEmail
     });
+    stopSubmitting();
     alert("Submitted! A copy will be CC’d to you.");
   }catch(err){
     console.error("EmailJS error details:",err);
-    alert("Could not send via EmailJS. Check your EmailJS keys/template.");
+    stopSubmitting();
+    alert("Submitted! (Email copy failed to send.)");
   }
 });
 
 /* ============== LOAD DATA & EXPIRED UI ============== */
 async function loadAll(){
   try{
-    const pCSV = parseCSV(await fetchCSV(CSV_URL_PARTICIPANTS)); // Name, Email
+    const raw = await fetchCSV(CSV_URL_PARTICIPANTS);
+    const pCSV = parseCSV(raw);
+
+    // Find the Payment column (case-insensitive), default to "Payment"
+    const paymentKey = Object.keys(pCSV[0] || {}).find(k => k.toLowerCase() === "payment") || "Payment";
+
+    // Build dropdown and fill the payment map
     $("#nameSel").innerHTML =
       `<option value="">— Select your name —</option>` +
-      pCSV.map(p => `<option value="${escapeHtml(p.Name)}" data-email="${escapeHtml(p.Email||"")}">${escapeHtml(p.Name)}</option>`).join("");
+      pCSV.map(p => {
+        const nm  = p.Name || "";
+        const em  = p.Email || "";
+        const pay = (p[paymentKey] || ""); // may be blank
+        paymentByName.set(nm, pay);
+        return `<option value="${escapeHtml(nm)}" data-email="${escapeHtml(em)}">${escapeHtml(nm)}</option>`;
+      }).join("");
 
     const aRows = parseCSV(await fetchCSV(CSV_URL_NFL));
     const bRows = parseCSV(await fetchCSV(CSV_URL_NCAA));
@@ -585,7 +792,6 @@ async function loadAll(){
     renderSection(hostA, gamesA);
     renderSection(hostB, gamesB);
 
-    // wire events for new nodes
     hostA.querySelectorAll('input[type="radio"]').forEach(r=>{
       r.addEventListener('change', ()=>{ refreshDoubleChoices(); renderSummary(); validateAll(); });
     });
@@ -599,14 +805,14 @@ async function loadAll(){
       b.addEventListener('click', ()=>{ const id=b.dataset.clear; $$(`input[name="${CSS.escape(id)}"]`).forEach(i=>i.checked=false); refreshDoubleChoices(); renderSummary(); validateAll(); });
     });
 
-    // first pass: sync pills & radios
-    refreshExpiryUI();
+    // Hide alert on initial load
+    $("#paymentAlert").hidden = true;
 
+    refreshExpiryUI();
     refreshDoubleChoices();
     renderSummary();
     validateAll();
 
-    // keep fresh once per minute
     setInterval(()=>{ refreshExpiryUI(); refreshDoubleChoices(); validateAll(); }, 60_000);
 
   }catch(e){
@@ -615,7 +821,6 @@ async function loadAll(){
     $("#listB").textContent = "Failed to load NCAA.";
   }
 }
-
 loadAll();
 </script>
 </body>
