@@ -10,31 +10,20 @@
   /* ---------- Theme ---------- */
   :root{
     /* Base palette */
-    --bg:#f6f8fc;           /* page background */
-    --surface:#ffffff;      /* cards */
-    --text:#0f172a;         /* slate-900 */
-    --muted:#5b6474;        /* slate-500/600 */
-    --rule:#e6eaf2;         /* soft stroke */
-    --shadow:0 6px 20px rgba(15,23,42,.08);
+    --bg:#f6f8fc; --surface:#ffffff; --text:#0f172a; --muted:#5b6474;
+    --rule:#e6eaf2; --shadow:0 6px 20px rgba(15,23,42,.08);
 
     /* Accents */
-    --accent:#2563eb;       /* blue-600 */
-    --accent-weak:#eef4ff;  /* very light blue */
-    --accent-strong:#1e3a8a;/* blue-900 for text on accent */
+    --accent:#2563eb; --accent-weak:#eef4ff; --accent-strong:#1e3a8a;
 
     /* Status colors */
-    --green:#16a34a;
-    --red:#dc2626;
-    --gray:#6b7280;
-    --chip:#22c55e;
-    --count:#b45309;
+    --green:#16a34a; --red:#dc2626; --gray:#6b7280;
+    --chip:#22c55e; --count:#b45309;
 
-    /* Neon badge for "Defaults" (kept) */
-    --neon:#39ff14;
-    --neonText:#062b00;
+    /* Neon badge for "Defaults" */
+    --neon:#39ff14; --neonText:#062b00;
   }
 
-  /* Page background + subtle vignette */
   html,body{
     background:
       radial-gradient(1200px 600px at 10% -10%, #e8efff 0%, rgba(232,239,255,0) 60%),
@@ -44,95 +33,41 @@
     font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";
     margin:0
   }
-  /* Smooth anchor scrolling */
   html{scroll-behavior:smooth}
-
-  /* Container */
   .wrap{max-width:1200px;margin:32px auto;padding:0 18px 84px}
-
-  /* Title with gradient text effect */
   h1{
-    margin:0 0 14px;
-    font-size:28px;
-    line-height:1.2;
+    margin:0 0 14px; font-size:28px; line-height:1.2;
     background:linear-gradient(90deg,#0f172a,#2563eb 60%,#22c55e);
-    -webkit-background-clip:text;background-clip:text;
-    color:transparent;
-    letter-spacing:.2px;
+    -webkit-background-clip:text;background-clip:text;color:transparent;letter-spacing:.2px;
   }
 
-  /* Error */
-  #err{
-    display:none;color:#b91c1c;background:#fde2e2;border:1px solid #fbcaca;
-    padding:10px 12px;border-radius:12px;margin:10px 0;box-shadow:var(--shadow)
-  }
+  #err{display:none;color:#b91c1c;background:#fde2e2;border:1px solid #fbcaca;
+    padding:10px 12px;border-radius:12px;margin:10px 0;box-shadow:var(--shadow)}
 
-  /* ---------- Games panel (top) ---------- */
-  .games{
-    border:1px solid var(--rule);
-    border-radius:14px;
-    padding:14px;
-    margin:10px 0 22px;
-    background:var(--surface);
-    box-shadow:var(--shadow)
-  }
-  .game{
-    display:grid;grid-template-columns: 1fr auto auto auto;gap:10px;align-items:center;
-    border-bottom:1px solid var(--rule);padding:8px 0
-  }
+  .games{border:1px solid var(--rule);border-radius:14px;padding:14px;margin:10px 0 22px;background:var(--surface);box-shadow:var(--shadow)}
+  .game{display:grid;grid-template-columns: 1fr auto auto auto;gap:10px;align-items:center;border-bottom:1px solid var(--rule);padding:8px 0}
   .game:last-child{border-bottom:0}
   .gline{font-weight:800;font-size:14px;color:#0f172a}
-  .gbtn{
-    border:1px solid var(--rule);
-    background:#f3f6fb;
-    border-radius:999px;
-    padding:6px 10px;
-    cursor:pointer;
-    font-weight:700;
-    font-size:12px;
-    transition:all .15s ease;
-  }
+  .gbtn{border:1px solid var(--rule);background:#f3f6fb;border-radius:999px;padding:6px 10px;cursor:pointer;font-weight:700;font-size:12px;transition:all .15s ease}
   .gbtn:hover{transform:translateY(-1px);box-shadow:0 2px 12px rgba(37,99,235,.18)}
   .gbtn .count{font-weight:800;color:var(--count);margin-left:6px}
-  .gbtn.active{
-    border-color:var(--accent);
-    background:linear-gradient(180deg,#eef4ff,#e6efff);
-    box-shadow:0 0 0 3px rgba(37,99,235,.18)
-  }
+  .gbtn.active{border-color:var(--accent);background:linear-gradient(180deg,#eef4ff,#e6efff);box-shadow:0 0 0 3px rgba(37,99,235,.18)}
   .gbtn.away.active{background:linear-gradient(180deg,#eef4ff,#e6efff)}
   .gbtn.home.active{background:linear-gradient(180deg,#e9fbf0,#dff6ea)}
   .gbtn.tie.active{background:linear-gradient(180deg,#f3f4f6,#ebecef)}
   .note{color:var(--muted);font-size:12px;margin-top:8px}
 
-  /* ---------- People grid ---------- */
   #list{display:grid;grid-template-columns:repeat(2, minmax(0,1fr));gap:18px}
   @media (max-width: 900px){ #list{grid-template-columns:1fr} }
 
-  /* ---------- People cards & tables — compact ---------- */
-  .person{
-    border:1px solid var(--rule);
-    border-radius:14px;
-    padding:12px;
-    background:var(--surface);
-    box-shadow:var(--shadow)
-  }
+  .person{border:1px solid var(--rule);border-radius:14px;padding:12px;background:var(--surface);box-shadow:var(--shadow)}
   .header{display:flex;align-items:center;gap:10px;margin-bottom:8px}
   .pname{font-weight:900;font-size:16px;margin:0;color:#0f172a}
-  .badge-defaults{
-    background:linear-gradient(90deg,#39ff14,#b9ff8c);
-    color:var(--neonText);
-    font-weight:900;
-    padding:2px 8px; border-radius:999px; text-transform:uppercase; letter-spacing:.5px;
-    box-shadow:0 0 10px rgba(57,255,20,.45), inset 0 0 2px rgba(0,0,0,.15);
-    font-size:11px;
-  }
+  .badge-defaults{background:linear-gradient(90deg,#39ff14,#b9ff8c);color:var(--neonText);font-weight:900;padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.5px;box-shadow:0 0 10px rgba(57,255,20,.45), inset 0 0 2px rgba(0,0,0,.15);font-size:11px}
 
   table{width:100%;border-collapse:collapse;font-size:12px;line-height:1.2;table-layout:auto}
   th,td{padding:7px 8px;vertical-align:top}
-  th{
-    text-align:left;border-bottom:2px solid #0f172a;color:#0f172a;background:#f7f9ff;
-    position:sticky; top:-1px;
-  }
+  th{text-align:left;border-bottom:2px solid #0f172a;color:#0f172a;background:#f7f9ff;position:sticky; top:-1px}
   td{border-bottom:1px solid var(--rule)}
   .col-idx{width:28px;text-align:right;color:var(--muted)}
   .col-line{width:52%}
@@ -144,23 +79,12 @@
   tfoot td{font-weight:900}
   .mono{font-variant-numeric: tabular-nums}
 
-  /* ---------- Standings ---------- */
   .standings{margin-top:28px}
-  .standings h2{
-    margin:8px 0 12px;
-    font-size:22px;
-    background:linear-gradient(90deg,#0f172a,#2563eb 60%,#22c55e);
-    -webkit-background-clip:text;background-clip:text;color:transparent
-  }
+  .standings h2{margin:8px 0 12px;font-size:22px;background:linear-gradient(90deg,#0f172a,#2563eb 60%,#22c55e);-webkit-background-clip:text;background-clip:text;color:transparent}
   .toolbar{display:flex;gap:8px;margin:8px 0 14px}
-  .toolbar button{
-    padding:8px 12px;border:1px solid var(--rule);background:#fff;border-radius:10px;cursor:pointer;
-    font-weight:800;color:#0f172a;box-shadow:var(--shadow)
-  }
+  .toolbar button{padding:8px 12px;border:1px solid var(--rule);background:#fff;border-radius:10px;cursor:pointer;font-weight:800;color:#0f172a;box-shadow:var(--shadow)}
   .toolbar button:hover{background:#f4f7ff}
-  .toolbar button.active{
-    border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.18);background:#eef4ff
-  }
+  .toolbar button.active{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.18);background:#eef4ff}
   .standings table{width:100%;background:var(--surface);border:1px solid var(--rule);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
   .standings td,.standings th{padding:10px;border-bottom:1px solid var(--rule)}
   .standings th{text-align:left;border-bottom:2px solid #0f172a;background:#f7f9ff;color:#0f172a}
@@ -168,34 +92,11 @@
   .stat{width:100px;text-align:right}
   .nameCell{display:flex;align-items:center;gap:8px}
 
-  /* ---------- Quick Nav Footer (glassy) ---------- */
-  .quicknav{
-    position:fixed;left:0;right:0;bottom:0;
-    background:rgba(255,255,255,.7);
-    -webkit-backdrop-filter:saturate(140%) blur(10px);
-    backdrop-filter:saturate(140%) blur(10px);
-    border-top:1px solid var(--rule);
-    display:flex;gap:12px;justify-content:center;align-items:center;
-    padding:10px 14px;z-index:50;
-    box-shadow:0 -6px 18px rgba(15,23,42,.06);
-  }
-  .quicknav a{
-    border:1px solid var(--rule);
-    background:linear-gradient(180deg,#ffffff,#f6f9ff);
-    border-radius:999px;
-    padding:9px 16px;
-    font-weight:900;
-    color:var(--accent-strong);
-    text-decoration:none;
-    box-shadow:var(--shadow);
-  }
-  .quicknav a:hover{
-    border-color:var(--accent);
-    box-shadow:0 0 0 3px rgba(37,99,235,.18);
-  }
+  .quicknav{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.7);-webkit-backdrop-filter:saturate(140%) blur(10px);backdrop-filter:saturate(140%) blur(10px);border-top:1px solid var(--rule);display:flex;gap:12px;justify-content:center;align-items:center;padding:10px 14px;z-index:50;box-shadow:0 -6px 18px rgba(15,23,42,.06)}
+  .quicknav a{border:1px solid var(--rule);background:linear-gradient(180deg,#ffffff,#f6f9ff);border-radius:999px;padding:9px 16px;font-weight:900;color:var(--accent-strong);text-decoration:none;box-shadow:var(--shadow)}
+  .quicknav a:hover{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.18)}
   .footer-spacer{height:64px}
 
-  /* Mobile layout for the top Games panel */
   @media (max-width: 640px){
     .game{ grid-template-columns: repeat(3, 1fr); align-items: stretch; gap: 8px; }
     .gline{ grid-column: 1 / -1; font-size: 13px; }
@@ -246,7 +147,7 @@ const CSV_URL_NFL_LINES    = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR
 const CSV_URL_SUBS         = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRys9xayYsuEqgGB09v1nOrwdD0U5c1Hb1ksLqQxTSBzLi3AKGeg9yPt1-eY1fry_0H-KcZLCQ1h8H6/pub?gid=1991283502&single=true&output=csv";
 const CSV_URL_PARTICIPANTS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRj5ieGlGWurIlGuongV3vJhWWAwCYsEFVhEEtjwOG7RiFwTRZkM_JXtjb8QtwsdzhaXPMDRPyU7qZC/pub?gid=0&single=true&output=csv";
 const DOUBLE_COUNTS_AS = 2;
-const WeekNumber = 1; // only use submissions where Week == WeekNumber
+const WeekNumber = 1;
 
 /* ================ HELPERS =================== */
 const by = f => (a,b)=> f(a)<f(b)?-1:f(a)>f(b)?1:0;
@@ -301,18 +202,16 @@ function escapeRegex(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
 
 /* ---------- Favorite detection from SPREAD text ---------- */
 function detectFavoriteFrom(spreadText, away, home){
-  // Normalize wide dashes/minus to ASCII '-'
+  // Normalize odd dashes
   const pool = String(spreadText||"").replace(/[−–—]/g,'-');
 
   const stripRank = s => String(s||"").replace(/^#\d+\s*/,'').trim();
   const awayKey = stripRank(away);
   const homeKey = stripRank(home);
 
-  // 1) Patterns with explicit parentheses: "Team (-3.5)"
+  // 1) "( -3.5 )" form
   const rxP = (team)=> new RegExp("\\b"+escapeRegex(team)+"\\s*\\(([-+]?\\d+(?:\\.\\d+)?)\\)","i");
-
-  // 2) Inline signed number directly after the team (no letters in-between):
-  //    avoids matching "Iowa ... St. -3.5" for the away "Iowa"
+  // 2) Inline signed number after the team, no letters between
   const rxI = (team)=> new RegExp("\\b"+escapeRegex(team)+"\\b[^A-Za-z0-9]*([-+]\\d+(?:\\.\\d+)?)","i");
 
   let m;
@@ -322,26 +221,38 @@ function detectFavoriteFrom(spreadText, away, home){
   m = rxI(homeKey).exec(pool); if(m && parseFloat(m[1])<0) return {fav:'home', pts:Math.abs(parseFloat(m[1]))};
   m = rxI(awayKey).exec(pool); if(m && parseFloat(m[1])<0) return {fav:'away', pts:Math.abs(parseFloat(m[1]))};
 
-  // 3) Fallback: any negative number present — assign to the team that appears (or nearest on the left)
+  // 3) Fallback: any negative number present — assign to nearest team on the left;
+  //    if a tie, prefer the *longer* team name (e.g., "Iowa St." over "Iowa")
   const neg = /-\s*\d+(?:\.\d+)?/.exec(pool);
   if(neg){
     const pts = Math.abs(parseFloat(neg[0].replace(/\s+/g,'')));
     const low = pool.toLowerCase();
-    const hKey = homeKey.toLowerCase(), aKey = awayKey.toLowerCase();
-    const hasHome = low.includes(hKey);
-    const hasAway = low.includes(aKey);
 
-    if(hasHome && !hasAway) return {fav:'home', pts};
-    if(hasAway && !hasHome) return {fav:'away', pts};
+    const findIdx = (team)=> {
+      const rx = new RegExp("\\b"+escapeRegex(team.toLowerCase())+"\\b","i");
+      const m = rx.exec(low);
+      return m ? m.index : -1;
+    };
 
-    // both present: choose whichever appears closest before the number
-    const numIdx = neg.index;
-    const homeIdx = low.lastIndexOf(hKey, numIdx);
-    const awayIdx = low.lastIndexOf(aKey, numIdx);
-    const dHome = homeIdx === -1 ? Infinity : numIdx - homeIdx;
-    const dAway = awayIdx === -1 ? Infinity : numIdx - awayIdx;
-    if(dHome < dAway) return {fav:'home', pts};
-    if(dAway < dHome) return {fav:'away', pts};
+    const idxHome = findIdx(homeKey);
+    const idxAway = findIdx(awayKey);
+
+    if(idxHome !== -1 && idxAway === -1) return {fav:'home', pts};
+    if(idxAway !== -1 && idxHome === -1) return {fav:'away', pts};
+
+    if(idxHome !== -1 && idxAway !== -1){
+      const numIdx = neg.index;
+      const dHome = numIdx - idxHome;
+      const dAway = numIdx - idxAway;
+
+      if(dHome < dAway) return {fav:'home', pts};
+      if(dAway < dHome) return {fav:'away', pts};
+
+      // tie: choose longer team name (more specific)
+      if(homeKey.length > awayKey.length) return {fav:'home', pts};
+      if(awayKey.length > homeKey.length) return {fav:'away', pts};
+      return {fav:'home', pts}; // stable fallback
+    }
   }
 
   return null; // unknown
@@ -355,44 +266,42 @@ function formatLine(away, home, favInfo){
     : `${away} @ ${home} (-${pts})`;
 }
 
-/* NEW: append (-#) only if it isn't already in the submitted choice */
+/* Append (-#) only if not already present */
 function displayPickLabel(qid, choice){
   const fav = qidToFav.get(qid);
   const cNorm = normTeam(choice);
   if(fav){
     const favTeam = fav.fav==='away' ? qidToAway.get(qid)||'' : qidToHome.get(qid)||'';
     if(cNorm && cNorm===normTeam(favTeam)){
-      if(/\(-\d+(?:\.\d+)?\)/.test(String(choice))){
-        return choice;
-      }
+      if(/\(-\d+(?:\.\d+)?\)/.test(String(choice))) return choice;
       const pts = (fav.pts%1===0)? fav.pts.toFixed(0) : fav.pts.toString();
       return `${choice} (-${pts})`;
     }
   }
-  return choice; // underdog shows no "+#"
+  return choice;
 }
 
 /* ============== STATE ============== */
-let qidToLine   = new Map();      // QID -> display line (fav only shown with -#)
-let qidToAway   = new Map();      // QID -> Away
-let qidToHome   = new Map();      // QID -> Home
-let qidToWinner = new Map();      // QID -> Winner (locks)
-let qidToDate   = new Map();      // QID -> Date object (if provided)
-let qidToDefault= new Map();      // QID -> boolean Default="Y"
-let qidToFav    = new Map();      // QID -> {fav:'away'|'home', pts:number}
-let results     = new Map();      // QID -> 'away' | 'home' | 'tie'
-let people      = [];             // [{name, picks:[{qid, choice, isDouble}], isDefaults?:true}]
-let participantNames = [];        // roster
-let defaultTemplate = null;       // { name:"Default Picks", picks:[...] }
-let standingsSort = 'alpha';      // 'alpha' | 'percent' | 'wins'
+let qidToLine   = new Map();
+let qidToAway   = new Map();
+let qidToHome   = new Map();
+let qidToWinner = new Map();
+let qidToDate   = new Map();
+let qidToDefault= new Map();
+let qidToFav    = new Map();
+let results     = new Map();
+let people      = [];
+let participantNames = [];
+let defaultTemplate = null;
+let standingsSort = 'alpha';
 
-/* ======== UNIFIED LINES NORMALIZER (for BOTH sheets) ======== */
+/* ======== UNIFIED LINES NORMALIZER ======== */
 function normalizeLines(rows){
   rows.forEach(r=>{
     const qid   = String(r["QID"]||r["qid"]||"").trim(); if(!qid) return;
     const away  = String(r["Away Team"]||r["Away"]||"").trim();
     const home  = String(r["Home Team"]||r["Home"]||"").trim();
-    const spread= String(r["Spread"]||r["Line"]||"").trim();  // prefer Spread
+    const spread= String(r["Spread"]||r["Line"]||"").trim();
     const winner= String(r["Winner"]||r["winner"]||"").trim();
     const def   = /^y/i.test(String(r["Default"]||""));
     const dt    = String(r["DateTime"]||r["datetime"]||r["Date"]||"").trim();
@@ -466,14 +375,14 @@ function outcomeFromWinner(qid){
   return undefined;
 }
 
-/* ---------- Build Default Picks set from Default="Y" ---------- */
+/* ---------- Default Picks from Default="Y" ---------- */
 function computeDefaultPicksSet(){
   const picks = [];
   const qids = Array.from(qidToDefault.keys()).filter(q=> qidToDefault.get(q)===true);
   qids.sort((a,b)=> qidOrder(a)-qidOrder(b));
   qids.forEach(qid=>{
     const fav = qidToFav.get(qid);
-    if(!fav) return; // must have a detectable spread
+    if(!fav) return;
     const choice = fav.fav==='away' ? (qidToAway.get(qid)||'') : (qidToHome.get(qid)||'');
     picks.push({ qid, choice, isDouble:false });
   });
@@ -647,7 +556,6 @@ function renderPeople(){
   list.innerHTML = '';
   let summaries = [];
 
-  /* --- First card: Default Picks template --- */
   if (defaultTemplate && defaultTemplate.picks && defaultTemplate.picks.length){
     const rows = defaultTemplate.picks.map((pk, idx)=>{
       const s = scorePick(pk.qid, pk.choice, pk.isDouble);
@@ -706,7 +614,6 @@ function renderPeople(){
     list.appendChild(card);
   }
 
-  /* --- Participant cards --- */
   people.forEach(p=>{
     let rowsHtml = '';
     let tw=0, tl=0, tt=0;
