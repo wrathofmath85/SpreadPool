@@ -301,13 +301,18 @@ function escapeRegex(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
 
 /* ---------- Favorite detection from SPREAD text ---------- */
 function detectFavoriteFrom(spreadText, away, home){
-  const stripRank = s => String(s||"").replace(/^#\d+\s*/,'').trim();
-  const awayKey = stripRank(away), homeKey = stripRank(home);
-  const pool = String(spreadText||"");
+  // Normalize wide dashes/minus to ASCII '-'
+  const pool = String(spreadText||"").replace(/[−–—]/g,'-');
 
-  // Accept "Team (-3.5)" or "Team -3.5"
+  const stripRank = s => String(s||"").replace(/^#\d+\s*/,'').trim();
+  const awayKey = stripRank(away);
+  const homeKey = stripRank(home);
+
+  // 1) Patterns with explicit parentheses: "Team (-3.5)"
   const rxP = (team)=> new RegExp("\\b"+escapeRegex(team)+"\\s*\\(([-+]?\\d+(?:\\.\\d+)?)\\)","i");
-  // NEW: forbid letters between team and number to avoid "Iowa ... St. -3.5" matching "Iowa"
+
+  // 2) Inline signed number directly after the team (no letters in-between):
+  //    avoids matching "Iowa ... St. -3.5" for the away "Iowa"
   const rxI = (team)=> new RegExp("\\b"+escapeRegex(team)+"\\b[^A-Za-z0-9]*([-+]\\d+(?:\\.\\d+)?)","i");
 
   let m;
@@ -317,8 +322,31 @@ function detectFavoriteFrom(spreadText, away, home){
   m = rxI(homeKey).exec(pool); if(m && parseFloat(m[1])<0) return {fav:'home', pts:Math.abs(parseFloat(m[1]))};
   m = rxI(awayKey).exec(pool); if(m && parseFloat(m[1])<0) return {fav:'away', pts:Math.abs(parseFloat(m[1]))};
 
-  return null;
+  // 3) Fallback: any negative number present — assign to the team that appears (or nearest on the left)
+  const neg = /-\s*\d+(?:\.\d+)?/.exec(pool);
+  if(neg){
+    const pts = Math.abs(parseFloat(neg[0].replace(/\s+/g,'')));
+    const low = pool.toLowerCase();
+    const hKey = homeKey.toLowerCase(), aKey = awayKey.toLowerCase();
+    const hasHome = low.includes(hKey);
+    const hasAway = low.includes(aKey);
+
+    if(hasHome && !hasAway) return {fav:'home', pts};
+    if(hasAway && !hasHome) return {fav:'away', pts};
+
+    // both present: choose whichever appears closest before the number
+    const numIdx = neg.index;
+    const homeIdx = low.lastIndexOf(hKey, numIdx);
+    const awayIdx = low.lastIndexOf(aKey, numIdx);
+    const dHome = homeIdx === -1 ? Infinity : numIdx - homeIdx;
+    const dAway = awayIdx === -1 ? Infinity : numIdx - awayIdx;
+    if(dHome < dAway) return {fav:'home', pts};
+    if(dAway < dHome) return {fav:'away', pts};
+  }
+
+  return null; // unknown
 }
+
 function formatLine(away, home, favInfo){
   if(!favInfo) return `${away} @ ${home}`;
   const pts = (favInfo.pts%1===0)? favInfo.pts.toFixed(0) : favInfo.pts.toString();
@@ -384,7 +412,6 @@ function normalizeLines(rows){
 
 /* ============== SUBMISSIONS & PARTICIPANTS ============== */
 function normalizeSubs(rows){
-  // filter by WeekNumber first
   rows = rows.filter(r => String(r["Week"]||r["week"]||"").trim() === String(WeekNumber));
 
   const latest = new Map(); // name => ts
@@ -413,11 +440,9 @@ function normalizeSubs(rows){
 
   const arr = Array.from(byName.values());
   arr.forEach(p => {
-    // keep only picks whose QID exists in current Lines (prevents mismatches)
     p.picks = p.picks.filter(pk => qidToLine.has(pk.qid));
     p.picks.sort((a,b)=> qidOrder(a.qid)-qidOrder(b.qid));
   });
-  // sort by last name (defaults card still renders first)
   arr.sort((a,b)=> lastNameKey(a.name).localeCompare(lastNameKey(b.name), undefined, {sensitivity:'base'}));
   return arr;
 }
@@ -466,28 +491,22 @@ async function loadAll(){
       fetchCSV(CSV_URL_PARTICIPANTS)
     ]);
 
-    // reset maps
     qidToLine.clear(); qidToAway.clear(); qidToHome.clear(); qidToWinner.clear();
     qidToDate.clear(); qidToDefault.clear(); qidToFav.clear(); results.clear();
 
-    // merge both line files with unified parser
     normalizeLines(nflLines);
     normalizeLines(ncaaLines);
 
-    // prefill locked results from Winner column
     Array.from(qidToLine.keys()).forEach(qid=>{
       const oc = outcomeFromWinner(qid);
       if(oc) results.set(qid, oc);
     });
 
-    // normalize datasets
     people = normalizeSubs(subs);
     participantNames = normalizeParticipants(parts);
 
-    // Default template
     defaultTemplate = { name:"Default Picks", picks: computeDefaultPicksSet(), isDefaults:true };
 
-    // Add defaults for anyone without a submission
     const have = new Set(people.map(p=>p.name.toLowerCase()));
     participantNames.forEach(nm=>{
       if(!have.has(nm.toLowerCase())){
@@ -495,7 +514,6 @@ async function loadAll(){
       }
     });
 
-    // Sort real participants by last name; defaults card renders separately first
     people.sort((a,b)=> lastNameKey(a.name).localeCompare(lastNameKey(b.name), undefined, {sensitivity:'base'}));
 
     renderGames();
@@ -531,17 +549,13 @@ function renderGames(){
   const panel = document.getElementById('gamesPanel');
   panel.innerHTML = '';
 
-  // Only show games with a detectable favorite/spread
   const hasSpread = (qid)=> !!qidToFav.get(qid);
 
-  // QIDs with at least one pick (including defaults assigned to people)
   const pickedQids = new Set();
   people.forEach(p=>p.picks.forEach(pk=> pickedQids.add(pk.qid)));
 
-  // Defaults (from Default="Y"), still require a spread
   const defaultQids = new Set((defaultTemplate?.picks||[]).map(p=>p.qid).filter(hasSpread));
 
-  // Final list: defaults ∪ (picked & hasSpread)
   const qidsAll = new Set([
     ...defaultQids,
     ...[...pickedQids].filter(hasSpread)
