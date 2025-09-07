@@ -206,6 +206,9 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
         <button id="submitBtn" class="btn primary">Submit</button>
         <button id="resetBtn"  class="btn ghost">Reset</button>
       </div>
+      <div class="m">
+        <span id="totalPicked" class="statusBox">Total games picked: 0 (NFL 0 + NCAA 0)</span>
+      </div>
       <div class="r">
         <span id="statusBox" class="statusBox status_bad">ERRORS DETECTED</span>
       </div>
@@ -288,7 +291,7 @@ function parseTime12(s){
   s=String(s||"12:00 PM").trim();
   const m=s.match(/^(\d{1,2}):(\d{2})\s*([AP]M)$/i);
   if(!m) return {h:12,mi:0};
-  let h=+m[1], mi=+m[2]; const ampm=m[3].toUpperCase();
+  let {1:h,2:mi,3:ampm}=m; h=+h; mi=+mi; ampm=ampm.toUpperCase();
   if(ampm==="PM"&&h!==12) h+=12; if(ampm==="AM"&&h===12) h=0;
   return {h,mi};
 }
@@ -354,12 +357,12 @@ function normalizeGames(csvRows, prefix){
   return sortRequiredFirst(out);
 }
 
-/* -------- Fixed favorite & labels (disambiguates e.g. Iowa vs Iowa St.) -------- */
+/* -------- Favorite info (plus who & line) -------- */
 function favoriteInfo(away, home, spreadText){
   const spreadRaw = String(spreadText||"");
-
-  const nums = spreadRaw.match(/[+-]?\d+(?:\.\d+)?/g);
-  const line = nums ? nums[nums.length - 1] : "";
+  const numMatch = spreadRaw.match(/[+-]?\d+(?:\.\d+)?/g);
+  const lineStr = numMatch ? numMatch[numMatch.length - 1] : "";
+  const lineNum = lineStr ? Math.abs(parseFloat(lineStr)) : null;
 
   const canon = s => String(s||"")
     .replace(/#\d+\s*/g,'')
@@ -371,10 +374,6 @@ function favoriteInfo(away, home, spreadText){
     .trim();
 
   const toTokens = s => canon(s).split(/\s+/).filter(Boolean);
-
-  const spreadTokens = toTokens(spreadRaw);
-  const awayTokens   = toTokens(away);
-  const homeTokens   = toTokens(home);
 
   function phraseHitLen(teamTok, hay){
     if(teamTok.length === 0 || hay.length === 0) return 0;
@@ -388,18 +387,25 @@ function favoriteInfo(away, home, spreadText){
     return 0;
   }
 
+  const spreadTokens = toTokens(spreadRaw);
+  const awayTokens   = toTokens(away);
+  const homeTokens   = toTokens(home);
+
   const awayHit = phraseHitLen(awayTokens, spreadTokens);
   const homeHit = phraseHitLen(homeTokens, spreadTokens);
 
-  let awayFav=false, homeFav=false;
-  if(awayHit > homeHit) awayFav = true;
-  else if(homeHit > awayHit) homeFav = true;
+  let favored = null, favoredTeam = "", favoredMinus = "";
+  if(awayHit > homeHit){ favored = "away"; favoredTeam = away; }
+  else if(homeHit > awayHit){ favored = "home"; favoredTeam = home; }
+
+  if(favored && lineNum!=null) favoredMinus = `-${lineNum}`;
 
   const fmt = n => (String(n).startsWith('-') ? n : `-${n}`);
   return {
-    awayLabel: awayFav && line ? `${away} (${fmt(line)})` : away,
-    homeLabel: homeFav && line ? `${home} (${fmt(line)})` : home,
-    favoriteLine: spreadRaw || "—"
+    awayLabel: favored==="away" && lineStr ? `${away} (${fmt(lineStr)})` : away,
+    homeLabel: favored==="home" && lineStr ? `${home} (${fmt(lineStr)})` : home,
+    favoriteLine: spreadRaw || "—",
+    favored, favoredTeam, favoredMinus
   };
 }
 
@@ -494,7 +500,8 @@ function refreshDoubleChoices(){
   if(keep && chosen.some(o=>o.qid===keep)) sel.value = keep;
 }
 
-function buildSelectionsText(){
+/* ---- Build selections text (email flag controls extra game line) ---- */
+function buildSelectionsText(includeGameLine=false){
   const name  = $("#nameSel").selectedOptions[0]?.textContent || "";
   const email = $("#emailBox").value.trim();
   const stamp = new Date().toISOString();
@@ -520,6 +527,21 @@ function buildSelectionsText(){
     const tag = (o.qid===dbl) ? " [DOUBLE]" : "";
     const teamClean = o.team?.replace(/^away|^home/i,'').trim() || o.team || "";
     lines.push(`${o.qid}:${teamClean}${tag}`);
+
+    if(includeGameLine){
+      // locate game and add "Away @ Home — FavTeam -X" (or show original line if ambiguous)
+      const g = (o.qid.startsWith("A") ? gamesA : gamesB).find(x=>x.qid===o.qid);
+      if(g){
+        const fav = favoriteInfo(g.away, g.home, g.spread);
+        let span = "Even";
+        if(fav.favoredTeam && fav.favoredMinus){
+          span = `${fav.favoredTeam} ${fav.favoredMinus}`;
+        }else if(fav.favoriteLine && fav.favoriteLine !== "—"){
+          span = fav.favoriteLine; // fallback: whatever was in the sheet
+        }
+        lines.push(`  • ${g.away} @ ${g.home} — ${span}`);
+      }
+    }
   });
 
   return lines.join("\n");
@@ -559,12 +581,12 @@ function collectSubmission(){
     double_team: doubleTeam,
     picks,
     rows,
-    summary: buildSelectionsText()
+    summary: buildSelectionsText(false) // keep sheet-friendly summary unchanged
   };
 }
 
 function renderSummary(){
-  $("#summary").innerHTML = `<pre style="white-space:pre-wrap;margin:0">${escapeHtml(buildSelectionsText())}</pre>`;
+  $("#summary").innerHTML = `<pre style="white-space:pre-wrap;margin:0">${escapeHtml(buildSelectionsText(false))}</pre>`;
 }
 function setCheck(sel, ok){
   const li = $(sel);
@@ -624,6 +646,8 @@ function validateAll(){
 
   $("#cntA").textContent = `Answered: ${a}`;
   $("#cntB").textContent = `Answered: ${b}`;
+  // NEW: footer tally
+  $("#totalPicked").textContent = `Total games picked: ${total} (NFL ${a} + NCAA ${b})`;
 
   return allOk;
 }
@@ -724,7 +748,8 @@ $("#submitBtn").addEventListener("click", async ()=>{
 
   const participantName = $("#nameSel").selectedOptions[0]?.textContent || "";
   const participantEmail = $("#emailBox").value.trim();
-  const selectionsText  = buildSelectionsText();
+  // EMAIL COPY includes the extra per-game line
+  const selectionsText  = buildSelectionsText(true);
   const submission = collectSubmission();
 
   const sheetResult = await pushToSheets(submission);
