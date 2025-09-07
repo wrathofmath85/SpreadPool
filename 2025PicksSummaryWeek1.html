@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Spread Pool — Picks</title>
+<title>Spread Pool Week 1 Picks</title>
 <link rel="preconnect" href="https://cdn.jsdelivr.net/">
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <style>
@@ -52,7 +52,7 @@
 
   /* Title with gradient text effect */
   h1{
-    margin:0 0 14px;
+    margin:0 0 10px;
     font-size:28px;
     line-height:1.2;
     background:linear-gradient(90deg,#0f172a,#2563eb 60%,#22c55e);
@@ -60,12 +60,24 @@
     color:transparent;
     letter-spacing:.2px;
   }
+  h1 a{ color:inherit; text-decoration:underline dotted; text-underline-offset:3px }
 
   /* Error */
   #err{
     display:none;color:#b91c1c;background:#fde2e2;border:1px solid #fbcaca;
     padding:10px 12px;border-radius:12px;margin:10px 0;box-shadow:var(--shadow)
   }
+
+  /* ---------- Current Week Record (new) ---------- */
+  .weekrec{
+    display:inline-flex; align-items:center; gap:10px;
+    border:1px solid var(--rule); background:var(--surface);
+    padding:10px 14px; border-radius:12px; box-shadow:var(--shadow);
+    font-weight:800; margin:0 0 18px 0;
+  }
+  .weekrec .label{ color:#0f172a }
+  .weekrec .totals{ font-variant-numeric: tabular-nums }
+  .weekrec .pct{ color:var(--accent-strong) }
 
   /* ---------- Games panel (top) ---------- */
   .games{
@@ -196,33 +208,41 @@
   }
   /* spacer so footer doesn't overlap last content */
   .footer-spacer{height:64px}
-/* Mobile layout for the top Games panel */
-@media (max-width: 640px){
-  .game{
-    /* 3 equal columns for buttons; game title sits on its own row */
-    grid-template-columns: repeat(3, 1fr);
-    align-items: stretch;
-    gap: 8px;
-  }
-  .gline{
-    grid-column: 1 / -1;   /* title spans full width */
-    font-size: 13px;       /* optional: slightly smaller on mobile */
-  }
-  .gbtn{
-    width: 100%;
-    text-align: center;
-    padding: 8px 10px;     /* a touch larger for fingers */
-  }
-}
 
+  /* Mobile layout for the top Games panel */
+  @media (max-width: 640px){
+    .game{
+      grid-template-columns: repeat(3, 1fr);
+      align-items: stretch;
+      gap: 8px;
+    }
+    .gline{
+      grid-column: 1 / -1;
+      font-size: 13px;
+    }
+    .gbtn{
+      width: 100%;
+      text-align: center;
+      padding: 8px 10px;
+    }
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
   <!-- top anchor -->
   <div id="topAnchor"></div>
+  <!-- anchor target for week link -->
+  <div id="WeekNumber" style="position:relative; top:-80px;"></div>
 
-  <h1>Spread Pool — Picks</h1>
+  <h1 id="pageTitle">Spread Pool Week <a href="#WeekNumber">1</a> Picks</h1>
+
+  <!-- Current Week Record (NEW) -->
+  <div class="weekrec" id="weekRecord" aria-live="polite">
+    <span class="label">Current Week Record:</span>
+    <span class="totals" id="weekTotals">0-0-0</span>
+    <span class="pct" id="weekPct">—</span>
+  </div>
 
   <div id="err"></div>
 
@@ -475,6 +495,16 @@ function computeDefaultPicksSet(){
   return picks;
 }
 
+/* -------- Page Title & Week link (NEW) -------- */
+function updateTitles(){
+  const t = `Spread Pool Week ${WeekNumber} Picks`;
+  document.title = t;
+  const h1 = document.getElementById('pageTitle');
+  if(h1){
+    h1.innerHTML = `Spread Pool Week <a href="#WeekNumber">${WeekNumber}</a> Picks`;
+  }
+}
+
 /* =================== LOAD ALL =================== */
 async function loadAll(){
   try{
@@ -518,6 +548,7 @@ async function loadAll(){
     // Sort real participants by last name; defaults card renders separately first
     people.sort((a,b)=> lastNameKey(a.name).localeCompare(lastNameKey(b.name), undefined, {sensitivity:'base'}));
 
+    updateTitles();
     renderGames();
     renderPeople();
     hookSortButtons();
@@ -775,8 +806,25 @@ function renderPeople(){
     list.appendChild(card);
   });
 
+  /* --- Update Current Week Record header (NEW) --- */
+  updateWeekRecordHeader(summaries);
+
   renderStandings(summaries);
   document.getElementById('standingsWrap').hidden = summaries.length === 0;
+}
+
+/* -------- Current Week Record header logic (NEW) -------- */
+function updateWeekRecordHeader(summaries){
+  let W=0, L=0, T=0;
+  summaries.forEach(s => { W += s.w; L += s.l; T += s.t; });
+  const denom = W + L + T;
+  const pct = denom > 0 ? (W + 0.5*T) / denom : NaN;
+
+  const totalsEl = document.getElementById('weekTotals');
+  const pctEl = document.getElementById('weekPct');
+
+  if(totalsEl) totalsEl.textContent = `${W}-${L}-${T}`;
+  if(pctEl) pctEl.textContent = isNaN(pct) ? '—' : fmtPct(pct);
 }
 
 /* ============== STANDINGS (sorting) ============== */
@@ -843,6 +891,7 @@ function hookSortButtons(){
 }
 
 /* ============== GO ============== */
+updateTitles();
 loadAll();
 // setInterval(loadAll, 60000);
 </script>
