@@ -614,6 +614,10 @@ function renderGames(){
     const counts = getPickCounts(qid);
     const lockedOutcome = outcomeFromWinner(qid);
 
+    // NEW: show Tie button only when spread is an integer (no .5)
+    const fav = qidToFav.get(qid);
+    const showTie = !!fav && Number.isFinite(fav.pts) && (fav.pts % 1 === 0);
+
     if(lockedOutcome){
       const winnerText = lockedOutcome==='tie' ? 'Tie' : (lockedOutcome==='away' ? away : home);
       div.innerHTML = `
@@ -631,7 +635,7 @@ function renderGames(){
         <button class="gbtn home ${results.get(qid)==='home'?'active':''}" data-qid="${qid}" data-val="home">
           ${escapeHtml(home)} <span class="count">(${counts.home})</span>
         </button>
-        <button class="gbtn tie  ${results.get(qid)==='tie'?'active':''}"  data-qid="${qid}" data-val="tie">Tie</button>
+        ${showTie ? `<button class="gbtn tie ${results.get(qid)==='tie'?'active':''}" data-qid="${qid}" data-val="tie">Tie</button>` : ``}
       `;
     }
     panel.appendChild(div);
