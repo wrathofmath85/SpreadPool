@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Spread Pool Week 1 Picks</title>
+<title>Spread Pool Week 2 Picks</title>
 <link rel="preconnect" href="https://cdn.jsdelivr.net/">
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <style>
@@ -68,7 +68,7 @@
     padding:10px 12px;border-radius:12px;margin:10px 0;box-shadow:var(--shadow)
   }
 
-  /* ---------- Current Week Record (new) ---------- */
+  /* ---------- Current Week Record ---------- */
   .weekrec{
     display:inline-flex; align-items:center; gap:10px;
     border:1px solid var(--rule); background:var(--surface);
@@ -129,7 +129,12 @@
     box-shadow:var(--shadow)
   }
   .header{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-  .pname{font-weight:900;font-size:16px;margin:0;color:#0f172a}
+  .pname{
+    font-weight:900;font-size:16px;margin:0;color:#0f172a;
+    background:none;border:0;padding:0;cursor:pointer;
+    text-align:left;
+  }
+  .pname:hover{ text-decoration:underline dotted; text-underline-offset:3px }
   .badge-defaults{
     background:linear-gradient(90deg,#39ff14,#b9ff8c);
     color:var(--neonText);
@@ -143,7 +148,7 @@
   th,td{padding:7px 8px;vertical-align:top}
   th{
     text-align:left;border-bottom:2px solid #0f172a;color:#0f172a;background:#f7f9ff;
-    position:sticky; top:-1px; /* keeps header visible within card on long lists */
+    position:sticky; top:-1px;
   }
   td{border-bottom:1px solid var(--rule)}
   .col-idx{width:28px;text-align:right;color:var(--muted)}
@@ -165,7 +170,7 @@
     background:linear-gradient(90deg,#0f172a,#2563eb 60%,#22c55e);
     -webkit-background-clip:text;background-clip:text;color:transparent
   }
-  .toolbar{display:flex;gap:8px;margin:8px 0 14px}
+  .toolbar{display:flex;gap:8px;margin:8px 0 14px;flex-wrap:wrap}
   .toolbar button{
     padding:8px 12px;border:1px solid var(--rule);background:#fff;border-radius:10px;cursor:pointer;
     font-weight:800;color:#0f172a;box-shadow:var(--shadow)
@@ -178,8 +183,13 @@
   .standings td,.standings th{padding:10px;border-bottom:1px solid var(--rule)}
   .standings th{text-align:left;border-bottom:2px solid #0f172a;background:#f7f9ff;color:#0f172a}
   .rank{width:42px;text-align:right;color:#7b88a1}
-  .stat{width:100px;text-align:right}
+  .stat{width:110px;text-align:right}
   .nameCell{display:flex;align-items:center;gap:8px}
+  .nameBtn{
+    background:none;border:0;padding:0;cursor:pointer;
+    color:var(--accent-strong);font-weight:900;
+    text-decoration:underline dotted; text-underline-offset:3px;
+  }
 
   /* ---------- Quick Nav Footer (glassy) ---------- */
   .quicknav{
@@ -206,8 +216,22 @@
     border-color:var(--accent);
     box-shadow:0 0 0 3px rgba(37,99,235,.18);
   }
-  /* spacer so footer doesn't overlap last content */
   .footer-spacer{height:64px}
+
+  /* ---------- Modal ---------- */
+  .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:100}
+  .modal.show{display:flex}
+  .modal__backdrop{position:absolute;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(2px)}
+  .modal__card{
+    position:relative;background:#fff;border-radius:14px;box-shadow:var(--shadow);
+    width:calc(100% - 32px);max-width:560px;border:1px solid var(--rule);padding:14px
+  }
+  .modal__head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .modal__title{margin:0;font-size:18px}
+  .modal__close{background:#fff;border:1px solid var(--rule);border-radius:8px;cursor:pointer;padding:4px 8px}
+  .modal__close:hover{background:#f4f7ff}
+  .modal table{font-size:13px}
+  .modal .mono{font-variant-numeric:tabular-nums}
 
   /* Mobile layout for the top Games panel */
   @media (max-width: 640px){
@@ -235,9 +259,9 @@
   <!-- anchor target for week link -->
   <div id="WeekNumber" style="position:relative; top:-80px;"></div>
 
-  <h1 id="pageTitle">Spread Pool Week <a href="#WeekNumber">1</a> Picks</h1>
+  <h1 id="pageTitle">Spread Pool Week <a href="#WeekNumber">2</a> Picks</h1>
 
-  <!-- Current Week Record (NEW) -->
+  <!-- Current Week Record -->
   <div class="weekrec" id="weekRecord" aria-live="polite">
     <span class="label">Current Week Record:</span>
     <span class="totals" id="weekTotals">0-0-0</span>
@@ -263,8 +287,9 @@
     <h2>Standings</h2>
     <div class="toolbar">
       <button id="sort-alpha">Alphabetical</button>
-      <button id="sort-percent">By Win %</button>
-      <button id="sort-wins">Most Wins</button>
+      <button id="sort-week-percent">Current Week %</button>
+      <button id="sort-season-percent">Season %</button>
+      <button id="sort-season-wins">Season Wins</button>
     </div>
     <div id="standings"></div>
   </div>
@@ -280,20 +305,34 @@
   <a href="#summaryAnchor" title="Go to summary">Summary</a>
 </div>
 
+<!-- Player History Modal -->
+<div id="playerModal" class="modal" aria-hidden="true" hidden>
+  <div class="modal__backdrop" data-close="1"></div>
+  <div class="modal__card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal__head">
+      <h3 id="modalTitle" class="modal__title"></h3>
+      <button class="modal__close" data-close="1" aria-label="Close">✕</button>
+    </div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
 <script>
 /* ================== CONFIG ================== */
-const CSV_URL_NCAA_LINES   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRB9bXyC3PBzUhxALXDBAfdsKUAarhukkrtwHEeR64Sj7tB3kb5FZO-PvFOVX57srWOoVNPFO7yjpUf/pub?gid=0&single=true&output=csv";
-const CSV_URL_NFL_LINES    = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRB9bXyC3PBzUhxALXDBAfdsKUAarhukkrtwHEeR64Sj7tB3kb5FZO-PvFOVX57srWOoVNPFO7yjpUf/pub?gid=2109553148&single=true&output=csv";
+const CSV_URL_NCAA_LINES   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRk7ErobOK7KpYjTmP2QpX2Y_xH1QsR3XKUxNWw7NZG8yd_IeTCxQWC8BSz_BZn1KiOs7F2sxZ1bNc1/pub?gid=0&single=true&output=csv";
+const CSV_URL_NFL_LINES    = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRk7ErobOK7KpYjTmP2QpX2Y_xH1QsR3XKUxNWw7NZG8yd_IeTCxQWC8BSz_BZn1KiOs7F2sxZ1bNc1/pub?gid=2109553148&single=true&output=csv";
 const CSV_URL_SUBS         = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRys9xayYsuEqgGB09v1nOrwdD0U5c1Hb1ksLqQxTSBzLi3AKGeg9yPt1-eY1fry_0H-KcZLCQ1h8H6/pub?gid=1991283502&single=true&output=csv";
 const CSV_URL_PARTICIPANTS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRj5ieGlGWurIlGuongV3vJhWWAwCYsEFVhEEtjwOG7RiFwTRZkM_JXtjb8QtwsdzhaXPMDRPyU7qZC/pub?gid=0&single=true&output=csv";
+
 const DOUBLE_COUNTS_AS = 2;
-const WeekNumber = 1; // only use submissions where Week == WeekNumber
+const WeekNumber = 2; // use submissions where Week == WeekNumber
 
 /* ================ HELPERS =================== */
 const by = f => (a,b)=> f(a)<f(b)?-1:f(a)>f(b)?1:0;
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function qidOrder(q){ if(!q) return 9999; const s=q[0], n=parseInt(q.slice(1),10); return (s==='A'?0:1)*1000 + (isFinite(n)?n:999); }
 function lastNameKey(nm){ const p=String(nm||'').trim().split(/\s+/); return (p[p.length-1]||'')+'|'+nm; }
+function normName(n){ return String(n||'').trim().toLowerCase(); }
 
 function showErr(msg){
   const box = document.getElementById('err');
@@ -367,7 +406,7 @@ function formatLine(away, home, favInfo){
     : `${away} @ ${home} (-${pts})`;
 }
 
-/* NEW: append (-#) only if it isn't already in the submitted choice */
+/* Append (-#) to favored pick label if not already present */
 function displayPickLabel(qid, choice){
   const fav = qidToFav.get(qid);
   const cNorm = normTeam(choice);
@@ -385,7 +424,7 @@ function displayPickLabel(qid, choice){
 }
 
 /* ============== STATE ============== */
-let qidToLine   = new Map();      // QID -> display line (fav only shown with -#)
+let qidToLine   = new Map();      // QID -> display line
 let qidToAway   = new Map();      // QID -> Away
 let qidToHome   = new Map();      // QID -> Home
 let qidToWinner = new Map();      // QID -> Winner (locks)
@@ -396,7 +435,10 @@ let results     = new Map();      // QID -> 'away' | 'home' | 'tie'
 let people      = [];             // [{name, picks:[{qid, choice, isDouble}], isDefaults?:true}]
 let participantNames = [];        // roster
 let defaultTemplate = null;       // { name:"Default Picks", picks:[...] }
-let standingsSort = 'alpha';      // 'alpha' | 'percent' | 'wins'
+let standingsSort = 'alpha';      // 'alpha' | 'weekPercent' | 'seasonPercent' | 'seasonWins'
+
+/* NEW: Participants stats map: name -> { totals:{w,l,t}, weeks:[, {w,l,t} ...] } */
+let participantsStats = new Map();
 
 /* ======== UNIFIED LINES NORMALIZER (for BOTH sheets) ======== */
 function normalizeLines(rows){
@@ -424,7 +466,6 @@ function normalizeLines(rows){
 
 /* ============== SUBMISSIONS & PARTICIPANTS ============== */
 function normalizeSubs(rows){
-  // filter by WeekNumber first
   rows = rows.filter(r => String(r["Week"]||r["week"]||"").trim() === String(WeekNumber));
 
   const latest = new Map(); // name => ts
@@ -438,9 +479,9 @@ function normalizeSubs(rows){
 
   const byName = new Map();
   rows.forEach(r=>{
-    const name   = String(r["Name"]||r["name"]||"").trim();
-    const ts     = String(r["Timestamp"]||r["timestamp"]||"").trim();
-    const qid    = String(r["QID"]||r["qid"]||"").trim();
+    const name = String(r["Name"]||r["name"]||"").trim();
+    const ts   = String(r["Timestamp"]||r["timestamp"]||"").trim();
+    const qid  = String(r["QID"]||r["qid"]||"").trim();
     const choice = String(r["Choice"]||r["choice"]||"").trim();
     const isDouble = String(r["IsDouble"]).toUpperCase()==="TRUE";
     if(!name || !qid) return;
@@ -453,21 +494,43 @@ function normalizeSubs(rows){
 
   const arr = Array.from(byName.values());
   arr.forEach(p => {
-    // keep only picks whose QID exists in current Lines (prevents mismatches)
     p.picks = p.picks.filter(pk => qidToLine.has(pk.qid));
     p.picks.sort((a,b)=> qidOrder(a.qid)-qidOrder(b.qid));
   });
-  // sort by last name (defaults card still renders first)
   arr.sort((a,b)=> lastNameKey(a.name).localeCompare(lastNameKey(b.name), undefined, {sensitivity:'base'}));
   return arr;
 }
-function normalizeParticipants(rows){
-  const set = new Set();
+
+function parseParticipants(rows){
+  const map = new Map();
+
+  function getNumCI(row, label){
+    const key = Object.keys(row).find(k => String(k).trim().toLowerCase() === String(label).trim().toLowerCase());
+    const v = key ? row[key] : "";
+    const n = parseFloat(String(v).replace(/[^0-9.-]/g,''));
+    return isNaN(n) ? 0 : n;
+  }
+
   rows.forEach(r=>{
-    const nm = String(r["Name"]||r["name"]||"").trim();
-    if(nm) set.add(nm);
+    const name = String(r["Name"]||r["name"]||"").trim();
+    if(!name) return;
+    const totals = {
+      w: getNumCI(r,"Total Wins"),
+      l: getNumCI(r,"Total Losses"),
+      t: getNumCI(r,"Total Ties")
+    };
+    const weeks = [];
+    for(let i=1;i<WeekNumber;i++){
+      weeks[i] = {
+        w: getNumCI(r, `Week ${i} Wins`),
+        l: getNumCI(r, `Week ${i} Losses`),
+        t: getNumCI(r, `Week ${i} Ties`)
+      };
+    }
+    map.set(normName(name), { name, totals, weeks });
   });
-  return Array.from(set).sort((a,b)=> lastNameKey(a).localeCompare(lastNameKey(b), undefined, {sensitivity:'base'}));
+
+  return map;
 }
 
 /* Winner column → outcome */
@@ -488,14 +551,14 @@ function computeDefaultPicksSet(){
   qids.sort((a,b)=> qidOrder(a)-qidOrder(b));
   qids.forEach(qid=>{
     const fav = qidToFav.get(qid);
-    if(!fav) return; // must have a detectable spread
+    if(!fav) return;
     const choice = fav.fav==='away' ? (qidToAway.get(qid)||'') : (qidToHome.get(qid)||'');
     picks.push({ qid, choice, isDouble:false });
   });
   return picks;
 }
 
-/* -------- Page Title & Week link (NEW) -------- */
+/* -------- Page Title & Week link -------- */
 function updateTitles(){
   const t = `Spread Pool Week ${WeekNumber} Picks`;
   document.title = t;
@@ -532,26 +595,32 @@ async function loadAll(){
 
     // normalize datasets
     people = normalizeSubs(subs);
-    participantNames = normalizeParticipants(parts);
+    participantsStats = parseParticipants(parts);
+
+    // roster from participants sheet
+    participantNames = Array.from(participantsStats.values())
+      .map(p=>p.name)
+      .sort((a,b)=> lastNameKey(a).localeCompare(lastNameKey(b), undefined, {sensitivity:'base'}));
 
     // Default template
     defaultTemplate = { name:"Default Picks", picks: computeDefaultPicksSet(), isDefaults:true };
 
     // Add defaults for anyone without a submission
-    const have = new Set(people.map(p=>p.name.toLowerCase()));
+    const have = new Set(people.map(p=>normName(p.name)));
     participantNames.forEach(nm=>{
-      if(!have.has(nm.toLowerCase())){
+      if(!have.has(normName(nm))){
         people.push({ name:nm, picks:[...defaultTemplate.picks], isDefaults:true });
       }
     });
 
-    // Sort real participants by last name; defaults card renders separately first
+    // Sort real participants by last name; defaults card renders first separately
     people.sort((a,b)=> lastNameKey(a.name).localeCompare(lastNameKey(b.name), undefined, {sensitivity:'base'}));
 
     updateTitles();
     renderGames();
     renderPeople();
     hookSortButtons();
+    hookNameClicks();
   }catch(e){
     console.error(e);
     showErr('Failed to load CSV: ' + (e && e.message ? e.message : e));
@@ -582,17 +651,13 @@ function renderGames(){
   const panel = document.getElementById('gamesPanel');
   panel.innerHTML = '';
 
-  // Only show games with a detectable favorite/spread
   const hasSpread = (qid)=> !!qidToFav.get(qid);
 
-  // QIDs with at least one pick (including defaults assigned to people)
   const pickedQids = new Set();
   people.forEach(p=>p.picks.forEach(pk=> pickedQids.add(pk.qid)));
 
-  // Defaults (from Default="Y"), still require a spread
   const defaultQids = new Set((defaultTemplate?.picks||[]).map(p=>p.qid).filter(hasSpread));
 
-  // Final list: defaults ∪ (picked & hasSpread)
   const qidsAll = new Set([
     ...defaultQids,
     ...[...pickedQids].filter(hasSpread)
@@ -614,10 +679,6 @@ function renderGames(){
     const counts = getPickCounts(qid);
     const lockedOutcome = outcomeFromWinner(qid);
 
-    // NEW: show Tie button only when spread is an integer (no .5)
-    const fav = qidToFav.get(qid);
-    const showTie = !!fav && Number.isFinite(fav.pts) && (fav.pts % 1 === 0);
-
     if(lockedOutcome){
       const winnerText = lockedOutcome==='tie' ? 'Tie' : (lockedOutcome==='away' ? away : home);
       div.innerHTML = `
@@ -635,7 +696,7 @@ function renderGames(){
         <button class="gbtn home ${results.get(qid)==='home'?'active':''}" data-qid="${qid}" data-val="home">
           ${escapeHtml(home)} <span class="count">(${counts.home})</span>
         </button>
-        ${showTie ? `<button class="gbtn tie ${results.get(qid)==='tie'?'active':''}" data-qid="${qid}" data-val="tie">Tie</button>` : ``}
+        <button class="gbtn tie  ${results.get(qid)==='tie'?'active':''}"  data-qid="${qid}" data-val="tie">Tie</button>
       `;
     }
     panel.appendChild(div);
@@ -688,7 +749,7 @@ function renderPeople(){
   list.innerHTML = '';
   let summaries = [];
 
-  /* --- First card: Default Picks template --- */
+  /* --- Defaults card --- */
   if (defaultTemplate && defaultTemplate.picks && defaultTemplate.picks.length){
     const rows = defaultTemplate.picks.map((pk, idx)=>{
       const s = scorePick(pk.qid, pk.choice, pk.isDouble);
@@ -717,7 +778,7 @@ function renderPeople(){
     card.className = 'person';
     card.innerHTML = `
       <div class="header">
-        <div class="pname">${escapeHtml(defaultTemplate.name)}</div>
+        <button class="pname nameBtn" data-name="${escapeHtml(defaultTemplate.name)}">${escapeHtml(defaultTemplate.name)}</button>
         <span class="badge-defaults">Defaults</span>
       </div>
       <table>
@@ -772,11 +833,22 @@ function renderPeople(){
     const denom = tw + tl + tt;
     const pct = denom > 0 ? (tw + 0.5*tt) / denom : NaN;
 
-    summaries.push({ name:p.name, w:tw, l:tl, t:tt, pct, denom, isDefaults: !!p.isDefaults });
+    // Season-to-date (prior totals from Participants + this week)
+    const base = participantsStats.get(normName(p.name));
+    const sw = (base?.totals?.w || 0) + tw;
+    const sl = (base?.totals?.l || 0) + tl;
+    const st = (base?.totals?.t || 0) + tt;
+    const sden = sw + sl + st;
+    const spct = sden > 0 ? (sw + 0.5*st)/sden : NaN;
+
+    summaries.push({
+      name:p.name, w:tw, l:tl, t:tt, pct, denom, isDefaults: !!p.isDefaults,
+      sw, sl, st, spct, sden
+    });
 
     const table = `
       <div class="header">
-        <div class="pname">${escapeHtml(p.name)}</div>
+        <button class="pname nameBtn" data-name="${escapeHtml(p.name)}">${escapeHtml(p.name)}</button>
         ${p.isDefaults ? '<span class="badge-defaults" title="No submission — defaults applied">Defaults</span>' : ''}
       </div>
       <table>
@@ -794,7 +866,7 @@ function renderPeople(){
         <tfoot>
           <tr>
             <td></td>
-            <td>Total</td>
+            <td>Total (Week)</td>
             <td class="mono">${fmtPct(pct)}</td>
             <td class="mono">${tw}</td>
             <td class="mono">${tl}</td>
@@ -810,14 +882,14 @@ function renderPeople(){
     list.appendChild(card);
   });
 
-  /* --- Update Current Week Record header (NEW) --- */
+  /* --- Update Current Week Record header --- */
   updateWeekRecordHeader(summaries);
 
   renderStandings(summaries);
   document.getElementById('standingsWrap').hidden = summaries.length === 0;
 }
 
-/* -------- Current Week Record header logic (NEW) -------- */
+/* -------- Current Week Record header logic -------- */
 function updateWeekRecordHeader(summaries){
   let W=0, L=0, T=0;
   summaries.forEach(s => { W += s.w; L += s.l; T += s.t; });
@@ -831,22 +903,27 @@ function updateWeekRecordHeader(summaries){
   if(pctEl) pctEl.textContent = isNaN(pct) ? '—' : fmtPct(pct);
 }
 
-/* ============== STANDINGS (sorting) ============== */
+/* ============== STANDINGS (sorting + dual views) ============== */
 function renderStandings(summaries){
   const st = document.getElementById('standings');
 
-  const valid = summaries.filter(s => s.denom > 0);
+  const valid = summaries.filter(s => s.denom > 0 || s.sden > 0);
   if(valid.length === 0){ st.innerHTML = ""; return; }
 
   const rows = [...valid].sort((a,b)=>{
-    if (standingsSort === 'percent'){
+    if (standingsSort === 'weekPercent'){
       const ap = isNaN(a.pct)? -1 : a.pct, bp = isNaN(b.pct)? -1 : b.pct;
       if(bp !== ap) return bp - ap;
       if(b.w !== a.w) return b.w - a.w;
       return a.name.localeCompare(b.name);
-    } else if (standingsSort === 'wins'){
-      if(b.w !== a.w) return b.w - a.w;
-      const ap = isNaN(a.pct)? -1 : a.pct, bp = isNaN(b.pct)? -1 : b.pct;
+    } else if (standingsSort === 'seasonPercent'){
+      const ap = isNaN(a.spct)? -1 : a.spct, bp = isNaN(b.spct)? -1 : b.spct;
+      if(bp !== ap) return bp - ap;
+      if(b.sw !== a.sw) return b.sw - a.sw;
+      return a.name.localeCompare(b.name);
+    } else if (standingsSort === 'seasonWins'){
+      if(b.sw !== a.sw) return b.sw - a.sw;
+      const ap = isNaN(a.spct)? -1 : a.spct, bp = isNaN(b.spct)? -1 : b.spct;
       if(bp !== ap) return bp - ap;
       return a.name.localeCompare(b.name);
     } else { // alpha
@@ -855,20 +932,23 @@ function renderStandings(summaries){
   });
 
   document.getElementById('sort-alpha').classList.toggle('active', standingsSort==='alpha');
-  document.getElementById('sort-percent').classList.toggle('active', standingsSort==='percent');
-  document.getElementById('sort-wins').classList.toggle('active', standingsSort==='wins');
+  document.getElementById('sort-week-percent').classList.toggle('active', standingsSort==='weekPercent');
+  document.getElementById('sort-season-percent').classList.toggle('active', standingsSort==='seasonPercent');
+  document.getElementById('sort-season-wins').classList.toggle('active', standingsSort==='seasonWins');
 
   const tbody = rows.map((s, i)=>`
     <tr>
       <td class="rank">${i+1}.</td>
       <td>
         <span class="nameCell">
-          ${escapeHtml(s.name)}
+          <button class="nameBtn" data-name="${escapeHtml(s.name)}">${escapeHtml(s.name)}</button>
           ${s.isDefaults ? '<span class="badge-defaults" title="No submission — defaults applied">Defaults</span>' : ''}
         </span>
       </td>
       <td class="stat mono">${fmtPct(s.pct)}</td>
       <td class="stat mono">${s.w}-${s.l}-${s.t}</td>
+      <td class="stat mono">${fmtPct(s.spct)}</td>
+      <td class="stat mono">${s.sw}-${s.sl}-${s.st}</td>
       <td class="stat mono">${s.denom}</td>
     </tr>
   `).join("");
@@ -879,8 +959,10 @@ function renderStandings(summaries){
         <tr>
           <th class="rank">#</th>
           <th>Name</th>
-          <th class="stat">Win %</th>
-          <th class="stat">W-L-T</th>
+          <th class="stat">Week %</th>
+          <th class="stat">Week W-L-T</th>
+          <th class="stat">Season %</th>
+          <th class="stat">Season W-L-T</th>
           <th class="stat">Picks</th>
         </tr>
       </thead>
@@ -888,10 +970,82 @@ function renderStandings(summaries){
     </table>
   `;
 }
+
 function hookSortButtons(){
-  document.getElementById('sort-alpha').onclick   = ()=>{ standingsSort='alpha';   renderPeople(); };
-  document.getElementById('sort-percent').onclick = ()=>{ standingsSort='percent'; renderPeople(); };
-  document.getElementById('sort-wins').onclick    = ()=>{ standingsSort='wins';    renderPeople(); };
+  document.getElementById('sort-alpha').onclick           = ()=>{ standingsSort='alpha';         renderPeople(); };
+  document.getElementById('sort-week-percent').onclick    = ()=>{ standingsSort='weekPercent';   renderPeople(); };
+  document.getElementById('sort-season-percent').onclick  = ()=>{ standingsSort='seasonPercent'; renderPeople(); };
+  document.getElementById('sort-season-wins').onclick     = ()=>{ standingsSort='seasonWins';    renderPeople(); };
+}
+
+/* ============== NAME → MODAL (history) ============== */
+function hookNameClicks(){
+  // Delegate clicks from entire document for .nameBtn and .pname
+  document.addEventListener('click', (e)=>{
+    const btn = e.target.closest('.nameBtn, .pname');
+    if(btn && btn.dataset.name){
+      openPlayerModal(btn.dataset.name);
+    }
+    if(e.target.dataset.close === "1"){
+      closePlayerModal();
+    }
+  });
+  document.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape') closePlayerModal();
+  });
+}
+
+function openPlayerModal(name){
+  const modal = document.getElementById('playerModal');
+  const title = document.getElementById('modalTitle');
+  const body  = document.getElementById('modalBody');
+  title.textContent = name;
+
+  const stats = participantsStats.get(normName(name));
+  if(!stats){
+    body.innerHTML = `<div class="note">No past weekly results found for this participant in the Participants sheet.</div>`;
+  }else{
+    const rows = [];
+    let any = false;
+    for(let i=1;i<WeekNumber;i++){
+      const wk = stats.weeks?.[i] || {w:0,l:0,t:0};
+      const den = wk.w + wk.l + wk.t;
+      const pct = den>0 ? (wk.w + 0.5*wk.t)/den : NaN;
+      rows.push(`
+        <tr>
+          <td>Week ${i}</td>
+          <td class="mono">${wk.w}-${wk.l}-${wk.t}</td>
+          <td class="mono">${fmtPct(pct)}</td>
+        </tr>
+      `);
+      if(den>0) any = true;
+    }
+    if(WeekNumber <= 1){
+      body.innerHTML = `<div class="note">No prior weeks yet.</div>`;
+    } else if(!any){
+      body.innerHTML = `<div class="note">No recorded results for prior weeks.</div>`;
+    } else {
+      body.innerHTML = `
+        <table>
+          <thead>
+            <tr><th>Week</th><th class="mono">W-L-T</th><th class="mono">Win %</th></tr>
+          </thead>
+          <tbody>${rows.join("")}</tbody>
+        </table>
+      `;
+    }
+  }
+
+  modal.classList.add('show');
+  modal.hidden = false;
+  modal.setAttribute('aria-hidden', 'false');
+}
+
+function closePlayerModal(){
+  const modal = document.getElementById('playerModal');
+  modal.classList.remove('show');
+  modal.hidden = true;
+  modal.setAttribute('aria-hidden', 'true');
 }
 
 /* ============== GO ============== */
