@@ -151,7 +151,7 @@
     position:sticky; top:-1px;
   }
   td{border-bottom:1px solid var(--rule)}
-  .col-idx{width:28px;text-align:right;color:#6e7a91}
+  .col-idx{width:28px;text-align:right;color:#f6f8fc00}
   .col-line{width:52%}
   .col-pick{width:38%;white-space:nowrap}
   .result-win{color:var(--green);font-weight:800}
@@ -187,7 +187,7 @@
   .nameCell{display:flex;align-items:center;gap:8px}
   .nameBtn{
     background:none;border:0;padding:0;cursor:pointer;
-    color:#1e3a8a;font-weight:900;
+    color:#0f172a;font-weight:900;
     text-decoration:underline dotted; text-underline-offset:3px;
   }
 
@@ -385,13 +385,6 @@ function detectFavoriteFrom(spreadText, away, home){
   const awayKey = stripRank(away), homeKey = stripRank(home);
   const pool = String(spreadText||"");
 
-  /* ---- NEW: Pick'em / Even money detection ----
-     Accepts: "PK", "Pick'em", "EVEN", "EV" anywhere (e.g., "Team (-PK)")
-  */
-  if (/\b(?:PK|PICK'?EM|EVEN|EV)\b/i.test(pool)) {
-    return { fav:'pick', pts:0 }; // mark as pick’em (no favorite)
-  }
-
   // Accept "Team (-3.5)" or "Team -3.5"
   const rxP = (team)=> new RegExp("\\b"+escapeRegex(team)+"\\s*\\(([-+]?\\d+(?:\\.\\d+)?)\\)","i");
   const rxI = (team)=> new RegExp("\\b"+escapeRegex(team)+"\\b[^-+\\d]*([-+]\\d+(?:\\.\\d+)?)","i");
@@ -405,9 +398,18 @@ function detectFavoriteFrom(spreadText, away, home){
 
   return null;
 }
-function formatLine(away, home, favInfo){
+
+/* PK FIX: detect pick'em keywords regardless of formatting */
+function isPickem(spreadText){
+  const s = String(spreadText||'').toLowerCase();
+  // handles: PK, -PK, (PK), Pick, Pick'em / Pick ’em, EVEN
+  return /\b(pk|pick(?:['’]?\s*em)?|even)\b/.test(s);
+}
+
+function formatLine(away, home, favInfo, spreadText){
+  // PK FIX: show (-PK) when appropriate
+  if (isPickem(spreadText)) return `${away} @ ${home} (-PK)`;
   if(!favInfo) return `${away} @ ${home}`;
-  if(favInfo.fav === 'pick') return `${away} @ ${home} (PK)`; // NEW: show PK
   const pts = (favInfo.pts%1===0)? favInfo.pts.toFixed(0) : favInfo.pts.toString();
   return favInfo.fav==='away'
     ? `${away} (-${pts}) @ ${home}`
@@ -418,10 +420,6 @@ function formatLine(away, home, favInfo){
 function displayPickLabel(qid, choice){
   const fav = qidToFav.get(qid);
   const cNorm = normTeam(choice);
-
-  // NEW: For pick’em, there is no favorite to annotate
-  if (fav && fav.fav === 'pick') return choice;
-
   if(fav){
     const favTeam = fav.fav==='away' ? qidToAway.get(qid)||'' : qidToHome.get(qid)||'';
     if(cNorm && cNorm===normTeam(favTeam)){
@@ -442,7 +440,7 @@ let qidToHome   = new Map();      // QID -> Home
 let qidToWinner = new Map();      // QID -> Winner (locks)
 let qidToDate   = new Map();      // QID -> Date object (if provided)
 let qidToDefault= new Map();      // QID -> boolean Default="Y"
-let qidToFav    = new Map();      // QID -> {fav:'away'|'home'|'pick', pts:number}
+let qidToFav    = new Map();      // QID -> {fav:'away'|'home', pts:number}
 let results     = new Map();      // QID -> 'away' | 'home' | 'tie'
 let people      = [];             // [{name, picks:[{qid, choice, isDouble}], isDefaults?:true}]
 let participantNames = [];        // roster
@@ -458,12 +456,12 @@ function normalizeLines(rows){
     const qid   = String(r["QID"]||r["qid"]||"").trim(); if(!qid) return;
     const away  = String(r["Away Team"]||r["Away"]||"").trim();
     const home  = String(r["Home Team"]||r["Home"]||"").trim();
-    const spread= String(r["Spread"]||r["Line"]||"").trim();  // prefer Spread
+    const spreadText = String(r["Spread"]||r["Line"]||"").trim();  // prefer Spread
     const winner= String(r["Winner"]||r["winner"]||"").trim();
     const def   = /^y/i.test(String(r["Default"]||""));
     const dt    = String(r["DateTime"]||r["datetime"]||r["Date"]||"").trim();
 
-    const fav   = detectFavoriteFrom(spread, away, home);
+    const fav   = detectFavoriteFrom(spreadText, away, home);
 
     qidToAway.set(qid, away);
     qidToHome.set(qid, home);
@@ -472,7 +470,9 @@ function normalizeLines(rows){
     if(dt) qidToDate.set(qid, toDate(dt)); else qidToDate.set(qid, null);
 
     if(fav){ qidToFav.set(qid, fav); }
-    qidToLine.set(qid, formatLine(away, home, fav));
+
+    // PK FIX: ensure pick'ems render as (-PK)
+    qidToLine.set(qid, formatLine(away, home, fav, spreadText));
   });
 }
 
@@ -563,8 +563,7 @@ function computeDefaultPicksSet(){
   qids.sort((a,b)=> qidOrder(a)-qidOrder(b));
   qids.forEach(qid=>{
     const fav = qidToFav.get(qid);
-    // NEW: skip pick’em for default picks (no favorite)
-    if(!fav || fav.fav === 'pick') return;
+    if(!fav) return;
     const choice = fav.fav==='away' ? (qidToAway.get(qid)||'') : (qidToHome.get(qid)||'');
     picks.push({ qid, choice, isDouble:false });
   });
@@ -664,21 +663,15 @@ function renderGames(){
   const panel = document.getElementById('gamesPanel');
   panel.innerHTML = '';
 
-  // We still compute hasSpread, but PK sets qidToFav with fav:'pick' so it's truthy
-  const hasSpread = (qid)=> !!qidToFav.get(qid);
-
+  // PK FIX: we still track favorites for default picks, but we no longer
+  // filter people's picks by "has spread" so PK games show up if anyone picked them.
   const pickedQids = new Set();
   people.forEach(p=>p.picks.forEach(pk=> pickedQids.add(pk.qid)));
 
-  // For defaults, only lines that had a recognized favorite were included anyway
-  const defaultQids = new Set((defaultTemplate?.picks||[]).map(p=>p.qid).filter(hasSpread));
+  const defaultQids = new Set((defaultTemplate?.picks||[]).map(p=>p.qid));
 
-  // Include any game that anyone picked (so PK shows even if not in defaults)
-  const qidsAll = new Set([
-    ...defaultQids,
-    ...pickedQids
-  ]);
-  const qids = [...qidsAll].sort((a,b)=> qidOrder(a)-qidOrder(b));
+  // PK FIX: include all pickedQids (even without a favorite), plus defaults.
+  const qids = [...new Set([...defaultQids, ...pickedQids])].sort((a,b)=> qidOrder(a)-qidOrder(b));
 
   if(qids.length === 0){
     panel.innerHTML = `<div class="note">No picks yet.</div>`;
@@ -974,4 +967,100 @@ function renderStandings(summaries){
       <thead>
         <tr>
           <th class="rank">#</th>
-          <th>Name
+          <th>Name</th>
+          <th class="stat">Week %</th>
+          <th class="stat">Week W-L-T</th>
+          <th class="stat">Season %</th>
+          <th class="stat">Season W-L-T</th>
+          <th class="stat">Picks</th>
+        </tr>
+      </thead>
+      <tbody>${tbody}</tbody>
+    </table>
+  `;
+}
+
+function hookSortButtons(){
+  document.getElementById('sort-alpha').onclick           = ()=>{ standingsSort='alpha';         renderPeople(); };
+  document.getElementById('sort-week-percent').onclick    = ()=>{ standingsSort='weekPercent';   renderPeople(); };
+  document.getElementById('sort-season-percent').onclick  = ()=>{ standingsSort='seasonPercent'; renderPeople(); };
+  document.getElementById('sort-season-wins').onclick     = ()=>{ standingsSort='seasonWins';    renderPeople(); };
+}
+
+/* ============== NAME → MODAL (history) ============== */
+function hookNameClicks(){
+  // Delegate clicks from entire document for .nameBtn and .pname
+  document.addEventListener('click', (e)=>{
+    const btn = e.target.closest('.nameBtn, .pname');
+    if(btn && btn.dataset.name){
+      openPlayerModal(btn.dataset.name);
+    }
+    if(e.target.dataset.close === "1"){
+      closePlayerModal();
+    }
+  });
+  document.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape') closePlayerModal();
+  });
+}
+
+function openPlayerModal(name){
+  const modal = document.getElementById('playerModal');
+  const title = document.getElementById('modalTitle');
+  const body  = document.getElementById('modalBody');
+  title.textContent = name;
+
+  const stats = participantsStats.get(normName(name));
+  if(!stats){
+    body.innerHTML = `<div class="note">No past weekly results found for this participant in the Participants sheet.</div>`;
+  }else{
+    const rows = [];
+    let any = false;
+    for(let i=1;i<WeekNumber;i++){
+      const wk = stats.weeks?.[i] || {w:0,l:0,t:0};
+      const den = wk.w + wk.l + wk.t;
+      const pct = den>0 ? (wk.w + 0.5*wk.t)/den : NaN;
+      rows.push(`
+        <tr>
+          <td>Week ${i}</td>
+          <td class="mono">${wk.w}-${wk.l}-${wk.t}</td>
+          <td class="mono">${fmtPct(pct)}</td>
+        </tr>
+      `);
+      if(den>0) any = true;
+    }
+    if(WeekNumber <= 1){
+      body.innerHTML = `<div class="note">No prior weeks yet.</div>`;
+    } else if(!any){
+      body.innerHTML = `<div class="note">No recorded results for prior weeks.</div>`;
+    } else {
+      body.innerHTML = `
+        <table>
+          <thead>
+            <tr><th>Week</th><th class="mono">W-L-T</th><th class="mono">Win %</th></tr>
+          </thead>
+          <tbody>${rows.join("")}</tbody>
+        </table>
+      `;
+    }
+  }
+
+  modal.classList.add('show');
+  modal.hidden = false;
+  modal.setAttribute('aria-hidden', 'false');
+}
+
+function closePlayerModal(){
+  const modal = document.getElementById('playerModal');
+  modal.classList.remove('show');
+  modal.hidden = true;
+  modal.setAttribute('aria-hidden', 'true');
+}
+
+/* ============== GO ============== */
+updateTitles();
+loadAll();
+// setInterval(loadAll, 60000);
+</script>
+</body>
+</html>
