@@ -293,7 +293,7 @@
 </head>
 <body>
 
-<!-- ========= REVEAL GATE (shown until REVEAL_AT) ========= -->
+<!-- ========= REVEAL GATE (only shows before REVEAL_AT) ========= -->
 <div id="gate" class="gate" role="status" aria-live="polite">
   <div class="gate__card">
     <div class="gate__label">picks revealed in</div>
@@ -372,9 +372,10 @@
 <script>
 /* ================== CONFIG ================== */
 /* Set the reveal moment here.
-   - If you provide no timezone offset (e.g., "2025-09-13T17:00:00"), it uses the VIEWER'S local time.
-   - If you want to lock it to Eastern, include the offset, e.g. "2025-09-13T17:00:00-04:00". */
-const REVEAL_AT = "2025-09-12T18:00:00"; // <-- CHANGE THIS
+   - INCLUDE a timezone (e.g. -04:00 for ET) to avoid user clock quirks.
+   - Example: "2025-09-13T17:00:00-04:00"  (ET)  or "2025-09-13T21:00:00Z" (UTC). */
+const REVEAL_AT = "2025-09-12T18:10:00"; // <-- CHANGE THIS
+
 const CSV_URL_NCAA_LINES   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRk7ErobOK7KpYjTmP2QpX2Y_xH1QsR3XKUxNWw7NZG8yd_IeTCxQWC8BSz_BZn1KiOs7F2sxZ1bNc1/pub?gid=0&single=true&output=csv";
 const CSV_URL_NFL_LINES    = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRk7ErobOK7KpYjTmP2QpX2Y_xH1QsR3XKUxNWw7NZG8yd_IeTCxQWC8BSz_BZn1KiOs7F2sxZ1bNc1/pub?gid=2109553148&single=true&output=csv";
 const CSV_URL_SUBS         = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRys9xayYsuEqgGB09v1nOrwdD0U5c1Hb1ksLqQxTSBzLi3AKGeg9yPt1-eY1fry_0H-KcZLCQ1h8H6/pub?gid=1991283502&single=true&output=csv";
@@ -684,7 +685,6 @@ async function loadAll(){
     // Sort real participants by last name; defaults card renders first separately
     people.sort((a,b)=> lastNameKey(a.name).localeCompare(lastNameKey(b.name), undefined, {sensitivity:'base'}));
 
-    updateTitles();
     renderGames();
     renderPeople();
     hookSortButtons();
@@ -1111,7 +1111,7 @@ function closePlayerModal(){
   modal.setAttribute('aria-hidden', 'true');
 }
 
-/* ============== REVEAL GATE LOGIC ============== */
+/* ============== REVEAL GATE (robust) ============== */
 function formatCountdown(ms){
   if(ms < 0) ms = 0;
   const s = Math.floor(ms/1000);
@@ -1125,55 +1125,64 @@ function formatCountdown(ms){
   return (days>0 ? `${days}d ` : "") + `${hh}:${mm}:${ss}`;
 }
 
-function startGate(){
+(function startGate(){
   const gate = document.getElementById('gate');
   const app  = document.getElementById('app');
   const cdEl = document.getElementById('countdown');
   const whenEl = document.getElementById('revealWhen');
 
   const target = new Date(REVEAL_AT);
-  // Fallback: if invalid date, just show the app
   if(isNaN(+target)){
-    gate.style.display='none';
-    app.hidden = false;
+    // Invalid date → show app immediately
+    if (gate) gate.remove();
+    if (app)  app.hidden = false;
     updateTitles();
     loadAll();
     return;
   }
 
-  // human-friendly reveal timestamp
-  try{
-    whenEl.textContent = target.toLocaleString([], {
-      weekday:'short', year:'numeric', month:'short', day:'2-digit',
-      hour:'numeric', minute:'2-digit'
-    });
-  }catch(_){ whenEl.textContent = target.toString(); }
+  // Storage key tied to this exact reveal moment
+  const key = `sp-reveal-${+target}`;
 
-  function showApp(){
-    clearInterval(timer);
-    gate.style.display='none';
-    app.hidden = false;
+  function revealNow(setFlag=true){
+    try{ if(setFlag) localStorage.setItem(key,'1'); }catch(_){}
+    if (gate) gate.remove();      // remove overlay entirely
+    if (app)  app.hidden = false; // show app
     updateTitles();
     loadAll();
   }
 
-  function tick(){
-    const now = new Date();
-    const ms = target - now;
-    if(ms <= 0){ showApp(); return; }
-    cdEl.textContent = formatCountdown(ms);
+  // If previously revealed (for this timestamp), skip gate
+  try{
+    if(localStorage.getItem(key) === '1'){ revealNow(false); return; }
+  }catch(_){}
+
+  // If already past the time, reveal immediately
+  if(Date.now() >= +target){ revealNow(); return; }
+
+  // Otherwise show countdown until time hits
+  if(whenEl){
+    try{
+      whenEl.textContent = target.toLocaleString([], {
+        weekday:'short', year:'numeric', month:'short', day:'2-digit',
+        hour:'numeric', minute:'2-digit'
+      });
+    }catch(_){ whenEl.textContent = target.toString(); }
   }
 
-  // If it's already past the reveal moment, skip the gate
-  if(new Date() >= target){ showApp(); return; }
-
-  // Otherwise keep counting down
-  const timer = setInterval(tick, 1000);
+  let timer = null;
+  function tick(){
+    const ms = (+target) - Date.now();
+    if(ms <= 0){ revealNow(); if(timer) clearInterval(timer); return; }
+    if(cdEl) cdEl.textContent = formatCountdown(ms);
+  }
+  timer = setInterval(tick, 1000);
   tick();
-}
 
-/* ============== GO ============== */
-startGate();
+  // Failsafe one-shot reveal even if intervals pause
+  const msLeft = (+target) - Date.now();
+  setTimeout(()=>{ revealNow(); if(timer) clearInterval(timer); }, Math.max(msLeft, 0) + 5);
+})();
 </script>
 </body>
 </html>
