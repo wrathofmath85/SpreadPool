@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Spread Pool — Week 1</title>
+<title>Spread Pool — Week 2</title>
 
 <style>
 :root{
@@ -78,7 +78,7 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
 .btn.ghost{background:#2a3442;color:#d0d7de}
 .statusBox{font-weight:900;border:1px solid var(--border);border-radius:999px;padding:8px 14px}
 .status_bad{background:var(--bad);color:#fff}
-.status_good{background:var(--bearsNavy);color:var(--bearsOrange);border-color:var(--bearsNavy)}
+.status_good{background:#0B162A;color:#DC4405;border-color:#0B162A}
 
 .demo{position:fixed;top:14px;right:14px;background:#a15;color:#fff;border-radius:999px;padding:8px 12px;font-weight:800;z-index:10;box-shadow:0 6px 18px rgba(0,0,0,.35)}
 
@@ -102,11 +102,84 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
   50%{ transform:rotate(0deg) }
   75%{ transform:rotate(-1.5deg) }
 }
+
+/* ---- SUBMIT OVERLAY (new) ---- */
+#submitOverlay{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,.55);
+  display:flex;align-items:center;justify-content:center;
+  z-index:9999;
+}
+#submitOverlay[hidden]{display:none}
+.loader{
+  display:flex;flex-direction:column;align-items:center;gap:12px;
+  background:rgba(17,24,39,.9);
+  border:1px solid var(--border);
+  padding:18px 22px;border-radius:14px;
+  box-shadow:0 10px 30px rgba(0,0,0,.45);
+}
+.spinner{
+  width:42px;height:42px;border-radius:50%;
+  border:4px solid rgba(255,255,255,.2);
+  border-top-color:#fff;
+  animation: spin .9s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* =========================
+   MOBILE FOOTER READABILITY
+   (CSS only; no HTML/JS changes)
+   ========================= */
+@media (max-width: 640px){
+  .footer{
+    flex-wrap:wrap;
+    gap:10px;
+    padding:12px 14px calc(12px + env(safe-area-inset-bottom));
+    background:#0f1623;        /* solid for contrast */
+    backdrop-filter:none;       /* remove blur for crisp text */
+  }
+  .footer .m,
+  .footer .r,
+  .footer .l{ flex:1 1 100%; }  /* stack into rows */
+
+  .footer .m{ order:1; }        /* totals first */
+  .footer .r{ order:2; }        /* status second */
+  .footer .l{ order:3; display:flex; gap:8px; } /* buttons last */
+
+  #totalPicked, #statusBox{
+    display:block;
+    width:100%;
+    text-align:center;
+    font-weight:900;
+    font-size:1rem;
+    line-height:1.25;
+    padding:10px 12px;
+    border-radius:12px;
+  }
+  #totalPicked{
+    background:#111827;
+    border:1px solid var(--border);
+  }
+  /* Keep status pill readable on both states */
+  #statusBox.status_bad{
+    background:var(--bad);
+    color:#fff;
+    border-color:var(--bad);
+  }
+  #statusBox.status_good{
+    background:var(--bearsNavy);
+    color:var(--bearsOrange);
+    border-color:var(--bearsNavy);
+  }
+
+  /* Bigger tap targets for buttons */
+  .btn{ flex:1 1 0; font-size:1rem; padding:12px; }
+}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Spread Pool — Week 1</h1>
+  <h1>Spread Pool — Week 2</h1>
 
   <!-- Participant -->
   <section class="card">
@@ -183,6 +256,9 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
         <button id="submitBtn" class="btn primary">Submit</button>
         <button id="resetBtn"  class="btn ghost">Reset</button>
       </div>
+      <div class="m">
+        <span id="totalPicked" class="statusBox">Total games picked: 0 (NFL 0 + NCAA 0)</span>
+      </div>
       <div class="r">
         <span id="statusBox" class="statusBox status_bad">ERRORS DETECTED</span>
       </div>
@@ -192,14 +268,22 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
 
 <div id="demoBadge" class="demo" hidden>DEMO MODE</div>
 
+<!-- Submitting overlay (new) -->
+<div id="submitOverlay" hidden aria-live="polite" aria-label="Submitting">
+  <div class="loader">
+    <div class="spinner" role="status" aria-hidden="true"></div>
+    <div>Submitting… please wait</div>
+  </div>
+</div>
+
 <script>
 /* ===================== CONFIG ===================== */
 const CSV_URL_PARTICIPANTS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRj5ieGlGWurIlGuongV3vJhWWAwCYsEFVhEEtjwOG7RiFwTRZkM_JXtjb8QtwsdzhaXPMDRPyU7qZC/pub?gid=0&single=true&output=csv";
-const CSV_URL_NFL          = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRB9bXyC3PBzUhxALXDBAfdsKUAarhukkrtwHEeR64Sj7tB3kb5FZO-PvFOVX57srWOoVNPFO7yjpUf/pub?gid=2109553148&single=true&output=csv";
-const CSV_URL_NCAA         = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRB9bXyC3PBzUhxALXDBAfdsKUAarhukkrtwHEeR64Sj7tB3kb5FZO-PvFOVX57srWOoVNPFO7yjpUf/pub?gid=0&single=true&output=csv";
+const CSV_URL_NFL          = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRk7ErobOK7KpYjTmP2QpX2Y_xH1QsR3XKUxNWw7NZG8yd_IeTCxQWC8BSz_BZn1KiOs7F2sxZ1bNc1/pub?gid=2109553148&single=true&output=csv";
+const CSV_URL_NCAA         = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRk7ErobOK7KpYjTmP2QpX2Y_xH1QsR3XKUxNWw7NZG8yd_IeTCxQWC8BSz_BZn1KiOs7F2sxZ1bNc1/pub?gid=0&single=true&output=csv";
 
-const CURRENT_WEEK = 1;
-const PICKS_DEADLINE_UTC = "2025-09-05T21:30:00Z";
+const CURRENT_WEEK = 2;
+const PICKS_DEADLINE_UTC = "2025-09-12T21:30:00Z";
 
 /* EmailJS (unchanged) */
 const EMAILJS_SERVICE_ID = "service_txqdfck";
@@ -210,7 +294,7 @@ const EMAILJS_PUBLIC_KEY  = "YB5J-75APa-V6Giku";
 const GSHEET_WEBAPP_URL   = "https://script.google.com/macros/s/AKfycbwbn6FNiK1clBgO5ZGmvhrMX8KBCmTO0pLbDIU9S3CnjAZ_SgYqHBf0KOOPGbFKOxvxFw/exec";
 
 /* Require sheet write? */
-const REQUIRE_SHEETS_OK   = false;
+const REQUIRE_SHEETS_OK   = true;
 
 /* Demo mode only suppresses EmailJS */
 const DEMO_MODE = false;
@@ -257,7 +341,7 @@ function parseTime12(s){
   s=String(s||"12:00 PM").trim();
   const m=s.match(/^(\d{1,2}):(\d{2})\s*([AP]M)$/i);
   if(!m) return {h:12,mi:0};
-  let h=+m[1], mi=+m[2]; const ampm=m[3].toUpperCase();
+  let {1:h,2:mi,3:ampm}=m; h=+h; mi=+mi; ampm=ampm.toUpperCase();
   if(ampm==="PM"&&h!==12) h+=12; if(ampm==="AM"&&h===12) h=0;
   return {h,mi};
 }
@@ -323,31 +407,24 @@ function normalizeGames(csvRows, prefix){
   return sortRequiredFirst(out);
 }
 
-/* -------- FIXED favorite & labels (no partial “Iowa” vs “Iowa St.”) -------- */
+/* -------- Favorite info (plus who & line) -------- */
 function favoriteInfo(away, home, spreadText){
   const spreadRaw = String(spreadText||"");
+  const numMatch = spreadRaw.match(/[+-]?\d+(?:\.\d+)?/g);
+  const lineStr = numMatch ? numMatch[numMatch.length - 1] : "";
+  const lineNum = lineStr ? Math.abs(parseFloat(lineStr)) : null;
 
-  // 1) Extract the **last** signed/decimal number from the spread cell (the line)
-  const nums = spreadRaw.match(/[+-]?\d+(?:\.\d+)?/g);
-  const line = nums ? nums[nums.length - 1] : "";
-
-  // Canonicalize words: remove rank, punctuation; normalize "st./state"
   const canon = s => String(s||"")
-    .replace(/#\d+\s*/g,'')         // drop ranks like "#16 "
+    .replace(/#\d+\s*/g,'')
     .toLowerCase()
     .replace(/[()]/g,'')
-    .replace(/\bsta?te\b/g,'state') // "state" stays "state"
-    .replace(/\bst\.?\b/g,'state')  // "st." -> "state"
-    .replace(/[^a-z0-9]+/g,' ')     // non-alnum -> space
+    .replace(/\bsta?te\b/g,'state')
+    .replace(/\bst\.?\b/g,'state')
+    .replace(/[^a-z0-9]+/g,' ')
     .trim();
 
   const toTokens = s => canon(s).split(/\s+/).filter(Boolean);
 
-  const spreadTokens = toTokens(spreadRaw);
-  const awayTokens   = toTokens(away);
-  const homeTokens   = toTokens(home);
-
-  // check if team tokens appear as a contiguous phrase in spreadTokens
   function phraseHitLen(teamTok, hay){
     if(teamTok.length === 0 || hay.length === 0) return 0;
     for(let i=0;i<=hay.length - teamTok.length;i++){
@@ -355,28 +432,32 @@ function favoriteInfo(away, home, spreadText){
       for(let j=0;j<teamTok.length;j++){
         if(hay[i+j] !== teamTok[j]){ ok=false; break; }
       }
-      if(ok) return teamTok.length; // return match length as score
+      if(ok) return teamTok.length;
     }
     return 0;
   }
 
+  const spreadTokens = toTokens(spreadRaw);
+  const awayTokens   = toTokens(away);
+  const homeTokens   = toTokens(home);
+
   const awayHit = phraseHitLen(awayTokens, spreadTokens);
   const homeHit = phraseHitLen(homeTokens, spreadTokens);
 
-  // Prefer the team with the longer phrase match (disambiguates "iowa" vs "iowa state")
-  let awayFav=false, homeFav=false;
-  if(awayHit > homeHit) awayFav = true;
-  else if(homeHit > awayHit) homeFav = true;
-  // if equal (or neither), we can't decide — show no annotation
+  let favored = null, favoredTeam = "", favoredMinus = "";
+  if(awayHit > homeHit){ favored = "away"; favoredTeam = away; }
+  else if(homeHit > awayHit){ favored = "home"; favoredTeam = home; }
 
-  const fmt = n => (String(n).startsWith('-') ? n : `-${n}`); // favorites shown with negative
+  if(favored && lineNum!=null) favoredMinus = `-${lineNum}`;
+
+  const fmt = n => (String(n).startsWith('-') ? n : `-${n}`);
   return {
-    awayLabel: awayFav && line ? `${away} (${fmt(line)})` : away,
-    homeLabel: homeFav && line ? `${home} (${fmt(line)})` : home,
-    favoriteLine: spreadRaw || "—"
+    awayLabel: favored==="away" && lineStr ? `${away} (${fmt(lineStr)})` : away,
+    homeLabel: favored==="home" && lineStr ? `${home} (${fmt(lineStr)})` : home,
+    favoriteLine: spreadRaw || "—",
+    favored, favoredTeam, favoredMinus
   };
 }
-/* ------------------------------------------------------------------------- */
 
 /* ============== UI BUILDERS ============== */
 function buildRow(g){
@@ -469,7 +550,8 @@ function refreshDoubleChoices(){
   if(keep && chosen.some(o=>o.qid===keep)) sel.value = keep;
 }
 
-function buildSelectionsText(){
+/* ---- Build selections text (email flag controls extra game line) ---- */
+function buildSelectionsText(includeGameLine=false){
   const name  = $("#nameSel").selectedOptions[0]?.textContent || "";
   const email = $("#emailBox").value.trim();
   const stamp = new Date().toISOString();
@@ -495,6 +577,20 @@ function buildSelectionsText(){
     const tag = (o.qid===dbl) ? " [DOUBLE]" : "";
     const teamClean = o.team?.replace(/^away|^home/i,'').trim() || o.team || "";
     lines.push(`${o.qid}:${teamClean}${tag}`);
+
+    if(includeGameLine){
+      const g = (o.qid.startsWith("A") ? gamesA : gamesB).find(x=>x.qid===o.qid);
+      if(g){
+        const fav = favoriteInfo(g.away, g.home, g.spread);
+        let span = "Even";
+        if(fav.favoredTeam && fav.favoredMinus){
+          span = `${fav.favoredTeam} ${fav.favoredMinus}`;
+        }else if(fav.favoriteLine && fav.favoriteLine !== "—"){
+          span = fav.favoriteLine;
+        }
+        lines.push(`  • ${g.away} @ ${g.home} — ${span}`);
+      }
+    }
   });
 
   return lines.join("\n");
@@ -534,12 +630,12 @@ function collectSubmission(){
     double_team: doubleTeam,
     picks,
     rows,
-    summary: buildSelectionsText()
+    summary: buildSelectionsText(false)
   };
 }
 
 function renderSummary(){
-  $("#summary").innerHTML = `<pre style="white-space:pre-wrap;margin:0">${escapeHtml(buildSelectionsText())}</pre>`;
+  $("#summary").innerHTML = `<pre style="white-space:pre-wrap;margin:0">${escapeHtml(buildSelectionsText(false))}</pre>`;
 }
 function setCheck(sel, ok){
   const li = $(sel);
@@ -599,6 +695,7 @@ function validateAll(){
 
   $("#cntA").textContent = `Answered: ${a}`;
   $("#cntB").textContent = `Answered: ${b}`;
+  $("#totalPicked").textContent = `Total games picked: ${total} (NFL ${a} + NCAA ${b})`;
 
   return allOk;
 }
@@ -609,9 +706,8 @@ document.addEventListener("change", e=>{
     const em = e.target.selectedOptions[0]?.dataset.email || "";
     if(em) $("#emailBox").value = em;
 
-    // Show/hide payment alert for the selected name
     const chosenName = e.target.value || "";
-    const paymentVal = (paymentByName.get(chosenName) || "").trim(); // blank => needs payment
+    const paymentVal = (paymentByName.get(chosenName) || "").trim();
     $("#paymentAlert").hidden = !(chosenName && paymentVal === "");
 
     renderSummary(); validateAll();
@@ -666,31 +762,52 @@ async function pushToSheets(payload){
   }
 }
 
+/* ---- Submitting overlay helpers (new) ---- */
+function startSubmitting(){
+  $("#submitOverlay").hidden = false;
+  $("#submitBtn").disabled = true;
+  $("#resetBtn").disabled  = true;
+}
+function stopSubmitting(){
+  $("#submitOverlay").hidden = true;
+  $("#submitBtn").disabled = false;
+  $("#resetBtn").disabled  = false;
+}
+
 $("#submitBtn").addEventListener("click", async ()=>{
+  startSubmitting();
+
   if(PICKS_DEADLINE_UTC && new Date() > new Date(PICKS_DEADLINE_UTC)){
+    stopSubmitting();
     alert("The global picks deadline has passed. Submissions are closed.");
     return;
   }
   const ok = validateAll();
-  if(!ok){ alert("Please fix the items in Checks & Errors before submitting."); return; }
+  if(!ok){
+    stopSubmitting();
+    alert("Please fix the items in Checks & Errors before submitting.");
+    return;
+  }
   if(!$("#doubleSel").value){
     const okNoDouble = confirm("Submit with NO Double?");
-    if(!okNoDouble) return;
+    if(!okNoDouble){ stopSubmitting(); return; }
   }
 
   const participantName = $("#nameSel").selectedOptions[0]?.textContent || "";
   const participantEmail = $("#emailBox").value.trim();
-  const selectionsText  = buildSelectionsText();
+  const selectionsText  = buildSelectionsText(true);
   const submission = collectSubmission();
 
   const sheetResult = await pushToSheets(submission);
   if(!sheetResult.ok && REQUIRE_SHEETS_OK){
+    stopSubmitting();
     alert("Could not log to Google Sheets. Please try again in a moment.");
     return;
   }
 
   if(DEMO_MODE){
     $("#demoBadge").hidden = false;
+    stopSubmitting();
     alert("Submitted! (Demo mode — email suppressed)");
     return;
   }
@@ -708,9 +825,11 @@ $("#submitBtn").addEventListener("click", async ()=>{
       selections_text: selectionsText,
       to_email:         participantEmail
     });
+    stopSubmitting();
     alert("Submitted! A copy will be CC’d to you.");
   }catch(err){
     console.error("EmailJS error details:",err);
+    stopSubmitting();
     alert("Submitted! (Email copy failed to send.)");
   }
 });
@@ -721,16 +840,14 @@ async function loadAll(){
     const raw = await fetchCSV(CSV_URL_PARTICIPANTS);
     const pCSV = parseCSV(raw);
 
-    // Find the Payment column (case-insensitive), default to "Payment"
     const paymentKey = Object.keys(pCSV[0] || {}).find(k => k.toLowerCase() === "payment") || "Payment";
 
-    // Build dropdown and fill the payment map
     $("#nameSel").innerHTML =
       `<option value="">— Select your name —</option>` +
       pCSV.map(p => {
         const nm  = p.Name || "";
         const em  = p.Email || "";
-        const pay = (p[paymentKey] || ""); // may be blank
+        const pay = (p[paymentKey] || "");
         paymentByName.set(nm, pay);
         return `<option value="${escapeHtml(nm)}" data-email="${escapeHtml(em)}">${escapeHtml(nm)}</option>`;
       }).join("");
@@ -757,7 +874,6 @@ async function loadAll(){
       b.addEventListener('click', ()=>{ const id=b.dataset.clear; $$(`input[name="${CSS.escape(id)}"]`).forEach(i=>i.checked=false); refreshDoubleChoices(); renderSummary(); validateAll(); });
     });
 
-    // Hide alert on initial load
     $("#paymentAlert").hidden = true;
 
     refreshExpiryUI();
