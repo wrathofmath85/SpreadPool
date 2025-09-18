@@ -59,6 +59,56 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
 .loader{display:flex;flex-direction:column;align-items:center;gap:12px;background:rgba(17,24,39,.9);border:1px solid var(--border);padding:18px 22px;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
 .spinner{width:42px;height:42px;border-radius:50%;border:4px solid rgba(255,255,255,.2);border-top-color:#fff;animation: spin .9s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+
+/* =========================
+   MOBILE FOOTER READABILITY
+   (CSS only; no HTML/JS changes)
+   ========================= */
+@media (max-width: 640px){
+  .footer{
+    flex-wrap:wrap;
+    gap:10px;
+    padding:12px 14px calc(12px + env(safe-area-inset-bottom));
+    background:#0f1623;        /* solid for contrast */
+    backdrop-filter:none;       /* remove blur for crisp text */
+  }
+  .footer .m,
+  .footer .r,
+  .footer .l{ flex:1 1 100%; }  /* stack into rows */
+
+  .footer .m{ order:1; }        /* totals first */
+  .footer .r{ order:2; }        /* status second */
+  .footer .l{ order:3; display:flex; gap:8px; } /* buttons last */
+
+  #totalPicked, #statusBox{
+    display:block;
+    width:100%;
+    text-align:center;
+    font-weight:900;
+    font-size:1rem;
+    line-height:1.25;
+    padding:10px 12px;
+    border-radius:12px;
+  }
+  #totalPicked{
+    background:#111827;
+    border:1px solid var(--border);
+  }
+  /* Keep status pill readable on both states */
+  #statusBox.status_bad{
+    background:var(--bad);
+    color:#fff;
+    border-color:var(--bad);
+  }
+  #statusBox.status_good{
+    background:var(--bearsNavy);
+    color:var(--bearsOrange);
+    border-color:var(--bearsNavy);
+  }
+
+  /* Bigger tap targets for buttons */
+  .btn{ flex:1 1 0; font-size:1rem; padding:12px; }
+}
 </style>
 </head>
 <body>
