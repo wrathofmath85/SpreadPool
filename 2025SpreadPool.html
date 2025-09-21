@@ -212,11 +212,11 @@
   </header>
 
   <div class="wrap">
-    <div class="legend">
-      <div class="pill">Left: <strong>Entry Form</strong></div>
-      <div class="pill">Right: <strong>Pick Summary</strong></div>
-      <div class="pill">Auto-dates generated from the configured season start</div>
-    </div>
+    /*<div class="legend">
+      /*<div class="pill">Left: <strong>Entry Form</strong></div>
+      /*<div class="pill">Right: <strong>Pick Summary</strong></div>
+      /*<div class="pill">Auto-dates generated from the configured season start</div>
+    /*</div>
 
     <div id="weeks" class="grid" aria-live="polite"></div>
   </div>
@@ -302,7 +302,7 @@ function buildManualWeeks(){
 
     const left = document.createElement('div');
     left.className = 'side left';
-    left.innerHTML = `<a href="${CONFIG.baseEntryURL}?week=${idx+1}" aria-label="Entry Form for ${wk.label}">Entry Form</a>`;
+    left.innerHTML = `<a href="${CONFIG.baseEntryURL}${idx+1}" aria-label="Entry Form for ${wk.label}">Entry Form</a>`;
 
     const center = document.createElement('div');
     center.className = 'center';
@@ -313,7 +313,7 @@ function buildManualWeeks(){
 
     const right = document.createElement('div');
     right.className = 'side right';
-    right.innerHTML = `<a href="${CONFIG.baseSummaryURL}?week=${idx+1}" aria-label="Pick Summary for ${wk.label}">Pick Summary</a>`;
+    right.innerHTML = `<a href="${CONFIG.baseSummaryURL}${idx+1}" aria-label="Pick Summary for ${wk.label}">Pick Summary</a>`;
 
     row.appendChild(left);
     row.appendChild(center);
