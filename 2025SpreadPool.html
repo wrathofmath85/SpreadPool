@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Spread Pool — 13 Weeks</title>
+<style>
+  :root{
+    --field-green:#1f7a3a;
+    --field-dark:#196231;
+    --line:#e6e6e6;
+    --hash:#d3d3d3;
+    --text:#f7fafc;
+    --muted:#c7d2fe;
+    --link:#fffbcc;
+    --row-bg:rgba(0,0,0,0.20);
+    --row-hover:rgba(255,255,255,0.05);
+    --marker:#ff7a00;
+    --marker-flag:#ff9f1c;
+    --marker-shadow:rgba(0,0,0,0.25);
+    --accent:#93c5fd;
+    --current-glow: 0 0 0 2px rgba(255,255,255,0.15), 0 0 25px rgba(255,255,255,0.25) inset;
+    --radius:14px;
+    --maxw:1100px;
+  }
+  * { box-sizing: border-box; }
+  html, body { height:100%; }
+  body{
+    margin:0;
+    font-family: system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    color: var(--text);
+    background:
+      /* Yard lines (horizontal) */
+      repeating-linear-gradient(
+        to bottom,
+        var(--field-green) 0px,
+        var(--field-green) 95px,
+        var(--line) 95px,
+        var(--line) 98px
+      ),
+      /* Hash marks (thin horizontal stripes between yard lines) */
+      repeating-linear-gradient(
+        to bottom,
+        transparent 0,
+        transparent 23px,
+        var(--hash) 23px,
+        var(--hash) 24px,
+        transparent 24px,
+        transparent 47px,
+        var(--hash) 47px,
+        var(--hash) 48px,
+        transparent 48px,
+        transparent 71px,
+        var(--hash) 71px,
+        var(--hash) 72px
+      ),
+      /* Subtle vertical tone variation to suggest field sections */
+      linear-gradient(90deg, var(--field-green) 0%, var(--field-dark) 50%, var(--field-green) 100%);
+    background-blend-mode: overlay, normal, normal;
+    background-size: 100% 98px, 100% 98px, cover;
+  }
+  header{
+    text-align:center;
+    padding:24px 16px 10px;
+  }
+  h1{
+    margin:0 0 4px;
+    font-size: clamp(20px, 2.8vw, 34px);
+    letter-spacing: 0.3px;
+  }
+  .sub{
+    color: var(--muted);
+    font-size: 0.95rem;
+  }
+  .wrap{
+    margin: 18px auto 32px;
+    width: 100%;
+    max-width: var(--maxw);
+    padding: 0 14px;
+    position: relative;
+  }
+  .legend{
+    display:flex; gap:14px; justify-content:center; align-items:center;
+    margin-bottom:12px; flex-wrap:wrap;
+  }
+  .pill{
+    background: rgba(0,0,0,0.28);
+    border: 1px solid rgba(255,255,255,0.15);
+    padding: 8px 12px;
+    border-radius: 999px;
+    font-size: 0.9rem;
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .row{
+    position: relative;
+    display:grid;
+    grid-template-columns: 1fr auto 1fr; /* left link | center week | right link */
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    border-radius: var(--radius);
+    background: var(--row-bg);
+    border: 1px solid rgba(255,255,255,0.12);
+    transition: transform .1s ease, background .2s ease, box-shadow .2s ease;
+    min-height: 66px;
+  }
+  .row:hover{ background: var(--row-hover); }
+
+  .row.current{
+    box-shadow: var(--current-glow);
+    outline: 2px solid rgba(255,255,255,0.12);
+    position: relative;
+  }
+
+  .side{
+    display:flex; align-items:center; gap: 10px;
+  }
+  .side a{
+    display:inline-flex; align-items:center; justify-content:center;
+    padding:10px 12px;
+    text-decoration:none;
+    color: #0b1220;
+    background: var(--link);
+    border-radius: 10px;
+    font-weight: 600;
+    border: 1px solid rgba(0,0,0,0.15);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.25) inset, 0 2px 6px rgba(0,0,0,0.25);
+    min-width: 122px;
+  }
+  .side a:active{ transform: translateY(1px); }
+  .left { justify-self: start; }
+  .right{ justify-self: end; }
+
+  .center{
+    justify-self: center;
+    text-align:center;
+    line-height:1.2;
+  }
+  .wk{
+    display:block;
+    font-weight:700;
+    letter-spacing:0.4px;
+  }
+  .dates{
+    display:block;
+    font-size: 0.95rem;
+    color: var(--accent);
+    opacity: 0.95;
+  }
+
+  /* First down marker */
+  .marker{
+    position: absolute;
+    left: -10px; /* hangs outside row */
+    top: 50%;
+    transform: translateY(-50%);
+    width: 12px;
+    height: 72%;
+    background: var(--marker);
+    border-radius: 3px;
+    box-shadow: 0 8px 16px var(--marker-shadow);
+  }
+  .marker::before{
+    content:'1';
+    position:absolute;
+    top:-18px;
+    left:-6px;
+    width: 26px;
+    height: 26px;
+    background: var(--marker-flag);
+    color:#1a1a1a;
+    border-radius: 4px;
+    border: 2px solid rgba(0,0,0,0.35);
+    display:flex; align-items:center; justify-content:center;
+    font-weight:900;
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    box-shadow: 0 4px 10px var(--marker-shadow);
+  }
+  .marker::after{
+    /* little base spike */
+    content:'';
+    position:absolute;
+    bottom:-8px;
+    left:2px;
+    width: 8px;
+    height: 8px;
+    background: #8a4a12;
+    border-radius: 0 0 2px 2px;
+    filter: brightness(0.9);
+  }
+
+  /* Responsive */
+  @media (max-width: 700px){
+    .row{ grid-template-columns: 1fr; padding-left: 28px; }
+    .left, .right{ justify-self: stretch; }
+    .side a{ width: 100%; }
+    .center{ order:-1; margin-bottom: 6px; }
+    .marker{ left: -6px; height: 78%; }
+  }
+</style>
+</head>
+<body>
+  <header>
+    <h1>2025 Spread Pool</h1>
+    <div class="sub">13-week slate • First-down marker shows the current week by today’s date</div>
+  </header>
+
+  <div class="wrap">
+    <div class="legend">
+      <div class="pill">Left: <strong>Entry Form</strong></div>
+      <div class="pill">Right: <strong>Pick Summary</strong></div>
+      <div class="pill">Auto-dates generated from the configured season start</div>
+    </div>
+
+    <div id="weeks" class="grid" aria-live="polite"></div>
+  </div>
+
+<script>
+/*
+  =======================
+  ========== CONFIG =====
+  =======================
+
+  Option A (simple): Set a season start date and we’ll auto-create 13
+  consecutive 7-day weeks from there.
+
+  Option B (manual): Provide explicit week ranges in MANUAL_WEEKS and set
+  USE_MANUAL_WEEKS = true.
+
+  Update the link bases if you want to point to your real pages.
+*/
+const CONFIG = {
+  // Option A: auto-generate 13 weekly ranges
+  auto: {
+    seasonStart: '2025-09-04',  // YYYY-MM-DD (change this!)
+    weeks: 13,
+    weekLengthDays: 7
+  },
+
+  // Option B: manual week ranges (set USE_MANUAL_WEEKS = true to use these)
+  USE_MANUAL_WEEKS: false,
+  MANUAL_WEEKS: [
+    // { label: 'Week 1', start: '2025-09-01', end: '2025-09-07' },
+    // ... add up to 13
+  ],
+
+  // Link templates (we’ll append ?week=1..13)
+  baseEntryURL: 'https://wrathofmath85.github.io/SpreadPool/2025EntryFormWeek',
+  baseSummaryURL: 'https://wrathofmath85.github.io/SpreadPool/2025PicksSummaryWeek'
+};
+
+/* ====== Helpers ====== */
+function toDate(d){ const t = (d instanceof Date) ? d : new Date(d + 'T00:00:00'); t.setHours(12); return t; }
+function addDays(date, days){ const d = new Date(date); d.setDate(d.getDate() + days); return d; }
+function fmtRange(start, end){
+  const o = { month: 'short', day: 'numeric' };
+  const s = start.toLocaleDateString(undefined, o);
+  const e = end.toLocaleDateString(undefined, o);
+  const sameYear = start.getFullYear() === end.getFullYear();
+  if(!sameYear){
+    const oy = { month:'short', day:'numeric', year:'numeric' };
+    return `${start.toLocaleDateString(undefined, oy)} – ${end.toLocaleDateString(undefined, oy)}`;
+  }
+  return `${s} – ${e}`;
+}
+function clampDateToMidnight(d){ const x = new Date(d); x.setHours(0,0,0,0); return x; }
+
+/* ====== Build Weeks ====== */
+function buildAutoWeeks(){
+  const arr = [];
+  const start0 = clampDateToMidnight(toDate(CONFIG.auto.seasonStart));
+  for (let i=0;i<CONFIG.auto.weeks;i++){
+    const s = addDays(start0, i*CONFIG.auto.weekLengthDays);
+    const e = addDays(s, CONFIG.auto.weekLengthDays - 1);
+    arr.push({ label: `Week ${i+1}`, start: s, end: e });
+  }
+  return arr;
+}
+function buildManualWeeks(){
+  return CONFIG.MANUAL_WEEKS.map((w,i)=>({
+    label: w.label || `Week ${i+1}`,
+    start: clampDateToMidnight(toDate(w.start)),
+    end: clampDateToMidnight(toDate(w.end))
+  }));
+}
+
+/* ====== Render ====== */
+(function init(){
+  const weeksEl = document.getElementById('weeks');
+  const weeks = CONFIG.USE_MANUAL_WEEKS ? buildManualWeeks() : buildAutoWeeks();
+  const today = clampDateToMidnight(new Date());
+
+  weeks.forEach((wk, idx) => {
+    const row = document.createElement('div');
+    row.className = 'row';
+
+    const left = document.createElement('div');
+    left.className = 'side left';
+    left.innerHTML = `<a href="${CONFIG.baseEntryURL}?week=${idx+1}" aria-label="Entry Form for ${wk.label}">Entry Form</a>`;
+
+    const center = document.createElement('div');
+    center.className = 'center';
+    center.innerHTML = `
+      <span class="wk">${wk.label}</span>
+      <span class="dates">${fmtRange(wk.start, wk.end)}</span>
+    `;
+
+    const right = document.createElement('div');
+    right.className = 'side right';
+    right.innerHTML = `<a href="${CONFIG.baseSummaryURL}?week=${idx+1}" aria-label="Pick Summary for ${wk.label}">Pick Summary</a>`;
+
+    row.appendChild(left);
+    row.appendChild(center);
+    row.appendChild(right);
+    weeksEl.appendChild(row);
+
+    // Is today within this week?
+    if (today >= wk.start && today <= wk.end) {
+      row.classList.add('current');
+      const marker = document.createElement('div');
+      marker.className = 'marker';
+      marker.setAttribute('aria-label', `First down marker: ${wk.label} is current week`);
+      marker.setAttribute('title', `Current Week: ${wk.label}`);
+      row.appendChild(marker);
+      // Auto-scroll the current week into view (nice on mobile)
+      setTimeout(()=> row.scrollIntoView({behavior:'smooth', block:'center'}), 150);
+    }
+  });
+})();
+</script>
+</body>
+</html>
