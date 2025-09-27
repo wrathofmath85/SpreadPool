@@ -26,10 +26,19 @@
     font-family: system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
     color: var(--text);
 
-    /* Replaced painted field with your image */
+    /* Default background (desktop) */
     background: url('Field.jpg') no-repeat center center fixed;
     background-size: cover;
   }
+
+  /* Phones / smaller screens */
+  @media (max-width: 700px){
+    body{
+      background: url('Field2.jpg') no-repeat center center fixed;
+      background-size: cover;
+    }
+  }
+
   header{
     text-align:center;
     padding:24px 16px 10px;
@@ -170,7 +179,7 @@
     filter: brightness(0.9);
   }
 
-  /* Responsive */
+  /* Responsive tweaks for rows */
   @media (max-width: 700px){
     .row{ grid-template-columns: 1fr; padding-left: 28px; }
     .left, .right{ justify-self: stretch; }
@@ -197,40 +206,20 @@
   </div>
 
 <script>
-/*
-  =======================
-  ========== CONFIG =====
-  =======================
-
-  Option A (simple): Set a season start date and we’ll auto-create 13
-  consecutive 7-day weeks from there.
-
-  Option B (manual): Provide explicit week ranges in MANUAL_WEEKS and set
-  USE_MANUAL_WEEKS = true.
-
-  Update the link bases if you want to point to your real pages.
-*/
 const CONFIG = {
-  // Option A: auto-generate 13 weekly ranges
   auto: {
-    seasonStart: '2025-09-01',  // YYYY-MM-DD (change this!)
+    seasonStart: '2025-09-01',  // YYYY-MM-DD
     weeks: 13,
     weekLengthDays: 7
   },
-
-  // Option B: manual week ranges (set USE_MANUAL_WEEKS = true to use these)
   USE_MANUAL_WEEKS: false,
   MANUAL_WEEKS: [
     // { label: 'Week 1', start: '2025-09-01', end: '2025-09-07' },
-    // ... add up to 13
   ],
-
-  // Link templates (we’ll append ?week=1..13)
   baseEntryURL: 'entry.html',
   baseSummaryURL: 'summary.html'
 };
 
-/* ====== Helpers ====== */
 function toDate(d){ const t = (d instanceof Date) ? d : new Date(d + 'T00:00:00'); t.setHours(12); return t; }
 function addDays(date, days){ const d = new Date(date); d.setDate(d.getDate() + days); return d; }
 function fmtRange(start, end){
@@ -246,7 +235,6 @@ function fmtRange(start, end){
 }
 function clampDateToMidnight(d){ const x = new Date(d); x.setHours(0,0,0,0); return x; }
 
-/* ====== Build Weeks ====== */
 function buildAutoWeeks(){
   const arr = [];
   const start0 = clampDateToMidnight(toDate(CONFIG.auto.seasonStart));
@@ -265,7 +253,6 @@ function buildManualWeeks(){
   }));
 }
 
-/* ====== Render ====== */
 (function init(){
   const weeksEl = document.getElementById('weeks');
   const weeks = CONFIG.USE_MANUAL_WEEKS ? buildManualWeeks() : buildAutoWeeks();
@@ -295,7 +282,6 @@ function buildManualWeeks(){
     row.appendChild(right);
     weeksEl.appendChild(row);
 
-    // Is today within this week?
     if (today >= wk.start && today <= wk.end) {
       row.classList.add('current');
       const marker = document.createElement('div');
@@ -303,7 +289,6 @@ function buildManualWeeks(){
       marker.setAttribute('aria-label', `First down marker: ${wk.label} is current week`);
       marker.setAttribute('title', `Current Week: ${wk.label}`);
       row.appendChild(marker);
-      // Auto-scroll the current week into view (nice on mobile)
       setTimeout(()=> row.scrollIntoView({behavior:'smooth', block:'center'}), 150);
     }
   });
