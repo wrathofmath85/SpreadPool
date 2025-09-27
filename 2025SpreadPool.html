@@ -34,7 +34,7 @@
   /* Phones / smaller screens */
   @media (max-width: 700px){
     body{
-      background: none; /* disable default image */
+      background: none;
       position: relative;
     }
     body::before{
@@ -43,7 +43,7 @@
       top:0; left:0; right:0; bottom:0;
       background: url('Field2.jpg') no-repeat center center;
       background-size: cover;
-      z-index: -1; /* behind all content */
+      z-index: -1;
     }
   }
 
@@ -68,18 +68,6 @@
     padding: 0 14px;
     position: relative;
   }
-  .legend{
-    display:flex; gap:14px; justify-content:center; align-items:center;
-    margin-bottom:12px; flex-wrap:wrap;
-  }
-  .pill{
-    background: rgba(0,0,0,0.28);
-    border: 1px solid rgba(255,255,255,0.15);
-    padding: 8px 12px;
-    border-radius: 999px;
-    font-size: 0.9rem;
-    backdrop-filter: blur(2px);
-  }
 
   .grid{
     display:grid;
@@ -89,10 +77,10 @@
 
   .row{
     position: relative;
-    display:grid;
-    grid-template-columns: 1fr auto 1fr;
+    display:flex;
+    justify-content:center;   /* keep everything near the middle */
     align-items: center;
-    gap: 10px;
+    gap: 20px;                /* space between left/center/right */
     padding: 14px 16px;
     border-radius: var(--radius);
     background: var(--row-bg);
@@ -102,16 +90,11 @@
     backdrop-filter: blur(2px);
   }
   .row:hover{ background: var(--row-hover); }
-
   .row.current{
     box-shadow: var(--current-glow);
     outline: 2px solid rgba(255,255,255,0.12);
-    position: relative;
   }
 
-  .side{
-    display:flex; align-items:center; gap: 10px;
-  }
   .side a{
     display:inline-flex; align-items:center; justify-content:center;
     padding:10px 12px;
@@ -125,11 +108,8 @@
     min-width: 122px;
   }
   .side a:active{ transform: translateY(1px); }
-  .left { justify-self: start; }
-  .right{ justify-self: end; }
 
   .center{
-    justify-self: center;
     text-align:center;
     line-height:1.2;
     text-shadow: 0 2px 8px rgba(0,0,0,0.5);
@@ -185,9 +165,13 @@
     filter: brightness(0.9);
   }
 
+  /* Mobile tweaks */
   @media (max-width: 700px){
-    .row{ grid-template-columns: 1fr; padding-left: 28px; }
-    .left, .right{ justify-self: stretch; }
+    .row{
+      flex-direction: column;
+      padding-left: 28px;
+      gap: 8px;
+    }
     .side a{ width: 100%; }
     .center{ order:-1; margin-bottom: 6px; }
     .marker{ left: -6px; height: 78%; }
@@ -200,9 +184,7 @@
     <div class="sub">13-week slate • First-down marker shows the current week by today’s date</div>
   </header>
 
-<div id="weeks" class="grid" aria-live="polite"></div>
-  </div>
-  
+  <div id="weeks" class="grid" aria-live="polite"></div>
 
 <script>
 const CONFIG = {
@@ -260,8 +242,8 @@ function buildManualWeeks(){
     row.className = 'row';
 
     const left = document.createElement('div');
-    left.className = 'side left';
-    left.innerHTML = `<a href="${CONFIG.baseEntryURL}?week=${idx+1}" aria-label="Entry Form for ${wk.label}">Entry Form</a>`;
+    left.className = 'side';
+    left.innerHTML = `<a href="${CONFIG.baseEntryURL}?week=${idx+1}">Entry Form</a>`;
 
     const center = document.createElement('div');
     center.className = 'center';
@@ -271,8 +253,8 @@ function buildManualWeeks(){
     `;
 
     const right = document.createElement('div');
-    right.className = 'side right';
-    right.innerHTML = `<a href="${CONFIG.baseSummaryURL}?week=${idx+1}" aria-label="Pick Summary for ${wk.label}">Pick Summary</a>`;
+    right.className = 'side';
+    right.innerHTML = `<a href="${CONFIG.baseSummaryURL}?week=${idx+1}">Pick Summary</a>`;
 
     row.appendChild(left);
     row.appendChild(center);
@@ -283,7 +265,6 @@ function buildManualWeeks(){
       row.classList.add('current');
       const marker = document.createElement('div');
       marker.className = 'marker';
-      marker.setAttribute('aria-label', `First down marker: ${wk.label} is current week`);
       marker.setAttribute('title', `Current Week: ${wk.label}`);
       row.appendChild(marker);
       setTimeout(()=> row.scrollIntoView({behavior:'smooth', block:'center'}), 150);
