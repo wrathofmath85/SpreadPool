@@ -6,10 +6,6 @@
 <title>Spread Pool — 13 Weeks</title>
 <style>
   :root{
-    --field-green:#1f7a3a;
-    --field-dark:#196231;
-    --line:#e6e6e6;
-    --hash:#d3d3d3;
     --text:#f7fafc;
     --muted:#c7d2fe;
     --link:#fffbcc;
@@ -29,39 +25,15 @@
     margin:0;
     font-family: system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
     color: var(--text);
-    background:
-      /* Yard lines (horizontal) */
-      repeating-linear-gradient(
-        to bottom,
-        var(--field-green) 0px,
-        var(--field-green) 95px,
-        var(--line) 95px,
-        var(--line) 98px
-      ),
-      /* Hash marks (thin horizontal stripes between yard lines) */
-      repeating-linear-gradient(
-        to bottom,
-        transparent 0,
-        transparent 23px,
-        var(--hash) 23px,
-        var(--hash) 24px,
-        transparent 24px,
-        transparent 47px,
-        var(--hash) 47px,
-        var(--hash) 48px,
-        transparent 48px,
-        transparent 71px,
-        var(--hash) 71px,
-        var(--hash) 72px
-      ),
-      /* Subtle vertical tone variation to suggest field sections */
-      linear-gradient(90deg, var(--field-green) 0%, var(--field-dark) 50%, var(--field-green) 100%);
-    background-blend-mode: overlay, normal, normal;
-    background-size: 100% 98px, 100% 98px, cover;
+
+    /* Replaced painted field with your image */
+    background: url('field.jpg') no-repeat center center fixed;
+    background-size: cover;
   }
   header{
     text-align:center;
     padding:24px 16px 10px;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
   }
   h1{
     margin:0 0 4px;
@@ -89,6 +61,7 @@
     padding: 8px 12px;
     border-radius: 999px;
     font-size: 0.9rem;
+    backdrop-filter: blur(2px);
   }
 
   .grid{
@@ -109,6 +82,7 @@
     border: 1px solid rgba(255,255,255,0.12);
     transition: transform .1s ease, background .2s ease, box-shadow .2s ease;
     min-height: 66px;
+    backdrop-filter: blur(2px);
   }
   .row:hover{ background: var(--row-hover); }
 
@@ -141,6 +115,7 @@
     justify-self: center;
     text-align:center;
     line-height:1.2;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
   }
   .wk{
     display:block;
@@ -207,12 +182,16 @@
 </head>
 <body>
   <header>
-    <h1>2025 Spread Pool</h1>
+    <h1>Spread Pool — Season Weeks</h1>
     <div class="sub">13-week slate • First-down marker shows the current week by today’s date</div>
   </header>
 
   <div class="wrap">
-
+    <div class="legend">
+      <div class="pill">Left: <strong>Entry Form</strong></div>
+      <div class="pill">Right: <strong>Pick Summary</strong></div>
+      <div class="pill">Auto-dates generated from the configured season start</div>
+    </div>
 
     <div id="weeks" class="grid" aria-live="polite"></div>
   </div>
@@ -234,7 +213,7 @@
 const CONFIG = {
   // Option A: auto-generate 13 weekly ranges
   auto: {
-    seasonStart: '2025-09-04',  // YYYY-MM-DD (change this!)
+    seasonStart: '2025-09-01',  // YYYY-MM-DD (change this!)
     weeks: 13,
     weekLengthDays: 7
   },
@@ -247,8 +226,8 @@ const CONFIG = {
   ],
 
   // Link templates (we’ll append ?week=1..13)
-  baseEntryURL: 'https://wrathofmath85.github.io/SpreadPool/2025EntryFormWeek',
-  baseSummaryURL: 'https://wrathofmath85.github.io/SpreadPool/2025PicksSummaryWeek'
+  baseEntryURL: 'entry.html',
+  baseSummaryURL: 'summary.html'
 };
 
 /* ====== Helpers ====== */
@@ -298,7 +277,7 @@ function buildManualWeeks(){
 
     const left = document.createElement('div');
     left.className = 'side left';
-    left.innerHTML = `<a href="${CONFIG.baseEntryURL}${idx+1}" aria-label="Entry Form for ${wk.label}">Entry Form</a>`;
+    left.innerHTML = `<a href="${CONFIG.baseEntryURL}?week=${idx+1}" aria-label="Entry Form for ${wk.label}">Entry Form</a>`;
 
     const center = document.createElement('div');
     center.className = 'center';
@@ -309,7 +288,7 @@ function buildManualWeeks(){
 
     const right = document.createElement('div');
     right.className = 'side right';
-    right.innerHTML = `<a href="${CONFIG.baseSummaryURL}${idx+1}" aria-label="Pick Summary for ${wk.label}">Pick Summary</a>`;
+    right.innerHTML = `<a href="${CONFIG.baseSummaryURL}?week=${idx+1}" aria-label="Pick Summary for ${wk.label}">Pick Summary</a>`;
 
     row.appendChild(left);
     row.appendChild(center);
