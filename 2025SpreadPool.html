@@ -34,8 +34,16 @@
   /* Phones / smaller screens */
   @media (max-width: 700px){
     body{
-      background: url('Field2.jpg') no-repeat center center fixed;
+      background: none; /* disable default image */
+      position: relative;
+    }
+    body::before{
+      content: "";
+      position: fixed;
+      top:0; left:0; right:0; bottom:0;
+      background: url('Field2.jpg') no-repeat center center;
       background-size: cover;
+      z-index: -1; /* behind all content */
     }
   }
 
@@ -82,7 +90,7 @@
   .row{
     position: relative;
     display:grid;
-    grid-template-columns: 1fr auto 1fr; /* left link | center week | right link */
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
     gap: 10px;
     padding: 14px 16px;
@@ -138,10 +146,9 @@
     opacity: 0.95;
   }
 
-  /* First down marker */
   .marker{
     position: absolute;
-    left: -10px; /* hangs outside row */
+    left: -10px;
     top: 50%;
     transform: translateY(-50%);
     width: 12px;
@@ -167,7 +174,6 @@
     box-shadow: 0 4px 10px var(--marker-shadow);
   }
   .marker::after{
-    /* little base spike */
     content:'';
     position:absolute;
     bottom:-8px;
@@ -179,7 +185,6 @@
     filter: brightness(0.9);
   }
 
-  /* Responsive tweaks for rows */
   @media (max-width: 700px){
     .row{ grid-template-columns: 1fr; padding-left: 28px; }
     .left, .right{ justify-self: stretch; }
@@ -191,31 +196,21 @@
 </head>
 <body>
   <header>
-    <h1>Spread Pool — Season Weeks</h1>
+    <h1>2025 Spread Pool</h1>
     <div class="sub">13-week slate • First-down marker shows the current week by today’s date</div>
   </header>
 
-  <div class="wrap">
-    <div class="legend">
-      <div class="pill">Left: <strong>Entry Form</strong></div>
-      <div class="pill">Right: <strong>Pick Summary</strong></div>
-      <div class="pill">Auto-dates generated from the configured season start</div>
-    </div>
-
-    <div id="weeks" class="grid" aria-live="polite"></div>
-  </div>
+  
 
 <script>
 const CONFIG = {
   auto: {
-    seasonStart: '2025-09-01',  // YYYY-MM-DD
+    seasonStart: '2025-09-01',
     weeks: 13,
     weekLengthDays: 7
   },
   USE_MANUAL_WEEKS: false,
-  MANUAL_WEEKS: [
-    // { label: 'Week 1', start: '2025-09-01', end: '2025-09-07' },
-  ],
+  MANUAL_WEEKS: [],
   baseEntryURL: 'entry.html',
   baseSummaryURL: 'summary.html'
 };
