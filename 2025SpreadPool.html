@@ -264,7 +264,7 @@ function buildManualWeeks(){
 
     const right = document.createElement('div');
     right.className = 'side';
-    right.innerHTML = `<a href="${CONFIG.baseSummaryURL}?week=${idx+1}" aria-label="Pick Summary for ${wk.label}">Pick Summary</a>`;
+    right.innerHTML = `<a href="${CONFIG.baseSummaryURL}${idx+1}" aria-label="Pick Summary for ${wk.label}">Pick Summary</a>`;
 
     row.appendChild(left);
     row.appendChild(center);
