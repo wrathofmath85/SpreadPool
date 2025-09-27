@@ -532,9 +532,10 @@ function normalizeLines(rows){
 
 /* ============== SUBMISSIONS & PARTICIPANTS ============== */
 function normalizeSubs(rows){
+  // only this week
   rows = rows.filter(r => String(r["Week"]||r["week"]||"").trim() === String(WeekNumber));
 
-  // get latest timestamp per name
+  // latest timestamp per name
   const latest = new Map(); // name => ts
   rows.forEach(r=>{
     const name = String(r["Name"]||r["name"]||"").trim();
@@ -544,7 +545,7 @@ function normalizeSubs(rows){
     if(!prev || ts > prev) latest.set(name, ts);
   });
 
-  // collect rows for that latest timestamp per name
+  // collect *all rows* at each name's latest ts (even if QID is blank)
   const rowsForLatest = new Map(); // name => [raw rows at latest ts]
   rows.forEach(r=>{
     const name = String(r["Name"]||r["name"]||"").trim();
@@ -557,7 +558,7 @@ function normalizeSubs(rows){
     }
   });
 
-  // build picks per name (only from latest ts)
+  // build person objects (don’t require QID to exist to create the person)
   const byName = new Map();
   rows.forEach(r=>{
     const name = String(r["Name"]||r["name"]||"").trim();
@@ -565,34 +566,40 @@ function normalizeSubs(rows){
     const ts   = String(r["Timestamp"]||r["timestamp"]||"").trim();
     if(latest.get(name) && ts !== latest.get(name)) return;
 
-    const qid  = String(r["QID"]||r["qid"]||"").trim();
-    const choice = String(r["Choice"]||r["choice"]||"").trim();
-    const isDouble = String(r["IsDouble"]).toUpperCase()==="TRUE";
-    if(!qid) return;
+    let p = byName.get(name);
+    if(!p){
+      p = { name, picks: [] };
+      byName.set(name, p);
+    }
 
-    const p = byName.get(name) || { name, picks: [] };
-    p.picks.push({ qid, choice, isDouble });
-    byName.set(name, p);
+    // Only add a pick when we actually have a QID
+    const qid  = String(r["QID"]||r["qid"]||"").trim();
+    if(qid){
+      const choice = String(r["Choice"]||r["choice"]||"").trim();
+      const isDouble = String(r["IsDouble"]).toUpperCase()==="TRUE";
+      // keep only qids that exist in lines (done after we push)
+      p.picks.push({ qid, choice, isDouble });
+    }
   });
 
-  // finalize array, sort/filter, and tag "requestedDefaults" when applicable
+  // finalize array, filter/sort, and mark requestedDefaults
   const arr = Array.from(byName.values());
   arr.forEach(p => {
     // keep only qids that exist in lines
     p.picks = p.picks.filter(pk => qidToLine.has(pk.qid));
     p.picks.sort((a,b)=> qidOrder(a.qid)-qidOrder(b.qid));
 
-    // DEFAULTS REQUEST (single row): if their latest submission has exactly one row AND Choice == "DEFAULTS"
+    // single-row DEFAULTS request at latest timestamp
     const raw = rowsForLatest.get(p.name) || [];
     const requestedDefaults =
       raw.length === 1 &&
       String(raw[0]["Choice"]||raw[0]["choice"]||"").trim().toUpperCase() === "DEFAULTS";
     if(requestedDefaults){
-      p.requestedDefaults = true;
+      p.requestedDefaults = true; // loadAll() converts this to actual default picks (no pill)
     }
   });
 
-  // sort by last name for stable ordering
+  // sort stable by last name
   arr.sort((a,b)=> lastNameKey(a.name).localeCompare(lastNameKey(b.name), undefined, {sensitivity:'base'}));
   return arr;
 }
