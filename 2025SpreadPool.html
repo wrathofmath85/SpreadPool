@@ -95,6 +95,12 @@
     outline: 2px solid rgba(255,255,255,0.12);
   }
 
+  /* Left/Right containers and buttons */
+  .side{
+    display:inline-flex;
+    align-items:center;
+    gap:10px; /* marker sits right next to button */
+  }
   .side a{
     display:inline-flex; align-items:center; justify-content:center;
     padding:10px 12px;
@@ -126,16 +132,15 @@
     opacity: 0.95;
   }
 
+  /* Marker now inline next to Entry link */
   .marker{
-    position: absolute;
-    left: -10px;
-    top: 50%;
-    transform: translateY(-50%);
+    display:inline-block;
     width: 12px;
-    height: 72%;
+    height: 44px;                    /* tidy size to sit by the button */
     background: var(--marker);
     border-radius: 3px;
     box-shadow: 0 8px 16px var(--marker-shadow);
+    position: relative;
   }
   .marker::before{
     content:'1';
@@ -172,9 +177,10 @@
       padding-left: 28px;
       gap: 8px;
     }
+    .side{ width:100%; }
     .side a{ width: 100%; }
     .center{ order:-1; margin-bottom: 6px; }
-    .marker{ left: -6px; height: 78%; }
+    /* marker stays inline above Entry button on mobile */
   }
 </style>
 </head>
@@ -243,7 +249,11 @@ function buildManualWeeks(){
 
     const left = document.createElement('div');
     left.className = 'side';
-    left.innerHTML = `<a href="${CONFIG.baseEntryURL}?week=${idx+1}">Entry Form</a>`;
+
+    const entryLink = document.createElement('a');
+    entryLink.href = `${CONFIG.baseEntryURL}?week=${idx+1}`;
+    entryLink.textContent = 'Entry Form';
+    entryLink.setAttribute('aria-label', `Entry Form for ${wk.label}`);
 
     const center = document.createElement('div');
     center.className = 'center';
@@ -254,19 +264,28 @@ function buildManualWeeks(){
 
     const right = document.createElement('div');
     right.className = 'side';
-    right.innerHTML = `<a href="${CONFIG.baseSummaryURL}?week=${idx+1}">Pick Summary</a>`;
+    right.innerHTML = `<a href="${CONFIG.baseSummaryURL}?week=${idx+1}" aria-label="Pick Summary for ${wk.label}">Pick Summary</a>`;
 
     row.appendChild(left);
     row.appendChild(center);
     row.appendChild(right);
     weeksEl.appendChild(row);
 
+    // Is today within this week? If so, add the marker next to the Entry link.
     if (today >= wk.start && today <= wk.end) {
       row.classList.add('current');
       const marker = document.createElement('div');
       marker.className = 'marker';
       marker.setAttribute('title', `Current Week: ${wk.label}`);
-      row.appendChild(marker);
+      // Make marker appear immediately to the left of the Entry button
+      left.appendChild(marker);
+    }
+
+    // Append the Entry link after possibly adding the marker
+    left.appendChild(entryLink);
+
+    // Auto-scroll current week into view (desktop/mobile)
+    if (row.classList.contains('current')) {
       setTimeout(()=> row.scrollIntoView({behavior:'smooth', block:'center'}), 150);
     }
   });
