@@ -251,7 +251,7 @@ function buildManualWeeks(){
     left.className = 'side';
 
     const entryLink = document.createElement('a');
-    entryLink.href = `${CONFIG.baseEntryURL}?week=${idx+1}`;
+    entryLink.href = `${CONFIG.baseEntryURL}${idx+1}`;
     entryLink.textContent = 'Entry Form';
     entryLink.setAttribute('aria-label', `Entry Form for ${wk.label}`);
 
