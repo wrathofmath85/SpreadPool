@@ -853,7 +853,7 @@ async function loadAll(){
     const bRows = parseCSV(await fetchCSV(CSV_URL_NCAA));
     gamesA = normalizeGames(aRows,  "A");
     gamesB = normalizeGames(bRows,  "B");
-    const hostA = $("#listA"), hostB = $("#listB"]);
+    const hostA = $("#listA"), hostB = $("#listB");
     renderSection(hostA, gamesA); renderSection(hostB, gamesB);
 
     hostA.querySelectorAll('input[type="radio"]').forEach(r=>{
