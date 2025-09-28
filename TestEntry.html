@@ -772,7 +772,16 @@ $("#submitBtn").addEventListener("click", async ()=>{
   if(!sheetResult.ok && REQUIRE_SHEETS_OK){ stopSubmitting(); alert("Could not log to Google Sheets. Please try again in a moment."); return; }
 
   if(DEMO_MODE){
-    $("#demoBadge").hidden = false; stopSubmitting(); alert("Submitted! (Demo mode — email suppressed)");
+    $("#demoBadge").hidden = false; 
+    stopSubmitting();
+    // >>> Post-submit reminder if under committed total
+    let msg = "Submitted! (Demo mode — email suppressed)";
+    if (committedNumPicks != null && total < committedNumPicks) {
+      const remain = committedNumPicks - total;
+      msg += `\n\nReminder: You previously committed to ${committedNumPicks} picks. You currently have ${total}.` +
+             ` If you don't reach ${committedNumPicks} before kickoff, defaults will be applied to the remaining ${remain} pick(s) to reach ${committedNumPicks}.`;
+    }
+    alert(msg);
     committedNumPicks = finalNumPicks; updateNumPicksUI();
     return;
   }
@@ -788,10 +797,25 @@ $("#submitBtn").addEventListener("click", async ()=>{
       to_email: participantEmail
     });
     stopSubmitting();
-    alert("Submitted! A copy will be CC’d to you.");
+    // >>> Post-submit reminder if under committed total
+    let msg = "Submitted! A copy will be CC’d to you.";
+    if (committedNumPicks != null && total < committedNumPicks) {
+      const remain = committedNumPicks - total;
+      msg += `\n\nReminder: You previously committed to ${committedNumPicks} picks. You currently have ${total}.` +
+             ` If you don't reach ${committedNumPicks} before kickoff, defaults will be applied to the remaining ${remain} pick(s) to reach ${committedNumPicks}.`;
+    }
+    alert(msg);
   }catch(err){
     console.error("EmailJS error details:",err);
-    stopSubmitting(); alert("Submitted! (Email copy failed to send.)");
+    stopSubmitting(); 
+    // >>> Post-submit reminder if under committed total
+    let msg = "Submitted! (Email copy failed to send.)";
+    if (committedNumPicks != null && total < committedNumPicks) {
+      const remain = committedNumPicks - total;
+      msg += `\n\nReminder: You previously committed to ${committedNumPicks} picks. You currently have ${total}.` +
+             ` If you don't reach ${committedNumPicks} before kickoff, defaults will be applied to the remaining ${remain} pick(s) to reach ${committedNumPicks}.`;
+    }
+    alert(msg);
   }
 
   if(committedNumPicks==null){ committedNumPicks = finalNumPicks; updateNumPicksUI(); validateAll(); }
