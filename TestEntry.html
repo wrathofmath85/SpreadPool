@@ -113,12 +113,12 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
     <div id="numPicksCard" class="card" style="margin:12px 0">
       <h2>Num Picks Plan</h2>
       <div class="small muted" id="numPicksHelp" style="margin-bottom:8px">
-        If you submit fewer than 7 picks, declare how many total picks you will make this week (max 12). If you have 7+ now, you may optionally set a higher plan to allow finishing later up to that number.
+        If you submit fewer than 7 picks, you must declare how many total picks you will make this week (7–12). If you have 7+ now, you can leave this blank to auto-commit to your current total.
       </div>
       <div style="display:flex;gap:10px;align-items:center;max-width:420px">
         <label for="numPicksPlan" class="small muted" style="min-width:140px">Planned total:</label>
-        <input id="numPicksPlan" type="number" min="1" max="12" step="1"
-               style="width:120px;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text)"/>
+        <input id="numPicksPlan" type="number" min="1" max="12" step="1" placeholder="leave blank if 7–12"
+               style="width:160px;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text)"/>
         <span id="numPicksLockBadge" class="badge locked is-hidden">Committed</span>
       </div>
       <p id="numPicksNotice" class="small muted" style="margin-top:8px"></p>
@@ -414,7 +414,7 @@ function refreshDoubleChoices(){
   if(keep && chosen.some(o=>o.qid===keep)) sel.value = keep;
 }
 
-/* NumPicks UI helpers — allow planning above current even when total>=7 */
+/* NumPicks UI helpers — BLANK by default unless previously committed */
 function updateNumPicksUI(){
   const planInput = $("#numPicksPlan");
   const lockBadge = $("#numPicksLockBadge");
@@ -432,26 +432,28 @@ function updateNumPicksUI(){
     return;
   }
 
+  // first-time (no commitment yet)
   lockBadge.classList.add("is-hidden");
   planInput.disabled = false;
 
+  // keep the field BLANK unless the user types; just update constraints
   planInput.min = Math.max(tot, 1);
   planInput.max = MAX_PICKS;
 
-  if (!planInput.value) {
-    planInput.value = String(Math.max(tot, 7));
-  } else {
-    const v = Math.min(Math.max(parseInt(planInput.value, 10) || tot, tot), MAX_PICKS);
-    planInput.value = String(v);
-  }
+  const typed = planInput.value.trim();
+  const hasTyped = typed !== "";
+  const planned = hasTyped ? parseInt(typed, 10) : NaN;
 
   if (tot < 7) {
-    notice.textContent = `With fewer than 7 picks, declare your intended total (between ${tot} and ${MAX_PICKS}).`;
+    notice.textContent = `With fewer than 7 picks, enter your intended total (7–${MAX_PICKS}). Field cannot be blank.`;
+  } else if (!hasTyped) {
+    notice.textContent = `With ${tot} picks selected: leaving NumPicks blank will commit you to exactly ${tot}. You can change WHICH games later, but your pick total must remain ${tot}.`;
   } else {
-    notice.textContent =
-      `With ${tot} picks selected: leaving this blank will automatically set your NumPicks to ${tot} on submit. ` +
-      `You may later change WHICH games, but your pick total must remain ${tot}. ` +
-      `Optionally enter a higher plan (up to ${MAX_PICKS}) if you intend to finish later this week.`;
+    // user typed something; show guardrails
+    const ok = planned >= tot && planned <= MAX_PICKS;
+    notice.textContent = ok
+      ? `Planned total set to ${planned}. You can return to finish up to that number.`
+      : `Planned total must be between your current ${tot} and ${MAX_PICKS}.`;
   }
 }
 
@@ -518,7 +520,7 @@ function collectSubmission(finalNumPicks){
 function renderSummary(){ $("#summary").innerHTML = `<pre style="white-space:pre-wrap;margin:0">${escapeHtml(buildSelectionsText(false))}</pre>`; }
 function setCheck(sel, state){ const li=$(sel); li.classList.toggle("check-ok", state===true); li.classList.toggle("check-bad", state===false); li.classList.toggle("check-warn", state==='warn'); li.querySelector(".check-icon").textContent = state===true?"✓":(state===false?"✕":"!"); }
 
-/* Validate including NumPicks logic + DEADLINE */
+/* Validate including NumPicks logic + DEADLINE (blank allowed only when total >= 7) */
 function validateAll(){
   if(isAfterDeadline()){
     setCheck("#chkName",  false);
@@ -553,6 +555,7 @@ function validateAll(){
     if (hasPlanned) {
       if (!(planned >= total && planned <= MAX_PICKS)) numPicksOk = false;
     } else {
+      // BLANK is only valid when total >= 7
       if (total < 7) numPicksOk = false;
     }
   }
@@ -699,6 +702,7 @@ document.addEventListener("click", e=>{
 $("#resetBtn").addEventListener("click", ()=>{
   $$('input[type="radio"]').forEach(r=>r.checked=false);
   $("#doubleSel").value = "";
+  // leave NumPicks as user typed (still blank by default), just refresh UI
   renderSummary(); refreshDoubleChoices(); validateAll(); updateNumPicksUI();
 });
 
@@ -716,7 +720,7 @@ $("#submitBtn").addEventListener("click", async ()=>{
   const a = countChecked($("#listA")); const b = countChecked($("#listB")); const total = a+b;
   if(total > MAX_PICKS){ stopSubmitting(); alert(`You cannot pick more than ${MAX_PICKS} games.`); return; }
 
-  // >>> Decide final NumPicks to send (with first-time auto-commit 7–12)
+  // Decide final NumPicks to send
   let finalNumPicks = committedNumPicks;
   if (committedNumPicks != null) {
     if (total > committedNumPicks) {
@@ -732,7 +736,7 @@ $("#submitBtn").addEventListener("click", async ()=>{
     if (hasPlanned) {
       if (!(planned >= total && planned <= MAX_PICKS)) {
         stopSubmitting();
-        alert(`Your planned total must be between ${total} and ${MAX_PICKS}.`);
+        alert(`Your planned total must be between your current ${total} and ${MAX_PICKS}.`);
         return;
       }
       finalNumPicks = planned;
@@ -744,7 +748,7 @@ $("#submitBtn").addEventListener("click", async ()=>{
     } else {
       if (total < 7) {
         stopSubmitting();
-        alert(`Please declare a planned total between ${total} and ${MAX_PICKS}.`);
+        alert(`With fewer than 7 picks, you must enter a NumPicks between 7 and ${MAX_PICKS}.`);
         return;
       }
       if (total > MAX_PICKS) {
@@ -768,7 +772,7 @@ $("#submitBtn").addEventListener("click", async ()=>{
     if(!okNoDouble){ stopSubmitting(); return; }
   }
 
-  // >>> PRE-SUBMIT confirm if UNDER a prior commitment
+  // PRE-SUBMIT confirm if UNDER a prior commitment
   if (committedNumPicks != null && total < committedNumPicks) {
     const remain = committedNumPicks - total;
     const go = confirm(
@@ -790,7 +794,6 @@ $("#submitBtn").addEventListener("click", async ()=>{
   if(DEMO_MODE){
     $("#demoBadge").hidden = false; 
     stopSubmitting();
-    // >>> Post-submit reminder if under committed total
     let msg = "Submitted! (Demo mode — email suppressed)";
     if (committedNumPicks != null && total < committedNumPicks) {
       const remain = committedNumPicks - total;
@@ -813,7 +816,6 @@ $("#submitBtn").addEventListener("click", async ()=>{
       to_email: participantEmail
     });
     stopSubmitting();
-    // >>> Post-submit reminder if under committed total
     let msg = "Submitted! A copy will be CC’d to you.";
     if (committedNumPicks != null && total < committedNumPicks) {
       const remain = committedNumPicks - total;
@@ -824,7 +826,6 @@ $("#submitBtn").addEventListener("click", async ()=>{
   }catch(err){
     console.error("EmailJS error details:",err);
     stopSubmitting(); 
-    // >>> Post-submit reminder if under committed total
     let msg = "Submitted! (Email copy failed to send.)";
     if (committedNumPicks != null && total < committedNumPicks) {
       const remain = committedNumPicks - total;
