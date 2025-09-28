@@ -763,6 +763,17 @@ $("#submitBtn").addEventListener("click", async ()=>{
     if(!okNoDouble){ stopSubmitting(); return; }
   }
 
+  // >>> PRE-SUBMIT confirm if UNDER a prior commitment
+  if (committedNumPicks != null && total < committedNumPicks) {
+    const remain = committedNumPicks - total;
+    const go = confirm(
+      `You previously committed to ${committedNumPicks} picks but are submitting ${total}.\n` +
+      `If you don't reach ${committedNumPicks} before kickoff, defaults will be applied to the remaining ${remain} pick(s).\n\n` +
+      `Continue to save anyway?`
+    );
+    if (!go) { stopSubmitting(); return; }
+  }
+
   const participantName = $("#nameSel").selectedOptions[0]?.textContent || "";
   const participantEmail = $("#emailBox").value.trim();
   const selectionsText  = buildSelectionsText(true);
