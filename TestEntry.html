@@ -1,23 +1,17 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Spread Pool — Week 3</title>
-
+<title>Spread Pool — Week 3 (Partial Picks)</title>
 <style>
 :root{
   --bg:#0d1117; --card:#111827; --text:#e6edf3; --muted:#9aa1b1; --border:#263142;
-  --chip:#1f2937; --accent:#2563eb;
-  --yellow:#ffcc15; --yellowText:#000;
-  --bad:#b42318;
-  --bearsNavy:#0B162A; --bearsOrange:#DC4405;
+  --chip:#1f2937; --accent:#2563eb; --yellow:#ffcc15; --yellowText:#000; --bad:#b42318;
+  --bearsNavy:#0B162A; --bearsOrange:#DC4405; --warn:#a66b00; --good:#1f883d;
 }
 *{box-sizing:border-box}
-body{
-  margin:0;background:var(--bg);color:var(--text);
-  font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.35;
-}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.35}
 .wrap{max-width:1150px;margin:0 auto;padding:24px}
 h1{margin:0 0 18px 0;font-size:28px}
 h2{margin:0 0 12px 0;font-size:20px}
@@ -25,53 +19,30 @@ h2{margin:0 0 12px 0;font-size:20px}
 .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin:12px 0}
 .grid{display:grid;grid-template-columns:1fr;gap:14px}
 @media(min-width:980px){.grid{grid-template-columns:1fr 1fr}}
-
-.row{
-  display:grid;
-  grid-template-columns:1fr auto minmax(290px,1fr);
-  gap:10px;align-items:center;
-  padding:10px;border-radius:10px;
-  background:rgba(255,255,255,.02);border:1px solid var(--border)
-}
+.row{display:grid;grid-template-columns:1fr auto minmax(290px,1fr);gap:10px;align-items:center;padding:10px;border-radius:10px;background:rgba(255,255,255,.02);border:1px solid var(--border)}
 .label{font-weight:800}
 .details{font-size:.95rem}
 .hdr{display:flex;align-items:center;justify-content:space-between}
-
-.badge{
-  display:inline-flex;align-items:center;justify-content:center;border-radius:999px;
-  padding:6px 12px;font-weight:800
-}
+.badge{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:6px 12px;font-weight:800}
 .badge.required{background:var(--yellow);color:var(--yellowText)}
 .badge.expired{background:#d92d20;color:#fff}
-.is-hidden{display:none !important;}
-
+.badge.locked{background:#0b7;color:#fff}
+.is-hidden{display:none !important}
 .answers{display:block;max-width:34rem}
-.answers label{
-  display:flex;align-items:center;gap:8px;margin:6px 0;cursor:pointer;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis
-}
+.answers label{display:flex;align-items:center;gap:8px;margin:6px 0;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .answers input{transform:translateY(1px)}
 .badges-under{margin-top:8px;display:flex;gap:8px;flex-wrap:wrap}
-
 .clear{display:inline-block;background:transparent;border:1px solid #3b4553;border-radius:8px;color:var(--muted);padding:6px 10px;cursor:pointer;margin-top:8px}
 .clear:hover{background:#2a3442;color:#fff}
-
 .checklist{margin:8px 0 0 0;padding:0;list-style:none;display:grid;gap:6px}
 .checklist li{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:10px;padding:8px 10px}
-.check-icon{
-  width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
-  font-weight:900;font-size:.9rem;flex:0 0 22px
-}
-.check-ok  .check-icon{background:#1f883d;color:#fff}
-.check-bad .check-icon{background:#b42318;color:#fff}
+.check-icon{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:900;font-size:.9rem;flex:0 0 22px}
+.check-ok  .check-icon{background:var(--good);color:#fff}
+.check-warn .check-icon{background:var(--warn);color:#fff}
+.check-bad .check-icon{background:var(--bad);color:#fff}
 .check-text{flex:1 1 auto}
-
 footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
-.footer{
-  display:flex;justify-content:space-between;align-items:center;gap:8px;
-  background:rgba(16,23,33,.85);backdrop-filter:blur(6px);
-  border-top:1px solid var(--border);padding:10px 14px
-}
+.footer{display:flex;justify-content:space-between;align-items:center;gap:8px;background:rgba(16,23,33,.85);backdrop-filter:blur(6px);border-top:1px solid var(--border);padding:10px 14px}
 .btn{border:none;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}
 .btn[disabled]{opacity:.5;cursor:not-allowed}
 .btn.primary{background:#238636;color:#fff}
@@ -79,100 +50,35 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
 .statusBox{font-weight:900;border:1px solid var(--border);border-radius:999px;padding:8px 14px}
 .status_bad{background:var(--bad);color:#fff}
 .status_good{background:#0B162A;color:#DC4405;border-color:#0B162A}
-
+.status_neutral{background:#2a3442;color:#e6edf3}
 .demo{position:fixed;top:14px;right:14px;background:#a15;color:#fff;border-radius:999px;padding:8px 12px;font-weight:800;z-index:10;box-shadow:0 6px 18px rgba(0,0,0,.35)}
-
-/* Loud/annoying payment alert */
-.pay-alert{
-  margin-top:10px;
-  background:#ff0044;
-  color:#fff;
-  border:2px dashed #fff;
-  border-radius:10px;
-  padding:10px 12px;
-  font-weight:900;
-  text-transform:uppercase;
-  letter-spacing:.5px;
-  box-shadow:0 0 0 3px rgba(255,0,68,.25), 0 6px 16px rgba(0,0,0,.35);
-  animation: waggle .9s ease-in-out infinite;
-}
-@keyframes waggle{
-  0%,100%{ transform:rotate(0deg) }
-  25%{ transform:rotate(1.5deg) }
-  50%{ transform:rotate(0deg) }
-  75%{ transform:rotate(-1.5deg) }
-}
-
-/* ---- SUBMIT OVERLAY (new) ---- */
-#submitOverlay{
-  position:fixed;inset:0;
-  background:rgba(0,0,0,.55);
-  display:flex;align-items:center;justify-content:center;
-  z-index:9999;
-}
+.pay-alert{margin-top:10px;background:#ff0044;color:#fff;border:2px dashed #fff;border-radius:10px;padding:10px 12px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;box-shadow:0 0 0 3px rgba(255,0,68,.25), 0 6px 16px rgba(0,0,0,.35);animation: waggle .9s ease-in-out infinite}
+@keyframes waggle{0%,100%{transform:rotate(0deg)}25%{transform:rotate(1.5deg)}50%{transform:rotate(0deg)}75%{transform:rotate(-1.5deg)}}
+#submitOverlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:9999}
 #submitOverlay[hidden]{display:none}
-.loader{
-  display:flex;flex-direction:column;align-items:center;gap:12px;
-  background:rgba(17,24,39,.9);
-  border:1px solid var(--border);
-  padding:18px 22px;border-radius:14px;
-  box-shadow:0 10px 30px rgba(0,0,0,.45);
-}
-.spinner{
-  width:42px;height:42px;border-radius:50%;
-  border:4px solid rgba(255,255,255,.2);
-  border-top-color:#fff;
-  animation: spin .9s linear infinite;
-}
+.loader{display:flex;flex-direction:column;align-items:center;gap:12px;background:rgba(17,24,39,.9);border:1px solid var(--border);padding:18px 22px;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.spinner{width:42px;height:42px;border-radius:50%;border:4px solid rgba(255,255,255,.2);border-top-color:#fff;animation: spin .9s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-/* =========================
-   MOBILE FOOTER READABILITY
-   (CSS only; no HTML/JS changes)
-   ========================= */
+/* Mobile footer tweaks */
 @media (max-width: 640px){
   .footer{
     flex-wrap:wrap;
     gap:10px;
     padding:12px 14px calc(12px + env(safe-area-inset-bottom));
-    background:#0f1623;        /* solid for contrast */
-    backdrop-filter:none;       /* remove blur for crisp text */
+    background:#0f1623;
+    backdrop-filter:none;
   }
-  .footer .m,
-  .footer .r,
-  .footer .l{ flex:1 1 100%; }  /* stack into rows */
-
-  .footer .m{ order:1; }        /* totals first */
-  .footer .r{ order:2; }        /* status second */
-  .footer .l{ order:3; display:flex; gap:8px; } /* buttons last */
-
+  .footer .m, .footer .r, .footer .l{ flex:1 1 100%; }
+  .footer .m{ order:1; }
+  .footer .r{ order:2; }
+  .footer .l{ order:3; display:flex; gap:8px; }
   #totalPicked, #statusBox{
-    display:block;
-    width:100%;
-    text-align:center;
-    font-weight:900;
-    font-size:1rem;
-    line-height:1.25;
-    padding:10px 12px;
-    border-radius:12px;
+    display:block;width:100%;text-align:center;font-weight:900;font-size:1rem;line-height:1.25;padding:10px 12px;border-radius:12px;
   }
-  #totalPicked{
-    background:#111827;
-    border:1px solid var(--border);
-  }
-  /* Keep status pill readable on both states */
-  #statusBox.status_bad{
-    background:var(--bad);
-    color:#fff;
-    border-color:var(--bad);
-  }
-  #statusBox.status_good{
-    background:var(--bearsNavy);
-    color:var(--bearsOrange);
-    border-color:var(--bearsNavy);
-  }
-
-  /* Bigger tap targets for buttons */
+  #totalPicked{ background:#111827;border:1px solid var(--border); }
+  #statusBox.status_bad{ background:var(--bad);color:#fff;border-color:var(--bad); }
+  #statusBox.status_good{ background:#0B162A;color:#DC4405;border-color:#0B162A; }
   .btn{ flex:1 1 0; font-size:1rem; padding:12px; }
 }
 </style>
@@ -181,7 +87,11 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
 <div class="wrap">
   <h1>Spread Pool — Week 3</h1>
 
-  <!-- Participant -->
+  <!-- GLOBAL DEADLINE BANNER -->
+  <div id="deadlineBanner" class="card" style="border:2px solid var(--border);">
+    <div id="deadlineText" class="small"></div>
+  </div>
+
   <section class="card">
     <h2>Participant</h2>
     <div class="grid" style="grid-template-columns:1fr 1fr">
@@ -194,118 +104,126 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
         <input id="emailBox" type="email" placeholder="you@example.com" style="width:100%;margin-top:6px;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text)" />
       </div>
     </div>
-
-    <!-- Payment alert (hidden by default) -->
     <div id="paymentAlert" class="pay-alert" hidden>Payment still needed</div>
+    <p id="partialBanner" class="small" style="margin-top:8px;background:#1f2937;border:1px solid var(--border);padding:10px;border-radius:10px">
+      <strong>Partial Picks Mode is ON:</strong> You may submit a few picks now and return later to add more. After kickoff, any unpicked games will receive the default per rules.
+    </p>
 
-    <p class="small muted" style="margin-top:8px">One email is sent to the organizer and you’ll be CC’d.</p>
+    <!-- Num Picks Plan -->
+    <div id="numPicksCard" class="card" style="margin:12px 0">
+      <h2>Num Picks Plan</h2>
+      <div class="small muted" id="numPicksHelp" style="margin-bottom:8px">
+        If you submit fewer than 7 picks, declare how many total picks you will make this week (max 12). When you later finish, you may not exceed this number.
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;max-width:420px">
+        <label for="numPicksPlan" class="small muted" style="min-width:140px">Planned total:</label>
+        <input id="numPicksPlan" type="number" min="1" max="12" step="1"
+               style="width:120px;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text)"/>
+        <span id="numPicksLockBadge" class="badge locked is-hidden">Committed</span>
+      </div>
+      <p id="numPicksNotice" class="small muted" style="margin-top:8px"></p>
+    </div>
   </section>
 
-  <!-- A + B sections -->
   <section class="grid">
     <div class="card" id="secA">
       <div class="hdr"><h2>NFL</h2><span class="badge" id="cntA">Answered: 0</span></div>
       <div id="listA" class="vstack small muted">Loading NFL…</div>
     </div>
-
     <div class="card" id="secB">
       <div class="hdr"><h2>College</h2><span class="badge" id="cntB">Answered: 0</span></div>
       <div id="listB" class="vstack small muted">Loading NCAA…</div>
     </div>
   </section>
 
-  <!-- Double -->
   <section class="card">
     <h2>Optional: Choose ONE “Double”</h2>
     <select id="doubleSel"><option value="">No double</option></select>
-    <p class="small muted">Only your currently selected, unexpired games appear here.</p>
+    <p class="small muted">Your saved picks (even if now locked) can be doubled only if they were doubled before kickoff.</p>
   </section>
 
-  <!-- Checks & Errors -->
   <section class="card">
-    <h2>Checks &amp; Errors</h2>
-    <p class="small muted">
-      Rules: select your name &amp; valid email; answer all games marked
-      <span class="badge required">Required</span>; ≥3 in NFL and ≥3 in College; total 7–12 picks;
-      if you choose a Double, it must be one of your selections.
-    </p>
-
+    <h2>Checks &amp; Notices</h2>
+    <p class="small muted">You can submit any number of picks. Notices below won’t block submission; they’re just reminders. Items marked ✕ are hard blockers.</p>
     <ul id="checkList" class="checklist">
       <li id="chkName"     class="check-bad"><span class="check-icon">✕</span><span class="check-text">Name selected</span></li>
       <li id="chkEmail"    class="check-bad"><span class="check-icon">✕</span><span class="check-text">Valid email</span></li>
-      <li id="chkReqNFL"   class="check-bad"><span class="check-icon">✕</span><span class="check-text">Mandatory NFL game picked</span></li>
-      <li id="chkReqNCAA"  class="check-bad"><span class="check-icon">✕</span><span class="check-text">Mandatory College game picked</span></li>
-      <li id="chkAtLeastA" class="check-bad"><span class="check-icon">✕</span><span class="check-text">≥ 3 answers in NFL</span></li>
-      <li id="chkAtLeastB" class="check-bad"><span class="check-icon">✕</span><span class="check-text">≥ 3 answers in College</span></li>
-      <li id="chkRange"    class="check-bad"><span class="check-icon">✕</span><span class="check-text">Between 7 and 12 total games</span></li>
+      <li id="chkReqNFL"   class="check-warn"><span class="check-icon">!</span><span class="check-text">Mandatory NFL game picked (for any unexpired mandatory)</span></li>
+      <li id="chkReqNCAA"  class="check-warn"><span class="check-icon">!</span><span class="check-text">Mandatory College game picked (for any unexpired mandatory)</span></li>
+      <li id="chkAtLeastA" class="check-warn"><span class="check-icon">!</span><span class="check-text">≥ 3 answers in NFL (advised)</span></li>
+      <li id="chkAtLeastB" class="check-warn"><span class="check-icon">!</span><span class="check-text">≥ 3 answers in College (advised)</span></li>
+      <li id="chkRange"    class="check-warn"><span class="check-icon">!</span><span class="check-text">Aim for 7–12 total games; defaults apply to missing</span></li>
+      <li id="chkNumPicks" class="check-bad"><span class="check-icon">✕</span><span class="check-text">NumPicks plan/commitment satisfied</span></li>
       <li id="chkDouble"   class="check-bad"><span class="check-icon">✕</span><span class="check-text">If Double chosen, it’s one of your selections</span></li>
-      <li id="chkDeadline" class="check-bad"><span class="check-icon">✕</span><span class="check-text">Global picks deadline not passed</span></li>
     </ul>
   </section>
 
-  <!-- Summary -->
   <section class="card">
     <h2>Summary of Chosen Answer(s)</h2>
     <div id="summary"><p class="small muted">Your selections will appear here.</p></div>
   </section>
 
-  <!-- Footer -->
   <footer>
     <div class="footer">
       <div class="l">
-        <button id="submitBtn" class="btn primary">Submit</button>
-        <button id="resetBtn"  class="btn ghost">Reset</button>
+        <button id="submitBtn" class="btn primary">Submit / Save Progress</button>
+        <button id="resetBtn"  class="btn ghost">Reset (this page only)</button>
       </div>
       <div class="m">
         <span id="totalPicked" class="statusBox">Total games picked: 0 (NFL 0 + NCAA 0)</span>
       </div>
       <div class="r">
-        <span id="statusBox" class="statusBox status_bad">ERRORS DETECTED</span>
+        <span id="statusBox" class="statusBox status_neutral">PARTIAL OK</span>
       </div>
     </div>
   </footer>
 </div>
 
 <div id="demoBadge" class="demo" hidden>DEMO MODE</div>
-
-<!-- Submitting overlay (new) -->
 <div id="submitOverlay" hidden aria-live="polite" aria-label="Submitting">
-  <div class="loader">
-    <div class="spinner" role="status" aria-hidden="true"></div>
-    <div>Submitting… please wait</div>
-  </div>
+  <div class="loader"><div class="spinner" role="status" aria-hidden="true"></div><div>Submitting… please wait</div></div>
 </div>
 
 <script>
 /* ===================== CONFIG ===================== */
 const CSV_URL_PARTICIPANTS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRj5ieGlGWurIlGuongV3vJhWWAwCYsEFVhEEtjwOG7RiFwTRZkM_JXtjb8QtwsdzhaXPMDRPyU7qZC/pub?gid=0&single=true&output=csv";
-const CSV_URL_NFL          = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTlDHj23hZVpg6_vL3dL4Jmi2ZEqCZSsQHZlAN0f0pRlamUqQeUR4IhCv4_XxQawLa-O4adr1Cyexqv/pub?gid=2109553148&single=true&output=csv";
-const CSV_URL_NCAA         = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTlDHj23hZVpg6_vL3dL4Jmi2ZEqCZSsQHZlAN0f0pRlamUqQeUR4IhCv4_XxQawLa-O4adr1Cyexqv/pub?gid=0&single=true&output=csv";
+const CSV_URL_NFL          = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ_Qk3YChfaFfABG52eM0nIIEQdD_OaXh6-MLUPTZMpc7Tt2hlVKlTfyO_o5pIK1NDxzXUsLwqkYOXs/pub?gid=2109553148&single=true&output=csv";
+const CSV_URL_NCAA         = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ_Qk3YChfaFfABG52eM0nIIEQdD_OaXh6-MLUPTZMpc7Tt2hlVKlTfyO_o5pIK1NDxzXUsLwqkYOXs/pub?gid=0&single=true&output=csv";
 
-const CURRENT_WEEK = 3;
-const PICKS_DEADLINE_UTC = "2025-09-19T21:30:00Z";
+/* Picks log (must include / will receive NumPicks) */
+const CSV_URL_PICKS        = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRys9xayYsuEqgGB09v1nOrwdD0U5c1Hb1ksLqQxTSBzLi3AKGeg9yPt1-eY1fry_0H-KcZLCQ1h8H6/pub?gid=1991283502&single=true&output=csv";
 
-/* EmailJS (unchanged) */
+const CURRENT_WEEK = 5;
+const ALLOW_PARTIAL = true;
+const TOTAL_TARGET = 7;
+const MAX_PICKS = 12;
+const DEFAULTS_POLICY_TEXT = "Unpicked games receive the default per your rules.";
+
+/* >>> NEW: GLOBAL PICK DEADLINE (UTC) <<< */
+const PICKS_DEADLINE_UTC = "2025-10-03T21:30:00Z";
+
+/* EmailJS */
 const EMAILJS_SERVICE_ID = "service_txqdfck";
 const EMAILJS_TEMPLATE_ID = "template_o8du7pt";
 const EMAILJS_PUBLIC_KEY  = "YB5J-75APa-V6Giku";
 
-/* Google Apps Script Web App URL */
-const GSHEET_WEBAPP_URL   = "https://script.google.com/macros/s/AKfycbwbn6FNiK1clBgO5ZGmvhrMX8KBCmTO0pLbDIU9S3CnjAZ_SgYqHBf0KOOPGbFKOxvxFw/exec";
+/* Google Apps Script Web App URL (handles upsert) */
+const GSHEET_WEBAPP_URL   = "https://script.google.com/macros/s/AKfycbzaJaoLIKZ5uDliHD3Cq_O_bnTlrlxYEeW2tQr904020FrGQVFxLVgpUNXDwiR3V63v/exec";
 
 /* Require sheet write? */
 const REQUIRE_SHEETS_OK   = true;
-
 /* Demo mode only suppresses EmailJS */
 const DEMO_MODE = false;
 /* ======================  END CONFIG  ======================= */
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
-const escapeHtml = s => String(s??"").replace(/[&<>"]/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[m]));
+const escapeHtml = s => String(s??"").replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;","\"":"&quot;"}[m]));
+const canon = s => String(s||"").toLowerCase().replace(/#\d+\s*/g,'').replace(/[()]/g,'').replace(/\bsta?te\b/g,'state').replace(/\bst\.?\b/g,'state').replace(/[^a-z0-9]+/g,' ').trim();
 
 /* ---- CSV helpers ---- */
 function fetchCSV(url){
+  if(!url) return Promise.reject(new Error('CSV URL missing'));
   const bust = (url.includes("?") ? "&" : "?") + "_=" + Date.now();
   return fetch(url + bust, {mode: "cors", cache:"no-store"})
     .then(r => { if(!r.ok) throw new Error("CSV fetch failed: "+r.status); return r.text(); });
@@ -316,71 +234,27 @@ function parseCSV(text){
   return rows.map(r => Object.fromEntries(hdr.map((h,i)=>[h.trim(), (r[i]??"").trim()])));
 }
 
-/* ---------- ET (CSV) → local viewer time ---------- */
-function stripWeekday(dateStr){
-  if(!dateStr) return "";
-  return String(dateStr)
-    .replace(/^\s*[A-Za-z]+day,\s*/i, "")
-    .replace(/^\s*[A-Za-z]{3},\s*/i, "")
-    .trim();
-}
+/* ---------- ET → local viewer time ---------- */
+function stripWeekday(dateStr){ if(!dateStr) return ""; return String(dateStr).replace(/^\s*[A-Za-z]+day,\s*/i, "").replace(/^\s*[A-Za-z]{3},\s*/i, "").trim(); }
 function parseDateToken(s){
   s = stripWeekday(String(s||"").replace(/\s+/g," ").trim());
   let m = s.replace(/\./g,'').match(/^([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})$/);
-  if(m){
-    const L={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,sept:9,oct:10,nov:11,dec:12,august:8,september:9,october:10,november:11,december:12};
-    const mo=L[m[1].toLowerCase()]; if(mo) return {y:+m[3], mo, d:+m[2]};
-  }
-  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if(m) return {y:+m[3], mo:+m[1], d:+m[2]};
-  m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if(m) return {y:+m[1], mo:+m[2], d:+m[3]};
+  if(m){ const L={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,sept:9,oct:10,nov:11,dec:12,august:8,september:9,october:10,november:11,december:12}; const mo=L[m[1].toLowerCase()]; if(mo) return {y:+m[3], mo, d:+m[2]}; }
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); if(m) return {y:+m[3], mo:+m[1], d:+m[2]};
+  m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/); if(m) return {y:+m[1], mo:+m[2], d:+m[3]};
   return null;
 }
-function parseTime12(s){
-  s=String(s||"12:00 PM").trim();
-  const m=s.match(/^(\d{1,2}):(\d{2})\s*([AP]M)$/i);
-  if(!m) return {h:12,mi:0};
-  let {1:h,2:mi,3:ampm}=m; h=+h; mi=+mi; ampm=ampm.toUpperCase();
-  if(ampm==="PM"&&h!==12) h+=12; if(ampm==="AM"&&h===12) h=0;
-  return {h,mi};
-}
-function getETOffsetMinutes(y,mo,d){
-  const probeUTC = Date.UTC(y,mo-1,d,12,0);
-  const parts = new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',timeZoneName:'shortOffset'}).formatToParts(new Date(probeUTC));
-  const z = (parts.find(p=>p.type==='timeZoneName')||{}).value || 'GMT-05';
-  const m = z.match(/GMT([+-]\d{1,2})(?::(\d{2}))?/); if(!m) return -300;
-  const hr = parseInt(m[1],10), mm = m[2]?parseInt(m[2],10):0;
-  return hr*60 + (hr<0?-mm:mm);
-}
-function ETtoLocal(dateStr,timeStr){
-  const d=parseDateToken(dateStr);
-  if(!d) return {date:null,day:"—",time:"—",iso:""};
-  const t=parseTime12(timeStr);
-  const offMin=getETOffsetMinutes(d.y,d.mo,d.d);
-  const utcMs = Date.UTC(d.y,d.mo-1,d.d,t.h,t.mi) - offMin*60*1000;
-  const dt    = new Date(utcMs);
-  if (isNaN(dt.getTime())) return {date:null,day:"—",time:"—",iso:""};
-  const day   = new Intl.DateTimeFormat(undefined,{weekday:'long'}).format(dt);
-  const time  = new Intl.DateTimeFormat(undefined,{hour:'numeric',minute:'2-digit'}).format(dt);
-  return {date:dt, day, time, iso:dt.toISOString()};
-}
-
-/* Required first, then by time */
-function sortRequiredFirst(arr){
-  return arr.map((r,i)=>({...r,__i:i}))
-            .sort((a,b)=>{
-              const req=(b.required===true)-(a.required===true); if(req) return req;
-              const at=a.iso||'9999-12-31T23:59:59Z', bt=b.iso||'9999-12-31T23:59:59Z';
-              const t=at.localeCompare(bt); if(t) return t;
-              return a.__i-b.__i;
-            })
-            .map(({__i,...r})=>r);
-}
+function parseTime12(s){ s=String(s||"12:00 PM").trim(); const m=s.match(/^(\d{1,2}):(\d{2})\s*([AP]M)$/i); if(!m) return {h:12,mi:0}; let {1:h,2:mi,3:ampm}=m; h=+h; mi=+mi; ampm=ampm.toUpperCase(); if(ampm==="PM"&&h!==12) h+=12; if(ampm==="AM"&&h===12) h=0; return {h,mi}; }
+function getETOffsetMinutes(y,mo,d){ const probeUTC = Date.UTC(y,mo-1,d,12,0); const parts = new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',timeZoneName:'shortOffset'}).formatToParts(new Date(probeUTC)); const z = (parts.find(p=>p.type==='timeZoneName')||{}).value || 'GMT-05'; const m = z.match(/GMT([+-]\d{1,2})(?::(\d{2}))?/); if(!m) return -300; const hr = parseInt(m[1],10), mm = m[2]?parseInt(m[2],10):0; return hr*60 + (hr<0?-mm:mm); }
+function ETtoLocal(dateStr,timeStr){ const d=parseDateToken(dateStr); if(!d) return {date:null,day:"—",time:"—",iso:""}; const t=parseTime12(timeStr); const offMin=getETOffsetMinutes(d.y,d.mo,d.d); const utcMs = Date.UTC(d.y,d.mo-1,d.d,t.h,t.mi) - offMin*60*1000; const dt=new Date(utcMs); if (isNaN(dt.getTime())) return {date:null,day:"—",time:"—",iso:""}; const day=new Intl.DateTimeFormat(undefined,{weekday:'long'}).format(dt); const time=new Intl.DateTimeFormat(undefined,{hour:'numeric',minute:'2-digit'}).format(dt); return {date:dt, day, time, iso:dt.toISOString()}; }
+function sortRequiredFirst(arr){return arr.map((r,i)=>({...r,__i:i})).sort((a,b)=>{const req=(b.required===true)-(a.required===true); if(req) return req; const at=a.iso||'9999-12-31T23:59:59Z', bt=b.iso||'9999-12-31T23:59:59Z'; const t=at.localeCompare(bt); if(t) return t; return a.__i-b.__i;}).map(({__i,...r})=>r)}
 
 /* ============== STATE ============== */
 let gamesA=[], gamesB=[];
-let paymentByName = new Map(); // name -> payment string ("" means unpaid)
+let paymentByName = new Map();
+let existingByQID = new Map();
+/* committed number of picks for this week (from prior submission) */
+let committedNumPicks = null;
 
 /* ============== CSV → GAMES ============== */
 function normalizeGames(csvRows, prefix){
@@ -394,85 +268,40 @@ function normalizeGames(csvRows, prefix){
     const loc  = String(r["Location"]||"").trim();
     const spr  = String(r["Spread"]||r["Line"]||"").trim();
     const req  = /^y/i.test(String(r["Required"]||""));
-    if(!away || !home) continue;
-    if(!spr) continue;
+    if(!away || !home) continue; if(!spr) continue;
     const t = ETtoLocal(date, time);
-    out.push({
-      qid: `${prefix}${++idx}`,
-      away, home, tv, loc, spread: spr,
-      start: t.date, day: t.day, timeText: t.time, iso: t.iso,
-      required: req
-    });
+    out.push({ qid: `${prefix}${++idx}`, away, home, tv, loc, spread: spr, start: t.date, day: t.day, timeText: t.time, iso: t.iso, required: req });
   }
   return sortRequiredFirst(out);
 }
 
-/* -------- Favorite info (plus who & line) -------- */
 function favoriteInfo(away, home, spreadText){
   const spreadRaw = String(spreadText||"");
   const numMatch = spreadRaw.match(/[+-]?\d+(?:\.\d+)?/g);
   const lineStr = numMatch ? numMatch[numMatch.length - 1] : "";
   const lineNum = lineStr ? Math.abs(parseFloat(lineStr)) : null;
-
-  const canon = s => String(s||"")
-    .replace(/#\d+\s*/g,'')
-    .toLowerCase()
-    .replace(/[()]/g,'')
-    .replace(/\bsta?te\b/g,'state')
-    .replace(/\bst\.?\b/g,'state')
-    .replace(/[^a-z0-9]+/g,' ')
-    .trim();
-
   const toTokens = s => canon(s).split(/\s+/).filter(Boolean);
-
-  function phraseHitLen(teamTok, hay){
-    if(teamTok.length === 0 || hay.length === 0) return 0;
-    for(let i=0;i<=hay.length - teamTok.length;i++){
-      let ok=true;
-      for(let j=0;j<teamTok.length;j++){
-        if(hay[i+j] !== teamTok[j]){ ok=false; break; }
-      }
-      if(ok) return teamTok.length;
-    }
-    return 0;
-  }
-
-  const spreadTokens = toTokens(spreadRaw);
-  const awayTokens   = toTokens(away);
-  const homeTokens   = toTokens(home);
-
+  function phraseHitLen(teamTok, hay){ if(teamTok.length===0||hay.length===0) return 0; for(let i=0;i<=hay.length-teamTok.length;i++){ let ok=true; for(let j=0;j<teamTok.length;j++){ if(hay[i+j]!==teamTok[j]){ok=false;break;} } if(ok) return teamTok.length; } return 0; }
+  const spreadTokens = toTokens(spreadRaw), awayTokens = toTokens(away), homeTokens = toTokens(home);
   const awayHit = phraseHitLen(awayTokens, spreadTokens);
   const homeHit = phraseHitLen(homeTokens, spreadTokens);
-
-  let favored = null, favoredTeam = "", favoredMinus = "";
-  if(awayHit > homeHit){ favored = "away"; favoredTeam = away; }
-  else if(homeHit > awayHit){ favored = "home"; favoredTeam = home; }
-
+  let favored=null, favoredTeam="", favoredMinus="";
+  if(awayHit>homeHit){ favored="away"; favoredTeam=away; }
+  else if(homeHit>awayHit){ favored="home"; favoredTeam=home; }
   if(favored && lineNum!=null) favoredMinus = `-${lineNum}`;
-
   const fmt = n => (String(n).startsWith('-') ? n : `-${n}`);
-  return {
-    awayLabel: favored==="away" && lineStr ? `${away} (${fmt(lineStr)})` : away,
-    homeLabel: favored==="home" && lineStr ? `${home} (${fmt(lineStr)})` : home,
-    favoriteLine: spreadRaw || "—",
-    favored, favoredTeam, favoredMinus
-  };
+  return { awayLabel: favored==="away" && lineStr ? `${away} (${fmt(lineStr)})` : away,
+           homeLabel: favored==="home" && lineStr ? `${home} (${fmt(lineStr)})` : home,
+           favoriteLine: spreadRaw || "—", favored, favoredTeam, favoredMinus };
 }
 
-/* ============== UI BUILDERS ============== */
 function buildRow(g){
-  const el = document.createElement("div");
-  el.className = "row";
-  el.dataset.qid = g.qid;
-
+  const el = document.createElement("div"); el.className = "row"; el.dataset.qid = g.qid;
   const fav = favoriteInfo(g.away, g.home, g.spread);
-
   const answers = `
     <label><input type="radio" name="${escapeHtml(g.qid)}" value="away"> ${escapeHtml(fav.awayLabel)}</label>
     <label><input type="radio" name="${escapeHtml(g.qid)}" value="home"> ${escapeHtml(fav.homeLabel)}</label>
-    <button type="button" class="clear" data-clear="${escapeHtml(g.qid)}">Clear</button>
-  `;
-
+    <button type="button" class="clear" data-clear="${escapeHtml(g.qid)}">Clear</button>`;
   el.innerHTML = `
     <div>
       <div class="label">${escapeHtml(g.away)} @ ${escapeHtml(g.home)}</div>
@@ -486,86 +315,147 @@ function buildRow(g){
       <div class="badges-under">
         ${g.required ? `<span class="badge required">Required</span>` : ``}
         <span class="badge expired is-hidden">Expired</span>
+        <span class="badge locked is-hidden">Locked (kept)</span>
       </div>
     </div>
     <div></div>
-    <div class="answers">${answers}</div>
-  `;
+    <div class="answers">${answers}</div>`;
   return el;
 }
 function renderSection(container, list){
   container.innerHTML = "";
-  if(!list.length){
-    container.innerHTML = `<p class="small muted">No games found (check sheet headers and “Spread” column).</p>`;
-    return;
-  }
+  if(!list.length){ container.innerHTML = `<p class="small muted">No games found (check sheet headers and “Spread” column).</p>`; return; }
   list.forEach(g => container.appendChild(buildRow(g)));
 }
 
-/* expiry UI */
+/* ========== DEADLINE HELPERS ========== */
+const DEADLINE_MS = Date.parse(PICKS_DEADLINE_UTC || "") || 0;
+function isAfterDeadline(){ return DEADLINE_MS > 0 && Date.now() >= DEADLINE_MS; }
+function fmtCountdown(ms){
+  if(ms <= 0) return "0s";
+  const s = Math.floor(ms/1000);
+  const d = Math.floor(s/86400);
+  const h = Math.floor((s%86400)/3600);
+  const m = Math.floor((s%3600)/60);
+  const sec = s%60;
+  const parts = [];
+  if(d) parts.push(`${d}d`);
+  if(h || d) parts.push(`${h}h`);
+  if(m || h || d) parts.push(`${m}m`);
+  parts.push(`${sec}s`);
+  return parts.join(" ");
+}
+function setAllInputsDisabled(disabled){
+  $$('input, select, button').forEach(el=>{
+    // allow Reset to always be usable even after close?
+    if(el.id === 'resetBtn') return;
+    el.disabled = disabled;
+  });
+}
+function refreshDeadlineUI(){
+  const banner = $("#deadlineBanner");
+  const txt = $("#deadlineText");
+  if(!DEADLINE_MS){
+    banner.classList.remove("is-hidden");
+    txt.textContent = "No global deadline configured.";
+    return;
+  }
+  const now = Date.now();
+  if(isAfterDeadline()){
+    banner.classList.remove("is-hidden");
+    const when = new Date(DEADLINE_MS).toUTCString();
+    txt.innerHTML = `<strong style="color:#fff">PICKS CLOSED</strong> — deadline passed at <strong>${when}</strong> (UTC).`;
+    setAllInputsDisabled(true);
+    $("#statusBox").textContent = "PICKS CLOSED";
+    $("#statusBox").className = "statusBox status_bad";
+  }else{
+    const msLeft = DEADLINE_MS - now;
+    banner.classList.remove("is-hidden");
+    const when = new Date(DEADLINE_MS).toUTCString();
+    txt.innerHTML = `Picks are <strong style="color:#0f0">OPEN</strong>. Deadline: <strong>${when}</strong> (UTC) — closes in <strong>${fmtCountdown(msLeft)}</strong>.`;
+    setAllInputsDisabled(false);
+  }
+}
+
+/* expiry UI per game */
 function refreshExpiryUI(){
   const updateFor = (rows, games) => {
     rows.forEach(row=>{
-      const qid = row.dataset.qid;
-      const g = games.find(x=>x.qid===qid);
+      const qid = row.dataset.qid; const g = games.find(x=>x.qid===qid);
       const expired = g?.start ? (Date.now() >= g.start.getTime()) : false;
-
-      const pill = row.querySelector('.badge.expired');
-      if (pill) pill.classList.toggle('is-hidden', !expired);
-
       const radios = row.querySelectorAll('input[type="radio"]');
-      radios.forEach(i=>{
-        if(expired){
-          i.disabled = true;
-          i.checked = false;
-        }else{
-          i.disabled = false;
-        }
-      });
+      const anyChecked = [...radios].some(r=>r.checked);
+      const pillExpired = row.querySelector('.badge.expired');
+      const pillLocked  = row.querySelector('.badge.locked');
+      if(expired){
+        radios.forEach(i=>{ i.disabled = true; });
+        if(anyChecked){ pillLocked?.classList.remove('is-hidden'); pillExpired?.classList.add('is-hidden'); }
+        else{ pillExpired?.classList.remove('is-hidden'); pillLocked?.classList.add('is-hidden'); }
+      }else{
+        radios.forEach(i=>{ i.disabled = isAfterDeadline(); }); // respect global deadline too
+        pillExpired?.classList.add('is-hidden'); pillLocked?.classList.add('is-hidden');
+      }
     });
   };
   updateFor([...document.querySelectorAll('#listA .row')], gamesA);
   updateFor([...document.querySelectorAll('#listB .row')], gamesB);
 }
 
-/* ============== DOUBLE, SUMMARY, CHECKS ============== */
 function countChecked(container){ return container.querySelectorAll('input[type="radio"]:checked').length; }
+function totalChecked(){ return countChecked($("#listA")) + countChecked($("#listB")); }
 
-/* Double dropdown shows picked team */
+/* Double dropdown shows picked team (even if now locked) */
 function refreshDoubleChoices(){
-  const sel = $("#doubleSel");
-  const keep = sel.value;
-
+  const sel = $("#doubleSel"); const keep = sel.value;
   const chosen = $$('input[type="radio"]:checked').map(r => {
-      const row = r.closest(".row");
-      const teamLabel = (r.parentElement?.textContent || "").trim();
+      const row = r.closest(".row"); const teamLabel = (r.parentElement?.textContent || "").trim();
       return { qid: r.name, teamLabel, row };
-    })
-    .filter(o => !o.row.querySelector('.badge.expired:not(.is-hidden)'));
-
-  sel.innerHTML = `<option value="">No double</option>` + chosen
-    .map(o => `<option value="${escapeHtml(o.qid)}">${escapeHtml(o.teamLabel)}</option>`)
-    .join("");
-
+    });
+  sel.innerHTML = `<option value="">No double</option>` + chosen.map(o => `<option value="${escapeHtml(o.qid)}">${escapeHtml(o.teamLabel)}</option>`).join("");
   if(keep && chosen.some(o=>o.qid===keep)) sel.value = keep;
 }
 
-/* ---- Build selections text (email flag controls extra game line) ---- */
+/* NumPicks UI helpers */
+function updateNumPicksUI(){
+  const planInput = $("#numPicksPlan");
+  const lockBadge = $("#numPicksLockBadge");
+  const notice = $("#numPicksNotice");
+  const tot = totalChecked();
+
+  if(committedNumPicks!=null){
+    planInput.value = committedNumPicks;
+    planInput.disabled = true;
+    lockBadge.classList.remove("is-hidden");
+    const remain = Math.max(0, committedNumPicks - tot);
+    notice.textContent = remain>0
+      ? `You committed to ${committedNumPicks} picks. You currently have ${tot}. You still need ${remain} more.`
+      : `You committed to ${committedNumPicks} picks. You have reached your committed total. You may still change which games (not the count).`;
+  }else{
+    lockBadge.classList.add("is-hidden");
+    planInput.disabled = false;
+    if(tot < 7){
+      planInput.min = Math.max(1, tot);
+      planInput.max = MAX_PICKS;
+      if(!planInput.value) planInput.value = String(Math.max(tot, 7));
+      notice.textContent = `With fewer than 7 picks, declare your intended total (between ${Math.max(tot,1)} and ${MAX_PICKS}).`;
+    }else{
+      notice.textContent = `If you submit ${tot} picks (7–12), you’ll be asked to commit to ${tot}. You can still change which games later, not the count.`;
+    }
+  }
+}
+
+/* Build text summary */
 function buildSelectionsText(includeGameLine=false){
   const name  = $("#nameSel").selectedOptions[0]?.textContent || "";
   const email = $("#emailBox").value.trim();
   const stamp = new Date().toISOString();
-
   const checked = $$('input[type="radio"]:checked').map(r=>{
-    const row = r.closest(".row");
-    const qid = row.dataset.qid;
+    const row = r.closest(".row"); const qid = row.dataset.qid;
     const team= r.value === "away" ? row.querySelector(".answers label:nth-child(1)")?.textContent.trim()
                                    : row.querySelector(".answers label:nth-child(2)")?.textContent.trim();
     return {qid, team};
   }).sort((a,b)=>a.qid.localeCompare(b.qid));
-
   const dbl = $("#doubleSel").value;
-
   const lines = [];
   lines.push(`Name: ${name}`);
   lines.push(`Email: ${email}`);
@@ -577,217 +467,270 @@ function buildSelectionsText(includeGameLine=false){
     const tag = (o.qid===dbl) ? " [DOUBLE]" : "";
     const teamClean = o.team?.replace(/^away|^home/i,'').trim() || o.team || "";
     lines.push(`${o.qid}:${teamClean}${tag}`);
-
     if(includeGameLine){
       const g = (o.qid.startsWith("A") ? gamesA : gamesB).find(x=>x.qid===o.qid);
-      if(g){
-        const fav = favoriteInfo(g.away, g.home, g.spread);
-        let span = "Even";
-        if(fav.favoredTeam && fav.favoredMinus){
-          span = `${fav.favoredTeam} ${fav.favoredMinus}`;
-        }else if(fav.favoriteLine && fav.favoriteLine !== "—"){
-          span = fav.favoriteLine;
-        }
+      if(g){ const fav = favoriteInfo(g.away, g.home, g.spread); let span = "Even";
+        if(fav.favoredTeam && fav.favoredMinus){ span = `${fav.favoredTeam} ${fav.favoredMinus}`; }
+        else if(fav.favoriteLine && fav.favoriteLine !== "—"){ span = fav.favoriteLine; }
         lines.push(`  • ${g.away} @ ${g.home} — ${span}`);
       }
     }
   });
-
   return lines.join("\n");
 }
 
-/* Build payload with a flat rows[] for the sheet */
-function collectSubmission(){
+/* Collect submission w/ NumPicks */
+function collectSubmission(finalNumPicks){
   const name  = $("#nameSel").selectedOptions[0]?.textContent || "";
   const email = $("#emailBox").value.trim();
   const dblQid = $("#doubleSel").value || "";
   const timestamp = new Date().toISOString();
-
   const picks = $$('input[type="radio"]:checked').map(r=>{
-    const row = r.closest(".row");
-    const qid = row.dataset.qid;
-    const team= (r.parentElement?.textContent || "").trim();
+    const row = r.closest(".row"); const qid = row.dataset.qid; const team= (r.parentElement?.textContent || "").trim();
     return { qid, team, isDouble: (qid===dblQid) };
   }).sort((a,b)=>a.qid.localeCompare(b.qid));
-
   const rows = picks.map(p => ({
-    timestamp,
-    week: CURRENT_WEEK,
-    name,
-    email,
-    qid: p.qid,
-    choice: p.team,
-    isDouble: !!p.isDouble
+    timestamp, week: CURRENT_WEEK, name, email, qid: p.qid, choice: p.team, isDouble: !!p.isDouble, NumPicks: finalNumPicks
   }));
-
   const doubleTeam = picks.find(x=>x.isDouble)?.team || "";
-
+  const total = picks.length;
   return {
-    name, email,
-    week: CURRENT_WEEK,
-    timestamp,
-    double_qid: dblQid,
-    double_team: doubleTeam,
-    picks,
-    rows,
+    name, email, week: CURRENT_WEEK, timestamp,
+    double_qid: dblQid, double_team: doubleTeam,
+    picks, rows, total_selected: total, target_total: TOTAL_TARGET,
+    missing: Math.max(0, TOTAL_TARGET-total), partial: ALLOW_PARTIAL,
+    NumPicks: finalNumPicks,
     summary: buildSelectionsText(false)
   };
 }
 
-function renderSummary(){
-  $("#summary").innerHTML = `<pre style="white-space:pre-wrap;margin:0">${escapeHtml(buildSelectionsText(false))}</pre>`;
-}
-function setCheck(sel, ok){
-  const li = $(sel);
-  li.classList.toggle("check-ok", ok);
-  li.classList.toggle("check-bad", !ok);
-  li.querySelector(".check-icon").textContent = ok ? "✓" : "✕";
-}
+function renderSummary(){ $("#summary").innerHTML = `<pre style="white-space:pre-wrap;margin:0">${escapeHtml(buildSelectionsText(false))}</pre>`; }
+function setCheck(sel, state){ const li=$(sel); li.classList.toggle("check-ok", state===true); li.classList.toggle("check-bad", state===false); li.classList.toggle("check-warn", state==='warn'); li.querySelector(".check-icon").textContent = state===true?"✓":(state===false?"✕":"!"); }
+
+/* Validate including NumPicks logic + DEADLINE */
 function validateAll(){
+  // Hard stop: global deadline
+  if(isAfterDeadline()){
+    setCheck("#chkName",  false);
+    setCheck("#chkEmail", false);
+    setCheck("#chkReqNFL",'warn'); setCheck("#chkReqNCAA",'warn');
+    setCheck("#chkAtLeastA",'warn'); setCheck("#chkAtLeastB",'warn');
+    setCheck("#chkRange",'warn'); setCheck("#chkDouble", false); setCheck("#chkNumPicks", false);
+    $("#statusBox").textContent = "PICKS CLOSED"; $("#statusBox").className = "statusBox status_bad";
+    return false;
+  }
+
   const nameOk  = !!$("#nameSel").value;
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test($("#emailBox").value.trim());
-
-  const a = countChecked($("#listA"));
-  const b = countChecked($("#listB"));
-  const total = a + b;
-
-  const reqAOk = !gamesA.some(g=>{
-    if(!g.required) return false;
-    const expired = g.start ? (Date.now() >= g.start.getTime()) : false;
-    if(expired) return false;
-    const row = $(`#listA .row[data-qid="${CSS.escape(g.qid)}"]`);
-    return !row?.querySelector('input[type="radio"]:checked');
-  });
-  const reqBOk = !gamesB.some(g=>{
-    if(!g.required) return false;
-    const expired = g.start ? (Date.now() >= g.start.getTime()) : false;
-    if(expired) return false;
-    const row = $(`#listB .row[data-qid="${CSS.escape(g.qid)}"]`);
-    return !row?.querySelector('input[type="radio"]:checked');
-  });
-
-  const atLeastA = a >= 3;
-  const atLeastB = b >= 3;
-  const rangeOk  = total >= 7 && total <= 12;
-
-  const dbl = $("#doubleSel").value;
-  const chosenQIDs = $$('input[type="radio"]:checked').map(r=>r.name);
+  const a = countChecked($("#listA")); const b = countChecked($("#listB")); const total = a + b;
+  const reqAOk = !gamesA.some(g=>{ if(!g.required) return false; const expired = g.start ? (Date.now() >= g.start.getTime()) : false; if(expired) return false; const row = $(`#listA .row[data-qid="${CSS.escape(g.qid)}"]`); return !row?.querySelector('input[type="radio"]:checked'); });
+  const reqBOk = !gamesB.some(g=>{ if(!g.required) return false; const expired = g.start ? (Date.now() >= g.start.getTime()) : false; if(expired) return false; const row = $(`#listB .row[data-qid="${CSS.escape(g.qid)}"]`); return !row?.querySelector('input[type="radio"]:checked'); });
+  const atLeastA = a >= 3; const atLeastB = b >= 3;
+  const rangeWarn = !(total >= 7 && total <= MAX_PICKS);
+  const dbl = $("#doubleSel").value; const chosenQIDs = $$('input[type="radio"]:checked').map(r=>r.name);
   const doubleOk = !dbl || chosenQIDs.includes(dbl);
 
-  const globalDeadlineOk = (new Date() <= new Date(PICKS_DEADLINE_UTC) || !PICKS_DEADLINE_UTC);
+  let numPicksOk = true;
+  const planEl = $("#numPicksPlan");
+  const planned = planEl.value ? parseInt(planEl.value,10) : NaN;
 
-  setCheck("#chkName", nameOk);
+  if(total > MAX_PICKS){ numPicksOk = false; }
+  if(committedNumPicks!=null){
+    if(total > committedNumPicks){ numPicksOk = false; }
+  }else{
+    if(total < 7){
+      if(!(planned >= Math.max(total,1) && planned <= MAX_PICKS)) numPicksOk = false;
+    }
+  }
+
+  setCheck("#chkName",  nameOk);
   setCheck("#chkEmail", emailOk);
-  setCheck("#chkReqNFL", reqAOk);
-  setCheck("#chkReqNCAA", reqBOk);
-  setCheck("#chkAtLeastA", atLeastA);
-  setCheck("#chkAtLeastB", atLeastB);
-  setCheck("#chkRange", rangeOk);
-  setCheck("#chkDouble", doubleOk);
-  setCheck("#chkDeadline", globalDeadlineOk);
+  setCheck("#chkReqNFL",   reqAOk ? true : 'warn');
+  setCheck("#chkReqNCAA",  reqBOk ? true : 'warn');
+  setCheck("#chkAtLeastA", atLeastA ? true : 'warn');
+  setCheck("#chkAtLeastB", atLeastB ? true : 'warn');
+  setCheck("#chkRange",    rangeWarn ? 'warn' : true);
+  setCheck("#chkDouble",   doubleOk);
 
-  const allOk = nameOk && emailOk && reqAOk && reqBOk && atLeastA && atLeastB && rangeOk && doubleOk && globalDeadlineOk;
+  if(total > MAX_PICKS){ setCheck("#chkNumPicks", false); }
+  else if(committedNumPicks!=null){
+    if(total > committedNumPicks){ setCheck("#chkNumPicks", false); }
+    else if(total < committedNumPicks){ setCheck("#chkNumPicks", 'warn'); }
+    else { setCheck("#chkNumPicks", true); }
+  }else{
+    if(total < 7){
+      if(planned >= Math.max(total,1) && planned <= MAX_PICKS){ setCheck("#chkNumPicks", true); }
+      else { setCheck("#chkNumPicks", false); }
+    }else if(total <= MAX_PICKS){ setCheck("#chkNumPicks", true); }
+  }
 
   const pill = $("#statusBox");
-  pill.textContent = allOk ? "BEAR DOWN!" : "ERRORS DETECTED";
-  pill.classList.toggle("status_good", allOk);
-  pill.classList.toggle("status_bad", !allOk);
+  if(ALLOW_PARTIAL && total < TOTAL_TARGET){ pill.textContent = `PARTIAL OK — ${total}/${TOTAL_TARGET} picked`; pill.className = "statusBox status_neutral"; }
+  else if(nameOk && emailOk && doubleOk){ pill.textContent = "BEAR DOWN!"; pill.className = "statusBox status_good"; }
+  else { pill.textContent = "ERRORS DETECTED"; pill.className = "statusBox status_bad"; }
 
-  $("#cntA").textContent = `Answered: ${a}`;
-  $("#cntB").textContent = `Answered: ${b}`;
-  $("#totalPicked").textContent = `Total games picked: ${total} (NFL ${a} + NCAA ${b})`;
+  $("#cntA").textContent = `Answered: ${a}`; $("#cntB").textContent = `Answered: ${b}`; $("#totalPicked").textContent = `Total games picked: ${total} (NFL ${a} + NCAA ${b})`;
 
-  return allOk;
+  return (nameOk && emailOk && doubleOk && numPicksOk);
 }
 
-/* ============== EVENTS ============== */
-document.addEventListener("change", e=>{
-  if(e.target.matches('#nameSel')){
-    const em = e.target.selectedOptions[0]?.dataset.email || "";
-    if(em) $("#emailBox").value = em;
+/* Prevent exceeding committedNumPicks interactively */
+function enforceCommittedLimitOnChange(changedInput){
+  if(committedNumPicks==null) return;
+  if(!(changedInput && changedInput.type === "radio")) return;
 
-    const chosenName = e.target.value || "";
-    const paymentVal = (paymentByName.get(chosenName) || "").trim();
-    $("#paymentAlert").hidden = !(chosenName && paymentVal === "");
+  const qid = changedInput.name;
+  const groupCheckedBefore = $$(`input[type="radio"][name="${CSS.escape(qid)}"]`).some(r => r !== changedInput && r.checked);
+  if(groupCheckedBefore) return;
 
-    renderSummary(); validateAll();
+  const tot = totalChecked();
+  if(tot > committedNumPicks){
+    changedInput.checked = false;
+    alert(`You committed to ${committedNumPicks} picks. You cannot select more than that.`);
+    refreshDoubleChoices(); renderSummary(); validateAll(); updateNumPicksUI();
   }
-  if(e.target.matches('input[type="radio"]')){
-    refreshDoubleChoices();
-    renderSummary();
-    validateAll();
-  }
-  if(e.target.matches('#doubleSel') || e.target.matches('#emailBox')){
-    renderSummary();
-    validateAll();
-  }
-});
-document.addEventListener("click", e=>{
-  if(e.target.matches('.clear')){
-    const qid = e.target.dataset.clear;
-    $$(`input[type="radio"][name="${CSS.escape(qid)}"]`).forEach(r=>r.checked=false);
-    refreshDoubleChoices();
-    renderSummary();
-    validateAll();
-  }
-});
-$("#resetBtn").addEventListener("click", ()=>{
-  $$('input[type="radio"]').forEach(r=>r.checked=false);
-  $("#doubleSel").value = "";
-  renderSummary();
-  refreshDoubleChoices();
-  validateAll();
-});
+}
 
-/* push to Google Sheets (preflight-free) */
+/* Prefill from existing picks CSV */
+async function prefillFromExisting(name){
+  existingByQID.clear();
+  committedNumPicks = null;
+  if(!CSV_URL_PICKS) return;
+  try{
+    const text = await fetchCSV(CSV_URL_PICKS); const rows = parseCSV(text);
+    const norm = r => ({
+      name: r.Name || r.name || r.Player || r.player || "",
+      week: String(r.week || r.Week || r.WEEK || r.round || "").trim(),
+      qid:  r.qid || r.QID || r.game || r.Game || r.Question || "",
+      choice: r.choice || r.Choice || r.pick || r.Pick || r.selection || r.Selection || "",
+      isDouble: /^true|1|y(es)?$/i.test(String(r.isDouble || r.Double || r.double || "")),
+      NumPicks: r.NumPicks ? parseInt(r.NumPicks,10) : (r.numPicks ? parseInt(r.numPicks,10) : NaN),
+      ts: Date.parse(r.timestamp || r.Timestamp || r.Time || r.Date || "") || 0
+    });
+    const mine = rows.map(norm).filter(r => canon(r.name)===canon(name) && String(r.week)===String(CURRENT_WEEK) && (r.qid || !isNaN(r.NumPicks)));
+    const latestByQID = new Map();
+    let latestGlobal = null;
+    for(const r of mine){
+      if(r.qid){
+        const prev=latestByQID.get(r.qid);
+        if(!prev || r.ts > prev.ts) latestByQID.set(r.qid, r);
+      }
+      if(!isNaN(r.NumPicks)){
+        if(!latestGlobal || r.ts > latestGlobal.ts) latestGlobal = r;
+      }
+    }
+    $$('input[type="radio"]').forEach(r=>r.checked=false);
+    for(const r of latestByQID.values()){
+      existingByQID.set(r.qid, {choice:r.choice, isDouble:r.isDouble});
+      const row = document.querySelector(`.row[data-qid="${CSS.escape(r.qid)}"]`); if(!row) continue;
+      const awayLbl = row.querySelector('.answers label:nth-child(1)')?.textContent || "";
+      const homeLbl = row.querySelector('.answers label:nth-child(2)')?.textContent || "";
+      const awayHit = canon(r.choice).includes(canon(awayLbl.split('(')[0]||""));
+      const homeHit = canon(r.choice).includes(canon(homeLbl.split('(')[0]||""));
+      const target = awayHit && !homeHit ? row.querySelector('input[value="away"]') : homeHit && !awayHit ? row.querySelector('input[value="home"]') : null;
+      if(target){ target.checked = true; }
+    }
+    const dblQ = [...latestByQID.entries()].find(([qid,v])=>v.isDouble && $$(`input[name="${CSS.escape(qid)}"]:checked`).length);
+    refreshExpiryUI(); refreshDoubleChoices(); renderSummary(); validateAll();
+    if(dblQ){ $("#doubleSel").value = dblQ[0]; }
+
+    if(latestGlobal && !isNaN(latestGlobal.NumPicks)){
+      committedNumPicks = latestGlobal.NumPicks;
+    }else{
+      committedNumPicks = null;
+    }
+    updateNumPicksUI();
+  }catch(e){ console.warn('prefillFromExisting failed:', e); }
+}
+
+/* Submitting overlay helpers */
+function startSubmitting(){ $("#submitOverlay").hidden = false; $("#submitBtn").disabled = true; $("#resetBtn").disabled = true; }
+function stopSubmitting(){ $("#submitOverlay").hidden = true; $("#submitBtn").disabled = false; $("#resetBtn").disabled = false; }
+
 async function pushToSheets(payload){
   if(!GSHEET_WEBAPP_URL || !/^https?:\/\//i.test(GSHEET_WEBAPP_URL)){
     console.warn('GSHEET_WEBAPP_URL not set; skipping Sheets logging');
     return { ok:false, skipped:true };
   }
   try{
-    const res = await fetch(GSHEET_WEBAPP_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(payload)
-    });
+    const res = await fetch(GSHEET_WEBAPP_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) });
     const data = await res.json().catch(()=>({}));
-    if(!res.ok || data.ok !== true){
-      throw new Error(`Sheets response not ok: ${res.status} ${JSON.stringify(data)}`);
-    }
+    if(!res.ok || data.ok !== true){ throw new Error(`Sheets response not ok: ${res.status} ${JSON.stringify(data)}`); }
     return { ok:true };
-  }catch(err){
-    console.error('Sheets logging failed:', err);
-    return { ok:false, error:String(err) };
-  }
+  }catch(err){ console.error('Sheets logging failed:', err); return { ok:false, error:String(err) }; }
 }
 
-/* ---- Submitting overlay helpers (new) ---- */
-function startSubmitting(){
-  $("#submitOverlay").hidden = false;
-  $("#submitBtn").disabled = true;
-  $("#resetBtn").disabled  = true;
-}
-function stopSubmitting(){
-  $("#submitOverlay").hidden = true;
-  $("#submitBtn").disabled = false;
-  $("#resetBtn").disabled  = false;
-}
+/* ============== EVENTS ============== */
+document.addEventListener("change", async e=>{
+  if(e.target.matches('#nameSel')){
+    const em = e.target.selectedOptions[0]?.dataset.email || ""; if(em) $("#emailBox").value = em;
+    const chosenName = e.target.value || ""; const paymentVal = (paymentByName.get(chosenName) || "").trim(); $("#paymentAlert").hidden = !(chosenName && paymentVal === "");
+    await prefillFromExisting(chosenName);
+    renderSummary(); validateAll(); updateNumPicksUI(); refreshDeadlineUI(); refreshExpiryUI();
+  }
+  if(e.target.matches('input[type="radio"]')){
+    enforceCommittedLimitOnChange(e.target);
+    refreshDoubleChoices(); renderSummary(); validateAll(); updateNumPicksUI();
+  }
+  if(e.target.matches('#doubleSel') || e.target.matches('#emailBox') || e.target.matches('#numPicksPlan')){
+    renderSummary(); validateAll(); updateNumPicksUI();
+  }
+});
+
+document.addEventListener("click", e=>{
+  if(e.target.matches('.clear')){
+    const qid = e.target.dataset.clear; $$(`input[type="radio"][name="${CSS.escape(qid)}"]`).forEach(r=>r.checked=false);
+    refreshDoubleChoices(); renderSummary(); validateAll(); updateNumPicksUI();
+  }
+});
+
+$("#resetBtn").addEventListener("click", ()=>{
+  $$('input[type="radio"]').forEach(r=>r.checked=false);
+  $("#doubleSel").value = "";
+  renderSummary(); refreshDoubleChoices(); validateAll(); updateNumPicksUI();
+});
 
 $("#submitBtn").addEventListener("click", async ()=>{
-  startSubmitting();
+  // Hard-stop if deadline has passed
+  if(isAfterDeadline()){
+    alert("Picks are closed. The global deadline has passed.");
+    refreshDeadlineUI();
+    return;
+  }
 
-  if(PICKS_DEADLINE_UTC && new Date() > new Date(PICKS_DEADLINE_UTC)){
-    stopSubmitting();
-    alert("The global picks deadline has passed. Submissions are closed.");
-    return;
-  }
+  startSubmitting();
   const ok = validateAll();
-  if(!ok){
-    stopSubmitting();
-    alert("Please fix the items in Checks & Errors before submitting.");
-    return;
+  if(!ok){ stopSubmitting(); alert("Please fix the items marked with ✕ (Name/Email/Double/NumPicks), and ensure the deadline has not passed."); return; }
+
+  const a = countChecked($("#listA")); const b = countChecked($("#listB")); const total = a+b;
+  if(total > MAX_PICKS){ stopSubmitting(); alert(`You cannot pick more than ${MAX_PICKS} games.`); return; }
+
+  // Decide final NumPicks to send
+  let finalNumPicks = committedNumPicks;
+  if(committedNumPicks!=null){
+    if(total > committedNumPicks){
+      stopSubmitting();
+      alert(`You committed to ${committedNumPicks} picks. You currently selected ${total}. Reduce your picks — count cannot increase.`);
+      return;
+    }
+  }else{
+    if(total < 7){
+      const planned = parseInt($("#numPicksPlan").value||"",10);
+      if(!(planned >= Math.max(total,1) && planned <= MAX_PICKS)){
+        stopSubmitting();
+        alert(`Please declare a planned total between ${Math.max(total,1)} and ${MAX_PICKS}.`);
+        return;
+      }
+      finalNumPicks = planned;
+      const go = confirm(`You have selected ${total} picks and planned to make ${planned} total picks this week. You may return to finish, but cannot exceed ${planned}. Continue?`);
+      if(!go){ stopSubmitting(); return; }
+    }else{
+      const go = confirm(`You have selected ${total} picks.\nBy submitting you are committing to making exactly ${total} picks this week.\nYou may come back and change WHICH games before kickoff, but not the count. Continue?`);
+      if(!go){ stopSubmitting(); return; }
+      finalNumPicks = total;
+    }
   }
+
   if(!$("#doubleSel").value){
     const okNoDouble = confirm("Submit with NO Double?");
     if(!okNoDouble){ stopSubmitting(); return; }
@@ -796,93 +739,74 @@ $("#submitBtn").addEventListener("click", async ()=>{
   const participantName = $("#nameSel").selectedOptions[0]?.textContent || "";
   const participantEmail = $("#emailBox").value.trim();
   const selectionsText  = buildSelectionsText(true);
-  const submission = collectSubmission();
+  const submission = collectSubmission(finalNumPicks);
 
   const sheetResult = await pushToSheets(submission);
-  if(!sheetResult.ok && REQUIRE_SHEETS_OK){
-    stopSubmitting();
-    alert("Could not log to Google Sheets. Please try again in a moment.");
+  if(!sheetResult.ok && REQUIRE_SHEETS_OK){ stopSubmitting(); alert("Could not log to Google Sheets. Please try again in a moment."); return; }
+
+  if(DEMO_MODE){
+    $("#demoBadge").hidden = false; stopSubmitting(); alert("Submitted! (Demo mode — email suppressed)");
+    committedNumPicks = finalNumPicks; updateNumPicksUI();
     return;
   }
 
-  if(DEMO_MODE){
-    $("#demoBadge").hidden = false;
-    stopSubmitting();
-    alert("Submitted! (Demo mode — email suppressed)");
-    return;
-  }
   try{
     if(!window.emailjs){
-      await new Promise((res,rej)=>{
-        const s = document.createElement("script");
-        s.src = "https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js";
-        s.onload = res; s.onerror = rej; document.head.appendChild(s);
-      });
+      await new Promise((res,rej)=>{ const s=document.createElement("script"); s.src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"; s.onload=res; s.onerror=rej; document.head.appendChild(s); });
     }
     emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
     await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
       participant_name: participantName,
       selections_text: selectionsText,
-      to_email:         participantEmail
+      to_email: participantEmail
     });
     stopSubmitting();
     alert("Submitted! A copy will be CC’d to you.");
   }catch(err){
     console.error("EmailJS error details:",err);
-    stopSubmitting();
-    alert("Submitted! (Email copy failed to send.)");
+    stopSubmitting(); alert("Submitted! (Email copy failed to send.)");
   }
+
+  if(committedNumPicks==null){ committedNumPicks = finalNumPicks; updateNumPicksUI(); validateAll(); }
 });
 
 /* ============== LOAD DATA & EXPIRED UI ============== */
 async function loadAll(){
   try{
-    const raw = await fetchCSV(CSV_URL_PARTICIPANTS);
-    const pCSV = parseCSV(raw);
+    refreshDeadlineUI();
 
+    const raw = await fetchCSV(CSV_URL_PARTICIPANTS); const pCSV = parseCSV(raw);
     const paymentKey = Object.keys(pCSV[0] || {}).find(k => k.toLowerCase() === "payment") || "Payment";
-
-    $("#nameSel").innerHTML =
-      `<option value="">— Select your name —</option>` +
-      pCSV.map(p => {
-        const nm  = p.Name || "";
-        const em  = p.Email || "";
-        const pay = (p[paymentKey] || "");
-        paymentByName.set(nm, pay);
-        return `<option value="${escapeHtml(nm)}" data-email="${escapeHtml(em)}">${escapeHtml(nm)}</option>`;
-      }).join("");
+    $("#nameSel").innerHTML = `<option value="">— Select your name —</option>` + pCSV.map(p => {
+      const nm=p.Name||""; const em=p.Email||""; const pay=(p[paymentKey]||""); paymentByName.set(nm, pay);
+      return `<option value="${escapeHtml(nm)}" data-email="${escapeHtml(em)}">${escapeHtml(nm)}</option>`;
+    }).join("");
 
     const aRows = parseCSV(await fetchCSV(CSV_URL_NFL));
     const bRows = parseCSV(await fetchCSV(CSV_URL_NCAA));
     gamesA = normalizeGames(aRows,  "A");
     gamesB = normalizeGames(bRows,  "B");
-
     const hostA = $("#listA"), hostB = $("#listB");
-    renderSection(hostA, gamesA);
-    renderSection(hostB, gamesB);
+    renderSection(hostA, gamesA); renderSection(hostB, gamesB);
 
     hostA.querySelectorAll('input[type="radio"]').forEach(r=>{
-      r.addEventListener('change', ()=>{ refreshDoubleChoices(); renderSummary(); validateAll(); });
+      r.addEventListener('change', (ev)=>{ enforceCommittedLimitOnChange(ev.target); refreshDoubleChoices(); renderSummary(); validateAll(); updateNumPicksUI(); });
     });
     hostB.querySelectorAll('input[type="radio"]').forEach(r=>{
-      r.addEventListener('change', ()=>{ refreshDoubleChoices(); renderSummary(); validateAll(); });
+      r.addEventListener('change', (ev)=>{ enforceCommittedLimitOnChange(ev.target); refreshDoubleChoices(); renderSummary(); validateAll(); updateNumPicksUI(); });
     });
     hostA.querySelectorAll('.clear').forEach(b=>{
-      b.addEventListener('click', ()=>{ const id=b.dataset.clear; $$(`input[name="${CSS.escape(id)}"]`).forEach(i=>i.checked=false); refreshDoubleChoices(); renderSummary(); validateAll(); });
+      b.addEventListener('click', ()=>{ const id=b.dataset.clear; $$(`input[name="${CSS.escape(id)}"]`).forEach(i=>i.checked=false); refreshDoubleChoices(); renderSummary(); validateAll(); updateNumPicksUI(); });
     });
     hostB.querySelectorAll('.clear').forEach(b=>{
-      b.addEventListener('click', ()=>{ const id=b.dataset.clear; $$(`input[name="${CSS.escape(id)}"]`).forEach(i=>i.checked=false); refreshDoubleChoices(); renderSummary(); validateAll(); });
+      b.addEventListener('click', ()=>{ const id=b.dataset.clear; $$(`input[name="${CSS.escape(id)}"]`).forEach(i=>i.checked=false); refreshDoubleChoices(); renderSummary(); validateAll(); updateNumPicksUI(); });
     });
 
     $("#paymentAlert").hidden = true;
+    refreshExpiryUI(); refreshDoubleChoices(); renderSummary(); validateAll(); updateNumPicksUI();
 
-    refreshExpiryUI();
-    refreshDoubleChoices();
-    renderSummary();
-    validateAll();
-
-    setInterval(()=>{ refreshExpiryUI(); refreshDoubleChoices(); validateAll(); }, 60_000);
-
+    // Refresh deadline + per-game expiry regularly
+    setInterval(()=>{ refreshDeadlineUI(); refreshExpiryUI(); refreshDoubleChoices(); validateAll(); updateNumPicksUI(); }, 30_000);
   }catch(e){
     console.error(e);
     $("#listA").textContent = "Failed to load NFL.";
