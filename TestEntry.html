@@ -414,7 +414,7 @@ function refreshDoubleChoices(){
   if(keep && chosen.some(o=>o.qid===keep)) sel.value = keep;
 }
 
-/* NumPicks UI helpers — UPDATED to allow planning above current total even when total>=7 */
+/* NumPicks UI helpers — allow planning above current even when total>=7 */
 function updateNumPicksUI(){
   const planInput = $("#numPicksPlan");
   const lockBadge = $("#numPicksLockBadge");
@@ -435,7 +435,6 @@ function updateNumPicksUI(){
   lockBadge.classList.add("is-hidden");
   planInput.disabled = false;
 
-  // Plan cannot be less than current chosen; max is MAX_PICKS
   planInput.min = Math.max(tot, 1);
   planInput.max = MAX_PICKS;
 
@@ -450,9 +449,9 @@ function updateNumPicksUI(){
     notice.textContent = `With fewer than 7 picks, declare your intended total (between ${tot} and ${MAX_PICKS}).`;
   } else {
     notice.textContent =
-      `Optionally set a higher plan (between ${tot} and ${MAX_PICKS}). ` +
-      `If you leave it blank, submitting will commit to ${tot}. ` +
-      `If you enter a higher number, you’ll be able to come back and finish up to that plan.`;
+      `With ${tot} picks selected: leaving this blank will automatically set your NumPicks to ${tot} on submit. ` +
+      `You may later change WHICH games, but your pick total must remain ${tot}. ` +
+      `Optionally enter a higher plan (up to ${MAX_PICKS}) if you intend to finish later this week.`;
   }
 }
 
@@ -519,7 +518,7 @@ function collectSubmission(finalNumPicks){
 function renderSummary(){ $("#summary").innerHTML = `<pre style="white-space:pre-wrap;margin:0">${escapeHtml(buildSelectionsText(false))}</pre>`; }
 function setCheck(sel, state){ const li=$(sel); li.classList.toggle("check-ok", state===true); li.classList.toggle("check-bad", state===false); li.classList.toggle("check-warn", state==='warn'); li.querySelector(".check-icon").textContent = state===true?"✓":(state===false?"✕":"!"); }
 
-/* Validate including NumPicks logic + DEADLINE — UPDATED to accept planned >= total (even when total>=7) */
+/* Validate including NumPicks logic + DEADLINE */
 function validateAll(){
   if(isAfterDeadline()){
     setCheck("#chkName",  false);
@@ -717,7 +716,7 @@ $("#submitBtn").addEventListener("click", async ()=>{
   const a = countChecked($("#listA")); const b = countChecked($("#listB")); const total = a+b;
   if(total > MAX_PICKS){ stopSubmitting(); alert(`You cannot pick more than ${MAX_PICKS} games.`); return; }
 
-  // >>> Decide final NumPicks to send (UPDATED logic)
+  // >>> Decide final NumPicks to send (with first-time auto-commit 7–12)
   let finalNumPicks = committedNumPicks;
   if (committedNumPicks != null) {
     if (total > committedNumPicks) {
@@ -739,7 +738,7 @@ $("#submitBtn").addEventListener("click", async ()=>{
       finalNumPicks = planned;
       const go = confirm(
         `You have selected ${total} pick(s) and planned to make ${planned} total picks this week.\n` +
-        `You may return to finish, but cannot exceed ${planned}. Continue?`
+        `You may return to finish, but your pick total may not exceed ${planned}. Continue?`
       );
       if (!go) { stopSubmitting(); return; }
     } else {
@@ -748,13 +747,19 @@ $("#submitBtn").addEventListener("click", async ()=>{
         alert(`Please declare a planned total between ${total} and ${MAX_PICKS}.`);
         return;
       }
+      if (total > MAX_PICKS) {
+        stopSubmitting();
+        alert(`You cannot pick more than ${MAX_PICKS} games.`);
+        return;
+      }
+      // Auto-set NumPicks = total (7–12) with commitment note
+      finalNumPicks = total;
       const go = confirm(
-        `You have selected ${total} picks.\n` +
-        `By submitting you are committing to making exactly ${total} picks this week.\n` +
-        `You may come back and change WHICH games before kickoff, but not the count. Continue?`
+        `You are committing to ${finalNumPicks} pick(s).\n` +
+        `You may come back and change the selections you have made, but your pick total must be ${finalNumPicks}.\n\n` +
+        `Submit and lock your total at ${finalNumPicks}?`
       );
       if (!go) { stopSubmitting(); return; }
-      finalNumPicks = total;
     }
   }
 
@@ -848,7 +853,7 @@ async function loadAll(){
     const bRows = parseCSV(await fetchCSV(CSV_URL_NCAA));
     gamesA = normalizeGames(aRows,  "A");
     gamesB = normalizeGames(bRows,  "B");
-    const hostA = $("#listA"), hostB = $("#listB");
+    const hostA = $("#listA"), hostB = $("#listB"]);
     renderSection(hostA, gamesA); renderSection(hostB, gamesB);
 
     hostA.querySelectorAll('input[type="radio"]').forEach(r=>{
