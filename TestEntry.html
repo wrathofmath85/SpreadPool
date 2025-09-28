@@ -403,6 +403,25 @@ function refreshExpiryUI(){
 function countChecked(container){ return container.querySelectorAll('input[type="radio"]:checked').length; }
 function totalChecked(){ return countChecked($("#listA")) + countChecked($("#listB")); }
 
+/* ----- REQUIRED MISSING HELPERS ----- */
+function isPicked(qid){
+  return !!document.querySelector(`input[type="radio"][name="${CSS.escape(qid)}"]:checked`);
+}
+function countMissingRequired(){
+  const now = Date.now();
+  const countMissing = (games) => games.filter(g => {
+    if(!g.required) return false;
+    const expired = g.start ? (now >= g.start.getTime()) : false;
+    if(expired) return false;
+    return !isPicked(g.qid);
+  }).length;
+  return {
+    nfl: countMissing(gamesA),
+    ncaa: countMissing(gamesB),
+    total: countMissing(gamesA) + countMissing(gamesB)
+  };
+}
+
 /* Double dropdown shows picked team (even if now locked) */
 function refreshDoubleChoices(){
   const sel = $("#doubleSel"); const keep = sel.value;
@@ -420,6 +439,8 @@ function updateNumPicksUI(){
   const lockBadge = $("#numPicksLockBadge");
   const notice = $("#numPicksNotice");
   const tot = totalChecked();
+  const missingReq = countMissingRequired();
+  const pendingRequired = missingReq.total;
 
   if (committedNumPicks != null) {
     planInput.value = committedNumPicks;
@@ -447,7 +468,12 @@ function updateNumPicksUI(){
   if (tot < 7) {
     notice.textContent = `With fewer than 7 picks, enter your intended total (7–${MAX_PICKS}). Field cannot be blank.`;
   } else if (!hasTyped) {
-    notice.textContent = `With ${tot} picks selected: leaving NumPicks blank will commit you to exactly ${tot}. You can change WHICH games later, but your pick total must remain ${tot}.`;
+    const autoLock = Math.min(MAX_PICKS, tot + pendingRequired);
+    if (pendingRequired > 0) {
+      notice.textContent = `You have ${pendingRequired} required game(s) not yet selected. Leaving NumPicks blank will commit you to ${autoLock} (your ${tot} current + ${pendingRequired} required). You can change WHICH games later, but your pick total must remain ${autoLock}.`;
+    } else {
+      notice.textContent = `With ${tot} picks selected: leaving NumPicks blank will commit you to exactly ${tot}. You can change WHICH games later, but your pick total must remain ${tot}.`;
+    }
   } else {
     // user typed something; show guardrails
     const ok = planned >= tot && planned <= MAX_PICKS;
@@ -520,7 +546,8 @@ function collectSubmission(finalNumPicks){
 function renderSummary(){ $("#summary").innerHTML = `<pre style="white-space:pre-wrap;margin:0">${escapeHtml(buildSelectionsText(false))}</pre>`; }
 function setCheck(sel, state){ const li=$(sel); li.classList.toggle("check-ok", state===true); li.classList.toggle("check-bad", state===false); li.classList.toggle("check-warn", state==='warn'); li.querySelector(".check-icon").textContent = state===true?"✓":(state===false?"✕":"!"); }
 
-/* Validate including NumPicks logic + DEADLINE (blank allowed only when total >= 7) */
+/* Validate including NumPicks logic + DEADLINE (blank allowed only when total >= 7).
+   Also warn if any unexpired required game is unpicked; status pill reflects this. */
 function validateAll(){
   if(isAfterDeadline()){
     setCheck("#chkName",  false);
@@ -535,8 +562,12 @@ function validateAll(){
   const nameOk  = !!$("#nameSel").value;
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test($("#emailBox").value.trim());
   const a = countChecked($("#listA")); const b = countChecked($("#listB")); const total = a + b;
-  const reqAOk = !gamesA.some(g=>{ if(!g.required) return false; const expired = g.start ? (Date.now() >= g.start.getTime()) : false; if(expired) return false; const row = $(`#listA .row[data-qid="${CSS.escape(g.qid)}"]`); return !row?.querySelector('input[type="radio"]:checked'); });
-  const reqBOk = !gamesB.some(g=>{ if(!g.required) return false; const expired = g.start ? (Date.now() >= g.start.getTime()) : false; if(expired) return false; const row = $(`#listB .row[data-qid="${CSS.escape(g.qid)}"]`); return !row?.querySelector('input[type="radio"]:checked'); });
+
+  // Missing required (unexpired) calculations
+  const missingReq = countMissingRequired();
+  const reqAOk = missingReq.nfl === 0;
+  const reqBOk = missingReq.ncaa === 0;
+
   const atLeastA = a >= 3; const atLeastB = b >= 3;
   const rangeWarn = !(total >= 7 && total <= MAX_PICKS);
   const dbl = $("#doubleSel").value; const chosenQIDs = $$('input[type="radio"]:checked').map(r=>r.name);
@@ -555,8 +586,7 @@ function validateAll(){
     if (hasPlanned) {
       if (!(planned >= total && planned <= MAX_PICKS)) numPicksOk = false;
     } else {
-      // BLANK is only valid when total >= 7
-      if (total < 7) numPicksOk = false;
+      if (total < 7) numPicksOk = false; // blank only valid when >=7; auto-lock logic handled elsewhere
     }
   }
 
@@ -578,10 +608,20 @@ function validateAll(){
     setCheck("#chkNumPicks", true);
   }
 
+  // Status pill: mention missing required when present
   const pill = $("#statusBox");
-  if(ALLOW_PARTIAL && total < TOTAL_TARGET){ pill.textContent = `PARTIAL OK — ${total}/${TOTAL_TARGET} picked`; pill.className = "statusBox status_neutral"; }
-  else if(nameOk && emailOk && doubleOk){ pill.textContent = "BEAR DOWN!"; pill.className = "statusBox status_good"; }
-  else { pill.textContent = "ERRORS DETECTED"; pill.className = "statusBox status_bad"; }
+  const basePartial = (ALLOW_PARTIAL && total < TOTAL_TARGET) ? `PARTIAL OK — ${total}/${TOTAL_TARGET} picked` : "BEAR DOWN!";
+  const withReq = missingReq.total > 0
+    ? `${ALLOW_PARTIAL ? "PARTIAL OK — " : ""}${missingReq.total} required game(s) still unpicked`
+    : basePartial;
+
+  if(nameOk && emailOk && doubleOk && numPicksOk){
+    pill.textContent = withReq;
+    pill.className = (missingReq.total === 0) ? "statusBox status_good" : "statusBox status_neutral";
+  }else{
+    pill.textContent = missingReq.total > 0 ? `ERRORS DETECTED — ${missingReq.total} required game(s) still unpicked` : "ERRORS DETECTED";
+    pill.className = "statusBox status_bad";
+  }
 
   $("#cntA").textContent = `Answered: ${a}`; $("#cntB").textContent = `Answered: ${b}`; $("#totalPicked").textContent = `Total games picked: ${total} (NFL ${a} + NCAA ${b})`;
 
@@ -722,6 +762,9 @@ $("#submitBtn").addEventListener("click", async ()=>{
 
   // Decide final NumPicks to send
   let finalNumPicks = committedNumPicks;
+  const missingReq = countMissingRequired();
+  const pendingRequired = missingReq.total;
+
   if (committedNumPicks != null) {
     if (total > committedNumPicks) {
       stopSubmitting();
@@ -756,10 +799,14 @@ $("#submitBtn").addEventListener("click", async ()=>{
         alert(`You cannot pick more than ${MAX_PICKS} games.`);
         return;
       }
-      // Auto-set NumPicks = total (7–12) with commitment note
-      finalNumPicks = total;
+      // Auto-set NumPicks = total + missingRequired (capped at MAX_PICKS)
+      const autoLock = Math.min(MAX_PICKS, total + pendingRequired);
+      finalNumPicks = autoLock;
+      const reqNote = pendingRequired > 0
+        ? `\nYou have ${pendingRequired} required game(s) not selected. Your total will lock at ${autoLock} (your ${total} current + ${pendingRequired} required).`
+        : "";
       const go = confirm(
-        `You are committing to ${finalNumPicks} pick(s).\n` +
+        `You are committing to ${finalNumPicks} pick(s).${reqNote}\n` +
         `You may come back and change the selections you have made, but your pick total must be ${finalNumPicks}.\n\n` +
         `Submit and lock your total at ${finalNumPicks}?`
       );
@@ -797,8 +844,7 @@ $("#submitBtn").addEventListener("click", async ()=>{
     let msg = "Submitted! (Demo mode — email suppressed)";
     if (committedNumPicks != null && total < committedNumPicks) {
       const remain = committedNumPicks - total;
-      msg += `\n\nReminder: You previously committed to ${committedNumPicks} picks. You currently have ${total}.` +
-             ` If you don't reach ${committedNumPicks} before kickoff, defaults will be applied to the remaining ${remain} pick(s) to reach ${committedNumPicks}.`;
+      msg += `\n\nReminder: You previously committed to ${committedNumPicks} picks. You currently have ${total}. If you don't reach ${committedNumPicks} before kickoff, defaults will be applied to the remaining ${remain} pick(s) to reach ${committedNumPicks}.`;
     }
     alert(msg);
     committedNumPicks = finalNumPicks; updateNumPicksUI();
@@ -819,8 +865,7 @@ $("#submitBtn").addEventListener("click", async ()=>{
     let msg = "Submitted! A copy will be CC’d to you.";
     if (committedNumPicks != null && total < committedNumPicks) {
       const remain = committedNumPicks - total;
-      msg += `\n\nReminder: You previously committed to ${committedNumPicks} picks. You currently have ${total}.` +
-             ` If you don't reach ${committedNumPicks} before kickoff, defaults will be applied to the remaining ${remain} pick(s) to reach ${committedNumPicks}.`;
+      msg += `\n\nReminder: You previously committed to ${committedNumPicks} picks. You currently have ${total}. If you don't reach ${committedNumPicks} before kickoff, defaults will be applied to the remaining ${remain} pick(s).`;
     }
     alert(msg);
   }catch(err){
@@ -829,8 +874,7 @@ $("#submitBtn").addEventListener("click", async ()=>{
     let msg = "Submitted! (Email copy failed to send.)";
     if (committedNumPicks != null && total < committedNumPicks) {
       const remain = committedNumPicks - total;
-      msg += `\n\nReminder: You previously committed to ${committedNumPicks} picks. You currently have ${total}.` +
-             ` If you don't reach ${committedNumPicks} before kickoff, defaults will be applied to the remaining ${remain} pick(s) to reach ${committedNumPicks}.`;
+      msg += `\n\nReminder: You previously committed to ${committedNumPicks} picks. You currently have ${total}. If you don't reach ${committedNumPicks} before kickoff, defaults will be applied to the remaining ${remain} pick(s).`;
     }
     alert(msg);
   }
