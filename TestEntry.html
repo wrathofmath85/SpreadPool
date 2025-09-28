@@ -113,7 +113,7 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
     <div id="numPicksCard" class="card" style="margin:12px 0">
       <h2>Num Picks Plan</h2>
       <div class="small muted" id="numPicksHelp" style="margin-bottom:8px">
-        If you submit fewer than 7 picks, declare how many total picks you will make this week (max 12). When you later finish, you may not exceed this number.
+        If you submit fewer than 7 picks, declare how many total picks you will make this week (max 12). If you have 7+ now, you may optionally set a higher plan to allow finishing later up to that number.
       </div>
       <div style="display:flex;gap:10px;align-items:center;max-width:420px">
         <label for="numPicksPlan" class="small muted" style="min-width:140px">Planned total:</label>
@@ -199,7 +199,7 @@ const TOTAL_TARGET = 7;
 const MAX_PICKS = 12;
 const DEFAULTS_POLICY_TEXT = "Unpicked games receive the default per your rules.";
 
-/* >>> NEW: GLOBAL PICK DEADLINE (UTC) <<< */
+/* >>> GLOBAL PICK DEADLINE (UTC) <<< */
 const PICKS_DEADLINE_UTC = "2025-10-03T21:30:00Z";
 
 /* EmailJS */
@@ -347,7 +347,6 @@ function fmtCountdown(ms){
 }
 function setAllInputsDisabled(disabled){
   $$('input, select, button').forEach(el=>{
-    // allow Reset to always be usable even after close?
     if(el.id === 'resetBtn') return;
     el.disabled = disabled;
   });
@@ -392,7 +391,7 @@ function refreshExpiryUI(){
         if(anyChecked){ pillLocked?.classList.remove('is-hidden'); pillExpired?.classList.add('is-hidden'); }
         else{ pillExpired?.classList.remove('is-hidden'); pillLocked?.classList.add('is-hidden'); }
       }else{
-        radios.forEach(i=>{ i.disabled = isAfterDeadline(); }); // respect global deadline too
+        radios.forEach(i=>{ i.disabled = isAfterDeadline(); });
         pillExpired?.classList.add('is-hidden'); pillLocked?.classList.add('is-hidden');
       }
     });
@@ -415,32 +414,45 @@ function refreshDoubleChoices(){
   if(keep && chosen.some(o=>o.qid===keep)) sel.value = keep;
 }
 
-/* NumPicks UI helpers */
+/* NumPicks UI helpers — UPDATED to allow planning above current total even when total>=7 */
 function updateNumPicksUI(){
   const planInput = $("#numPicksPlan");
   const lockBadge = $("#numPicksLockBadge");
   const notice = $("#numPicksNotice");
   const tot = totalChecked();
 
-  if(committedNumPicks!=null){
+  if (committedNumPicks != null) {
     planInput.value = committedNumPicks;
     planInput.disabled = true;
     lockBadge.classList.remove("is-hidden");
     const remain = Math.max(0, committedNumPicks - tot);
-    notice.textContent = remain>0
+    notice.textContent = remain > 0
       ? `You committed to ${committedNumPicks} picks. You currently have ${tot}. You still need ${remain} more.`
       : `You committed to ${committedNumPicks} picks. You have reached your committed total. You may still change which games (not the count).`;
-  }else{
-    lockBadge.classList.add("is-hidden");
-    planInput.disabled = false;
-    if(tot < 7){
-      planInput.min = Math.max(1, tot);
-      planInput.max = MAX_PICKS;
-      if(!planInput.value) planInput.value = String(Math.max(tot, 7));
-      notice.textContent = `With fewer than 7 picks, declare your intended total (between ${Math.max(tot,1)} and ${MAX_PICKS}).`;
-    }else{
-      notice.textContent = `If you submit ${tot} picks (7–12), you’ll be asked to commit to ${tot}. You can still change which games later, not the count.`;
-    }
+    return;
+  }
+
+  lockBadge.classList.add("is-hidden");
+  planInput.disabled = false;
+
+  // Plan cannot be less than current chosen; max is MAX_PICKS
+  planInput.min = Math.max(tot, 1);
+  planInput.max = MAX_PICKS;
+
+  if (!planInput.value) {
+    planInput.value = String(Math.max(tot, 7));
+  } else {
+    const v = Math.min(Math.max(parseInt(planInput.value, 10) || tot, tot), MAX_PICKS);
+    planInput.value = String(v);
+  }
+
+  if (tot < 7) {
+    notice.textContent = `With fewer than 7 picks, declare your intended total (between ${tot} and ${MAX_PICKS}).`;
+  } else {
+    notice.textContent =
+      `Optionally set a higher plan (between ${tot} and ${MAX_PICKS}). ` +
+      `If you leave it blank, submitting will commit to ${tot}. ` +
+      `If you enter a higher number, you’ll be able to come back and finish up to that plan.`;
   }
 }
 
@@ -507,9 +519,8 @@ function collectSubmission(finalNumPicks){
 function renderSummary(){ $("#summary").innerHTML = `<pre style="white-space:pre-wrap;margin:0">${escapeHtml(buildSelectionsText(false))}</pre>`; }
 function setCheck(sel, state){ const li=$(sel); li.classList.toggle("check-ok", state===true); li.classList.toggle("check-bad", state===false); li.classList.toggle("check-warn", state==='warn'); li.querySelector(".check-icon").textContent = state===true?"✓":(state===false?"✕":"!"); }
 
-/* Validate including NumPicks logic + DEADLINE */
+/* Validate including NumPicks logic + DEADLINE — UPDATED to accept planned >= total (even when total>=7) */
 function validateAll(){
-  // Hard stop: global deadline
   if(isAfterDeadline()){
     setCheck("#chkName",  false);
     setCheck("#chkEmail", false);
@@ -532,14 +543,18 @@ function validateAll(){
 
   let numPicksOk = true;
   const planEl = $("#numPicksPlan");
-  const planned = planEl.value ? parseInt(planEl.value,10) : NaN;
+  const planned = planEl.value ? parseInt(planEl.value, 10) : NaN;
+  const hasPlanned = !isNaN(planned);
 
-  if(total > MAX_PICKS){ numPicksOk = false; }
-  if(committedNumPicks!=null){
-    if(total > committedNumPicks){ numPicksOk = false; }
-  }else{
-    if(total < 7){
-      if(!(planned >= Math.max(total,1) && planned <= MAX_PICKS)) numPicksOk = false;
+  if (total > MAX_PICKS) {
+    numPicksOk = false;
+  } else if (committedNumPicks != null) {
+    if (total > committedNumPicks) numPicksOk = false;
+  } else {
+    if (hasPlanned) {
+      if (!(planned >= total && planned <= MAX_PICKS)) numPicksOk = false;
+    } else {
+      if (total < 7) numPicksOk = false;
     }
   }
 
@@ -552,16 +567,13 @@ function validateAll(){
   setCheck("#chkRange",    rangeWarn ? 'warn' : true);
   setCheck("#chkDouble",   doubleOk);
 
-  if(total > MAX_PICKS){ setCheck("#chkNumPicks", false); }
-  else if(committedNumPicks!=null){
-    if(total > committedNumPicks){ setCheck("#chkNumPicks", false); }
-    else if(total < committedNumPicks){ setCheck("#chkNumPicks", 'warn'); }
-    else { setCheck("#chkNumPicks", true); }
-  }else{
-    if(total < 7){
-      if(planned >= Math.max(total,1) && planned <= MAX_PICKS){ setCheck("#chkNumPicks", true); }
-      else { setCheck("#chkNumPicks", false); }
-    }else if(total <= MAX_PICKS){ setCheck("#chkNumPicks", true); }
+  if (!numPicksOk) {
+    setCheck("#chkNumPicks", false);
+  } else if (committedNumPicks != null) {
+    if (total < committedNumPicks) setCheck("#chkNumPicks", 'warn');
+    else setCheck("#chkNumPicks", true);
+  } else {
+    setCheck("#chkNumPicks", true);
   }
 
   const pill = $("#statusBox");
@@ -647,6 +659,7 @@ async function prefillFromExisting(name){
 function startSubmitting(){ $("#submitOverlay").hidden = false; $("#submitBtn").disabled = true; $("#resetBtn").disabled = true; }
 function stopSubmitting(){ $("#submitOverlay").hidden = true; $("#submitBtn").disabled = false; $("#resetBtn").disabled = false; }
 
+/* Push to Sheets */
 async function pushToSheets(payload){
   if(!GSHEET_WEBAPP_URL || !/^https?:\/\//i.test(GSHEET_WEBAPP_URL)){
     console.warn('GSHEET_WEBAPP_URL not set; skipping Sheets logging');
@@ -691,7 +704,6 @@ $("#resetBtn").addEventListener("click", ()=>{
 });
 
 $("#submitBtn").addEventListener("click", async ()=>{
-  // Hard-stop if deadline has passed
   if(isAfterDeadline()){
     alert("Picks are closed. The global deadline has passed.");
     refreshDeadlineUI();
@@ -705,28 +717,43 @@ $("#submitBtn").addEventListener("click", async ()=>{
   const a = countChecked($("#listA")); const b = countChecked($("#listB")); const total = a+b;
   if(total > MAX_PICKS){ stopSubmitting(); alert(`You cannot pick more than ${MAX_PICKS} games.`); return; }
 
-  // Decide final NumPicks to send
+  // >>> Decide final NumPicks to send (UPDATED logic)
   let finalNumPicks = committedNumPicks;
-  if(committedNumPicks!=null){
-    if(total > committedNumPicks){
+  if (committedNumPicks != null) {
+    if (total > committedNumPicks) {
       stopSubmitting();
       alert(`You committed to ${committedNumPicks} picks. You currently selected ${total}. Reduce your picks — count cannot increase.`);
       return;
     }
-  }else{
-    if(total < 7){
-      const planned = parseInt($("#numPicksPlan").value||"",10);
-      if(!(planned >= Math.max(total,1) && planned <= MAX_PICKS)){
+  } else {
+    const plannedStr = $("#numPicksPlan").value || "";
+    const planned = plannedStr ? parseInt(plannedStr, 10) : NaN;
+    const hasPlanned = !isNaN(planned);
+
+    if (hasPlanned) {
+      if (!(planned >= total && planned <= MAX_PICKS)) {
         stopSubmitting();
-        alert(`Please declare a planned total between ${Math.max(total,1)} and ${MAX_PICKS}.`);
+        alert(`Your planned total must be between ${total} and ${MAX_PICKS}.`);
         return;
       }
       finalNumPicks = planned;
-      const go = confirm(`You have selected ${total} picks and planned to make ${planned} total picks this week. You may return to finish, but cannot exceed ${planned}. Continue?`);
-      if(!go){ stopSubmitting(); return; }
-    }else{
-      const go = confirm(`You have selected ${total} picks.\nBy submitting you are committing to making exactly ${total} picks this week.\nYou may come back and change WHICH games before kickoff, but not the count. Continue?`);
-      if(!go){ stopSubmitting(); return; }
+      const go = confirm(
+        `You have selected ${total} pick(s) and planned to make ${planned} total picks this week.\n` +
+        `You may return to finish, but cannot exceed ${planned}. Continue?`
+      );
+      if (!go) { stopSubmitting(); return; }
+    } else {
+      if (total < 7) {
+        stopSubmitting();
+        alert(`Please declare a planned total between ${total} and ${MAX_PICKS}.`);
+        return;
+      }
+      const go = confirm(
+        `You have selected ${total} picks.\n` +
+        `By submitting you are committing to making exactly ${total} picks this week.\n` +
+        `You may come back and change WHICH games before kickoff, but not the count. Continue?`
+      );
+      if (!go) { stopSubmitting(); return; }
       finalNumPicks = total;
     }
   }
