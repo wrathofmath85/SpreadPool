@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Coming Soon</title>
+<style>
+
+  body {
+
+    margin: 0;
+
+    height: 100vh;
+
+    display: flex;
+
+    justify-content: center;
+
+    align-items: center;
+
+    background: linear-gradient(120deg, #ff7e5f, #ff512f, #feb47b);
+
+    background-size: 200% 200%;
+
+    animation: bgshift 16s ease-in-out infinite;
+
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+
+    overflow: hidden;
+
+  }
+
+  @keyframes bgshift {
+
+    0% {background-position: 0% 50%;}
+
+    50% {background-position: 100% 50%;}
+
+    100% {background-position: 0% 50%;}
+
+  }
+
+  .wrapper {
+
+    position: relative;
+
+    text-align: center;
+
+    z-index: 1;
+
+  }
+
+  .card {
+
+    background: rgba(0,0,0,0.25);
+
+    padding: 40px;
+
+    border-radius: 20px;
+
+    border: 1px solid rgba(255,255,255,0.25);
+
+    box-shadow: 0 10px 40px rgba(0,0,0,0.35);
+
+  }
+
+  h1 {
+
+    margin: 0 0 0.4em;
+
+    font-size: clamp(44px, 9vw, 120px);
+
+    color: #fff;
+
+    text-transform: uppercase;
+
+    text-shadow: 0 2px 0 rgba(0,0,0,.25), 0 0 22px rgba(255,255,255,.25);
+
+  }
+
+  .date {
+
+    font-size: clamp(20px, 4vw, 34px);
+
+    font-weight: bold;
+
+    background: rgba(255,255,255,0.15);
+
+    border: 1px solid rgba(255,255,255,0.3);
+
+    padding: .5em 1em;
+
+    border-radius: 999px;
+
+    display: inline-block;
+
+    margin-bottom: .6em;
+
+    color: #fff;
+
+  }
+
+  .tag {
+
+    color: #ffeedd;
+
+    font-size: clamp(14px, 2.6vw, 18px);
+
+  }
+
+  /* confetti stays behind, doesn’t shift content */
+
+  .confetti {
+
+    position: absolute;
+
+    top: -10vh;
+
+    width: 10px; height: 14px;
+
+    opacity: .95;
+
+    border-radius: 3px;
+
+    animation: fall linear forwards;
+
+  }
+
+  @keyframes fall {
+
+    to { transform: translateY(120vh) rotate(720deg); }
+
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+<div class="card">
+<h1>🎉 COMING SOON 🎉</h1>
+<div class="date">November 13, 2025</div>
+<div class="tag">We’re cooking up something fun. See you then!</div>
+</div>
+</div>
+<script>
+
+(function(){
+
+  const colors = ['#FF5C5C','#FFE066','#7DD87D','#5CC8FF','#B28DFF','#FF9CEE'];
+
+  const pieces = 40;
+
+  for(let i=0;i<pieces;i++){
+
+    const c=document.createElement('div');
+
+    c.className='confetti';
+
+    c.style.left=Math.random()*100+'vw';
+
+    c.style.background=colors[(Math.random()*colors.length)|0];
+
+    c.style.animationDuration=(4+Math.random()*3)+'s';
+
+    c.style.animationDelay=(Math.random()*0.4)+'s';
+
+    document.body.appendChild(c);
+
+    c.addEventListener('animationend',()=>c.remove());
+
+  }
+
+})();
+</script>
+</body>
+</html>
+ 
