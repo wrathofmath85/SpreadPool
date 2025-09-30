@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Coming Soon</title>
+<style>
+
+  :root{
+
+    --bg1:#1a2a6c; --bg2:#fdbb2d; --bg3:#b21f1f;
+
+    --text:#ffffff; --muted:#e6f0ff;
+
+  }
+
+  *{box-sizing:border-box}
+
+  html,body{height:100%}
+
+  body{
+
+    margin:0;
+
+    color:var(--text);
+
+    display:grid;
+
+    place-items:center;
+
+    overflow:hidden;
+
+    background: linear-gradient(120deg,var(--bg1),var(--bg3),var(--bg2));
+
+    background-size: 200% 200%;
+
+    animation:bgshift 12s ease-in-out infinite;
+
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+
+  }
+
+  @keyframes bgshift{
+
+    0%{background-position:0% 50%}
+
+    50%{background-position:100% 50%}
+
+    100%{background-position:0% 50%}
+
+  }
+
+  .card{
+
+    text-align:center;
+
+    padding: clamp(24px, 5vw, 56px);
+
+    backdrop-filter: blur(6px);
+
+    background: rgba(255,255,255,0.08);
+
+    border: 1px solid rgba(255,255,255,0.25);
+
+    border-radius: 20px;
+
+    box-shadow: 0 10px 40px rgba(0,0,0,0.25);
+
+    max-width: 780px;
+
+    width: min(92vw, 780px);
+
+  }
+
+  h1{
+
+    margin:0 0 .35em;
+
+    font-size: clamp(40px, 9vw, 108px);
+
+    line-height: .95;
+
+    letter-spacing:.02em;
+
+    text-transform:uppercase;
+
+    background: linear-gradient(90deg,#fff,#fffa,#fff);
+
+    -webkit-background-clip:text;
+
+    background-clip:text;
+
+    color: transparent;
+
+    text-shadow: 0 0 16px rgba(255,255,255,0.35);
+
+    animation: shimmy 2.4s ease-in-out infinite;
+
+  }
+
+  @keyframes shimmy{
+
+    0%,100%{transform:rotate(-.4deg) translateY(0)}
+
+    50%{transform:rotate(.4deg) translateY(-2px)}
+
+  }
+
+  .date{
+
+    font-size: clamp(18px, 3.6vw, 32px);
+
+    font-weight:700;
+
+    letter-spacing:.04em;
+
+    color: #fff;
+
+    padding:.35em .7em;
+
+    border-radius: 999px;
+
+    display:inline-block;
+
+    background: rgba(0,0,0,.25);
+
+    border: 1px solid rgba(255,255,255,.35);
+
+  }
+
+  .tag{
+
+    margin-top:.9em;
+
+    font-size: clamp(14px, 2.6vw, 18px);
+
+    color: var(--muted);
+
+    opacity:.95;
+
+  }
+
+  /* confetti sprinkles */
+
+  .confetti{
+
+    position: fixed;
+
+    top:-10vh;
+
+    width:10px;height:14px;
+
+    opacity:0.9;
+
+    transform: translateY(-100px) rotate(0deg);
+
+    animation: fall linear forwards;
+
+    border-radius:3px;
+
+  }
+
+  @keyframes fall{
+
+    to{
+
+      transform: translateY(120vh) rotate(720deg);
+
+      opacity: 1;
+
+    }
+
+  }
+
+  /* subtle footer */
+
+  .tiny{
+
+    position: fixed;
+
+    bottom:10px; left:50%;
+
+    transform:translateX(-50%);
+
+    font-size:12px; color:#fff; opacity:.6;
+
+  }
+
+  .tiny a{color:#fff}
+</style>
+</head>
+<body>
+<main class="card" role="main" aria-label="Coming soon message">
+<h1>🎉 COMING&nbsp;SOON 🎉</h1>
+<!-- EDIT ME: Put your launch date text below -->
+<div class="date" id="launch-date">October 2, 2025</div>
+<div class="tag">We’re cooking up something fun. See you then!</div>
+</main>
+<div class="tiny" aria-hidden="true">✨ Tip: edit the date in the code where it says “EDIT ME”.</div>
+<script>
+
+/* Tiny confetti burst on load — no libraries */
+
+(function(){
+
+  const colors = ['#FF5C5C','#FFE066','#7DD87D','#5CC8FF','#B28DFF','#FF9CEE'];
+
+  const pieces = 60; // confetti count (keep it light)
+
+  const durationMin = 4, durationMax = 7;
+
+  for(let i=0;i<pieces;i++){
+
+    const c = document.createElement('div');
+
+    c.className='confetti';
+
+    c.style.left = Math.random()*100 + 'vw';
+
+    c.style.background = colors[(Math.random()*colors.length)|0];
+
+    c.style.animationDuration = (durationMin + Math.random()*(durationMax-durationMin)) + 's';
+
+    c.style.animationDelay = (Math.random()*0.6)+'s';
+
+    c.style.transform = `translateY(-100px) rotate(${Math.random()*360}deg)`;
+
+    c.style.filter = `hue-rotate(${Math.random()*60-30}deg)`;
+
+    document.body.appendChild(c);
+
+    // auto-cleanup after animation
+
+    c.addEventListener('animationend', ()=> c.remove());
+
+  }
+
+})();
+</script>
+</body>
+</html>
+ 
