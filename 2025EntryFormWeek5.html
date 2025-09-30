@@ -8,9 +8,9 @@
 
   :root{
 
-    --bg1:#1a2a6c; --bg2:#fdbb2d; --bg3:#b21f1f;
+    --bg1:#ff7e5f; --bg2:#feb47b; --bg3:#ff512f;
 
-    --text:#ffffff; --muted:#e6f0ff;
+    --text:#ffffff; --muted:#ffeedd;
 
   }
 
@@ -22,21 +22,21 @@
 
     margin:0;
 
-    color:var(--text);
-
     display:grid;
 
     place-items:center;
 
-    overflow:hidden;
+    color:var(--text);
 
-    background: linear-gradient(120deg,var(--bg1),var(--bg3),var(--bg2));
+    background: radial-gradient(1200px 800px at 20% 10%, #00000022, transparent),
+
+                linear-gradient(120deg,var(--bg1),var(--bg3),var(--bg2));
 
     background-size: 200% 200%;
 
-    animation:bgshift 12s ease-in-out infinite;
+    animation:bgshift 16s ease-in-out infinite;
 
-    font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
 
   }
 
@@ -54,75 +54,55 @@
 
     text-align:center;
 
-    padding: clamp(24px, 5vw, 56px);
+    padding: clamp(28px, 6vw, 72px);
 
-    backdrop-filter: blur(6px);
+    background: rgba(0,0,0,0.28);   /* solid (no backdrop-filter) to prevent ghosting */
 
-    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.22);
 
-    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 24px;
 
-    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.35);
 
-    box-shadow: 0 10px 40px rgba(0,0,0,0.25);
-
-    max-width: 780px;
-
-    width: min(92vw, 780px);
+    width:min(92vw,860px);
 
   }
 
   h1{
 
-    margin:0 0 .35em;
+    margin:0 0 .5em;
 
-    font-size: clamp(40px, 9vw, 108px);
+    font-size: clamp(44px, 9vw, 120px);
 
-    line-height: .95;
+    line-height:.95;
 
     letter-spacing:.02em;
 
     text-transform:uppercase;
 
-    background: linear-gradient(90deg,#fff,#fffa,#fff);
+    /* crisp, no motion; slight glow for pop */
 
-    -webkit-background-clip:text;
-
-    background-clip:text;
-
-    color: transparent;
-
-    text-shadow: 0 0 16px rgba(255,255,255,0.35);
-
-    animation: shimmy 2.4s ease-in-out infinite;
-
-  }
-
-  @keyframes shimmy{
-
-    0%,100%{transform:rotate(-.4deg) translateY(0)}
-
-    50%{transform:rotate(.4deg) translateY(-2px)}
+    text-shadow: 0 2px 0 rgba(0,0,0,.25), 0 0 22px rgba(255,255,255,.25);
 
   }
 
   .date{
 
-    font-size: clamp(18px, 3.6vw, 32px);
+    font-size: clamp(18px, 3.6vw, 34px);
 
-    font-weight:700;
+    font-weight:800;
 
     letter-spacing:.04em;
 
-    color: #fff;
+    color:#fff;
 
-    padding:.35em .7em;
+    padding:.45em .9em;
 
     border-radius: 999px;
 
     display:inline-block;
 
-    background: rgba(0,0,0,.25);
+    background: rgba(255,255,255,.14);
 
     border: 1px solid rgba(255,255,255,.35);
 
@@ -130,7 +110,7 @@
 
   .tag{
 
-    margin-top:.9em;
+    margin-top:1em;
 
     font-size: clamp(14px, 2.6vw, 18px);
 
@@ -140,7 +120,7 @@
 
   }
 
-  /* confetti sprinkles */
+  /* light, one-time confetti for fun — no heavy effects */
 
   .confetti{
 
@@ -148,90 +128,55 @@
 
     top:-10vh;
 
-    width:10px;height:14px;
-
-    opacity:0.9;
+    width:10px;height:14px;opacity:.95;border-radius:3px;
 
     transform: translateY(-100px) rotate(0deg);
 
     animation: fall linear forwards;
 
-    border-radius:3px;
-
   }
 
   @keyframes fall{
 
-    to{
-
-      transform: translateY(120vh) rotate(720deg);
-
-      opacity: 1;
-
-    }
+    to{ transform: translateY(120vh) rotate(720deg); }
 
   }
-
-  /* subtle footer */
-
-  .tiny{
-
-    position: fixed;
-
-    bottom:10px; left:50%;
-
-    transform:translateX(-50%);
-
-    font-size:12px; color:#fff; opacity:.6;
-
-  }
-
-  .tiny a{color:#fff}
 </style>
 </head>
 <body>
-<main class="card" role="main" aria-label="Coming soon message">
+<main class="card" role="main" aria-label="Coming soon">
 <h1>🎉 COMING&nbsp;SOON 🎉</h1>
-<!-- EDIT ME: Put your launch date text below -->
+<!-- EDIT ME: set your date -->
 <div class="date" id="launch-date">October 2, 2025</div>
 <div class="tag">We’re cooking up something fun. See you then!</div>
 </main>
-<div class="tiny" aria-hidden="true">✨ Tip: edit the date in the code where it says “EDIT ME”.</div>
 <script>
 
-/* Tiny confetti burst on load — no libraries */
+/* Tiny confetti burst (kept lightweight) */
 
 (function(){
 
   const colors = ['#FF5C5C','#FFE066','#7DD87D','#5CC8FF','#B28DFF','#FF9CEE'];
 
-  const pieces = 60; // confetti count (keep it light)
-
-  const durationMin = 4, durationMax = 7;
+  const pieces = 40;
 
   for(let i=0;i<pieces;i++){
 
-    const c = document.createElement('div');
+    const c=document.createElement('div');
 
     c.className='confetti';
 
-    c.style.left = Math.random()*100 + 'vw';
+    c.style.left=Math.random()*100+'vw';
 
-    c.style.background = colors[(Math.random()*colors.length)|0];
+    c.style.background=colors[(Math.random()*colors.length)|0];
 
-    c.style.animationDuration = (durationMin + Math.random()*(durationMax-durationMin)) + 's';
+    c.style.animationDuration=(4+Math.random()*3)+'s';
 
-    c.style.animationDelay = (Math.random()*0.6)+'s';
-
-    c.style.transform = `translateY(-100px) rotate(${Math.random()*360}deg)`;
-
-    c.style.filter = `hue-rotate(${Math.random()*60-30}deg)`;
+    c.style.animationDelay=(Math.random()*0.4)+'s';
 
     document.body.appendChild(c);
 
-    // auto-cleanup after animation
-
-    c.addEventListener('animationend', ()=> c.remove());
+    c.addEventListener('animationend',()=>c.remove());
 
   }
 
