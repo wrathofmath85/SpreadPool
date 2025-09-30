@@ -6,153 +6,142 @@
 <title>Coming Soon</title>
 <style>
 
-  :root{
+  body {
 
-    --bg1:#ff7e5f; --bg2:#feb47b; --bg3:#ff512f;
+    margin: 0;
 
-    --text:#ffffff; --muted:#ffeedd;
+    height: 100vh;
 
-  }
+    display: flex;
 
-  *{box-sizing:border-box}
+    justify-content: center;
 
-  html,body{height:100%}
+    align-items: center;
 
-  body{
-
-    margin:0;
-
-    display:grid;
-
-    place-items:center;
-
-    color:var(--text);
-
-    background: radial-gradient(1200px 800px at 20% 10%, #00000022, transparent),
-
-                linear-gradient(120deg,var(--bg1),var(--bg3),var(--bg2));
+    background: linear-gradient(120deg, #ff7e5f, #ff512f, #feb47b);
 
     background-size: 200% 200%;
 
-    animation:bgshift 16s ease-in-out infinite;
+    animation: bgshift 16s ease-in-out infinite;
 
-    font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
 
-  }
-
-  @keyframes bgshift{
-
-    0%{background-position:0% 50%}
-
-    50%{background-position:100% 50%}
-
-    100%{background-position:0% 50%}
+    overflow: hidden;
 
   }
 
-  .card{
+  @keyframes bgshift {
 
-    text-align:center;
+    0% {background-position: 0% 50%;}
 
-    padding: clamp(28px, 6vw, 72px);
+    50% {background-position: 100% 50%;}
 
-    background: rgba(0,0,0,0.28);   /* solid (no backdrop-filter) to prevent ghosting */
+    100% {background-position: 0% 50%;}
 
-    border: 1px solid rgba(255,255,255,0.22);
+  }
 
-    border-radius: 24px;
+  .wrapper {
+
+    position: relative;
+
+    text-align: center;
+
+    z-index: 1;
+
+  }
+
+  .card {
+
+    background: rgba(0,0,0,0.25);
+
+    padding: 40px;
+
+    border-radius: 20px;
+
+    border: 1px solid rgba(255,255,255,0.25);
 
     box-shadow: 0 10px 40px rgba(0,0,0,0.35);
 
-    width:min(92vw,860px);
-
   }
 
-  h1{
+  h1 {
 
-    margin:0 0 .5em;
+    margin: 0 0 0.4em;
 
     font-size: clamp(44px, 9vw, 120px);
 
-    line-height:.95;
+    color: #fff;
 
-    letter-spacing:.02em;
-
-    text-transform:uppercase;
-
-    /* crisp, no motion; slight glow for pop */
+    text-transform: uppercase;
 
     text-shadow: 0 2px 0 rgba(0,0,0,.25), 0 0 22px rgba(255,255,255,.25);
 
   }
 
-  .date{
+  .date {
 
-    font-size: clamp(18px, 3.6vw, 34px);
+    font-size: clamp(20px, 4vw, 34px);
 
-    font-weight:800;
+    font-weight: bold;
 
-    letter-spacing:.04em;
+    background: rgba(255,255,255,0.15);
 
-    color:#fff;
+    border: 1px solid rgba(255,255,255,0.3);
 
-    padding:.45em .9em;
+    padding: .5em 1em;
 
     border-radius: 999px;
 
-    display:inline-block;
+    display: inline-block;
 
-    background: rgba(255,255,255,.14);
+    margin-bottom: .6em;
 
-    border: 1px solid rgba(255,255,255,.35);
+    color: #fff;
 
   }
 
-  .tag{
+  .tag {
 
-    margin-top:1em;
+    color: #ffeedd;
 
     font-size: clamp(14px, 2.6vw, 18px);
 
-    color: var(--muted);
-
-    opacity:.95;
-
   }
 
-  /* light, one-time confetti for fun — no heavy effects */
+  /* confetti stays behind, doesn’t shift content */
 
-  .confetti{
+  .confetti {
 
-    position: fixed;
+    position: absolute;
 
-    top:-10vh;
+    top: -10vh;
 
-    width:10px;height:14px;opacity:.95;border-radius:3px;
+    width: 10px; height: 14px;
 
-    transform: translateY(-100px) rotate(0deg);
+    opacity: .95;
+
+    border-radius: 3px;
 
     animation: fall linear forwards;
 
   }
 
-  @keyframes fall{
+  @keyframes fall {
 
-    to{ transform: translateY(120vh) rotate(720deg); }
+    to { transform: translateY(120vh) rotate(720deg); }
 
   }
 </style>
 </head>
 <body>
-<main class="card" role="main" aria-label="Coming soon">
-<h1>🎉 COMING&nbsp;SOON 🎉</h1>
-<!-- EDIT ME: set your date -->
-<div class="date" id="launch-date">October 2, 2025</div>
+<div class="wrapper">
+<div class="card">
+<h1>🎉 COMING SOON 🎉</h1>
+<div class="date">October 2, 2025</div>
 <div class="tag">We’re cooking up something fun. See you then!</div>
-</main>
+</div>
+</div>
 <script>
-
-/* Tiny confetti burst (kept lightweight) */
 
 (function(){
 
