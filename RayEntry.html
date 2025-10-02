@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Spread Pool — Week 4 (Partial Picks)</title>
+<title>Spread Pool — Week 3 (Partial Picks)</title>
 <style>
 :root{
   --bg:#0d1117; --card:#111827; --text:#e6edf3; --muted:#9aa1b1; --border:#263142;
@@ -60,60 +60,37 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
 .spinner{width:42px;height:42px;border-radius:50%;border:4px solid rgba(255,255,255,.2);border-top-color:#fff;animation: spin .9s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-/* =========================
-   MOBILE FOOTER READABILITY
-   (CSS only; no HTML/JS changes)
-   ========================= */
+/* Mobile footer tweaks */
 @media (max-width: 640px){
   .footer{
     flex-wrap:wrap;
     gap:10px;
     padding:12px 14px calc(12px + env(safe-area-inset-bottom));
-    background:#0f1623;        /* solid for contrast */
-    backdrop-filter:none;       /* remove blur for crisp text */
+    background:#0f1623;
+    backdrop-filter:none;
   }
-  .footer .m,
-  .footer .r,
-  .footer .l{ flex:1 1 100%; }  /* stack into rows */
-
-  .footer .m{ order:1; }        /* totals first */
-  .footer .r{ order:2; }        /* status second */
-  .footer .l{ order:3; display:flex; gap:8px; } /* buttons last */
-
+  .footer .m, .footer .r, .footer .l{ flex:1 1 100%; }
+  .footer .m{ order:1; }
+  .footer .r{ order:2; }
+  .footer .l{ order:3; display:flex; gap:8px; }
   #totalPicked, #statusBox{
-    display:block;
-    width:100%;
-    text-align:center;
-    font-weight:900;
-    font-size:1rem;
-    line-height:1.25;
-    padding:10px 12px;
-    border-radius:12px;
+    display:block;width:100%;text-align:center;font-weight:900;font-size:1rem;line-height:1.25;padding:10px 12px;border-radius:12px;
   }
-  #totalPicked{
-    background:#111827;
-    border:1px solid var(--border);
-  }
-  /* Keep status pill readable on both states */
-  #statusBox.status_bad{
-    background:var(--bad);
-    color:#fff;
-    border-color:var(--bad);
-  }
-  #statusBox.status_good{
-    background:var(--bearsNavy);
-    color:var(--bearsOrange);
-    border-color:var(--bearsNavy);
-  }
-
-  /* Bigger tap targets for buttons */
+  #totalPicked{ background:#111827;border:1px solid var(--border); }
+  #statusBox.status_bad{ background:var(--bad);color:#fff;border-color:var(--bad); }
+  #statusBox.status_good{ background:#0B162A;color:#DC4405;border-color:#0B162A; }
   .btn{ flex:1 1 0; font-size:1rem; padding:12px; }
 }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Spread Pool — Week 4</h1>
+  <h1>Spread Pool — Week 3</h1>
+
+  <!-- GLOBAL DEADLINE BANNER -->
+  <div id="deadlineBanner" class="card" style="border:2px solid var(--border);">
+    <div id="deadlineText" class="small"></div>
+  </div>
 
   <section class="card">
     <h2>Participant</h2>
@@ -131,6 +108,21 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
     <p id="partialBanner" class="small" style="margin-top:8px;background:#1f2937;border:1px solid var(--border);padding:10px;border-radius:10px">
       <strong>Partial Picks Mode is ON:</strong> You may submit a few picks now and return later to add more. After kickoff, any unpicked games will receive the default per rules.
     </p>
+
+    <!-- Num Picks Plan -->
+    <div id="numPicksCard" class="card" style="margin:12px 0">
+      <h2>Num Picks Plan</h2>
+      <div class="small muted" id="numPicksHelp" style="margin-bottom:8px">
+        If you submit fewer than 7 picks, you must declare how many total picks you will make this week (7–12). If you have 7+ now, you can leave this blank to auto-commit to your current total.
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;max-width:420px">
+        <label for="numPicksPlan" class="small muted" style="min-width:140px">Planned total:</label>
+        <input id="numPicksPlan" type="number" min="1" max="12" step="1" placeholder="leave blank if 7–12"
+               style="width:160px;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text)"/>
+        <span id="numPicksLockBadge" class="badge locked is-hidden">Committed</span>
+      </div>
+      <p id="numPicksNotice" class="small muted" style="margin-top:8px"></p>
+    </div>
   </section>
 
   <section class="grid">
@@ -152,7 +144,7 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
 
   <section class="card">
     <h2>Checks &amp; Notices</h2>
-    <p class="small muted">You can submit any number of picks. Notices below won’t block submission; they’re just reminders.</p>
+    <p class="small muted">You can submit any number of picks. Notices below won’t block submission; they’re just reminders. Items marked ✕ are hard blockers.</p>
     <ul id="checkList" class="checklist">
       <li id="chkName"     class="check-bad"><span class="check-icon">✕</span><span class="check-text">Name selected</span></li>
       <li id="chkEmail"    class="check-bad"><span class="check-icon">✕</span><span class="check-text">Valid email</span></li>
@@ -161,6 +153,7 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
       <li id="chkAtLeastA" class="check-warn"><span class="check-icon">!</span><span class="check-text">≥ 3 answers in NFL (advised)</span></li>
       <li id="chkAtLeastB" class="check-warn"><span class="check-icon">!</span><span class="check-text">≥ 3 answers in College (advised)</span></li>
       <li id="chkRange"    class="check-warn"><span class="check-icon">!</span><span class="check-text">Aim for 7–12 total games; defaults apply to missing</span></li>
+      <li id="chkNumPicks" class="check-bad"><span class="check-icon">✕</span><span class="check-text">NumPicks plan/commitment satisfied</span></li>
       <li id="chkDouble"   class="check-bad"><span class="check-icon">✕</span><span class="check-text">If Double chosen, it’s one of your selections</span></li>
     </ul>
   </section>
@@ -194,16 +187,20 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
 <script>
 /* ===================== CONFIG ===================== */
 const CSV_URL_PARTICIPANTS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRj5ieGlGWurIlGuongV3vJhWWAwCYsEFVhEEtjwOG7RiFwTRZkM_JXtjb8QtwsdzhaXPMDRPyU7qZC/pub?gid=0&single=true&output=csv";
-const CSV_URL_NFL          = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTnt4gsei8YMNng5-gtZGGamyb8PRC78abChYr5kEn7zBgDcSsGmuF_rxjRtztiLFJ0WtfulpQSO3pM/pub?gid=2109553148&single=true&output=csv";
-const CSV_URL_NCAA         = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTnt4gsei8YMNng5-gtZGGamyb8PRC78abChYr5kEn7zBgDcSsGmuF_rxjRtztiLFJ0WtfulpQSO3pM/pub?gid=0&single=true&output=csv";
+const CSV_URL_NFL          = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRr_1RHeumoIiyAnEl6Ff83N_YQcnMwdJF7omhd7tkfU50GZCEd2Zar2kQtFKDTKlmZK-9D2ZyO7sbn/pub?gid=2109553148&single=true&output=csv";
+const CSV_URL_NCAA         = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRr_1RHeumoIiyAnEl6Ff83N_YQcnMwdJF7omhd7tkfU50GZCEd2Zar2kQtFKDTKlmZK-9D2ZyO7sbn/pub?gid=0&single=true&output=csv";
 
-/* NEW: publish your Picks sheet as CSV (Week rows logged by the Web App). */
-const CSV_URL_PICKS        = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRys9xayYsuEqgGB09v1nOrwdD0U5c1Hb1ksLqQxTSBzLi3AKGeg9yPt1-eY1fry_0H-KcZLCQ1h8H6/pub?gid=1991283502&single=true&output=csv"; // <-- TODO: paste the public CSV of your Picks log sheet
+/* Picks log (must include / will receive NumPicks) */
+const CSV_URL_PICKS        = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRys9xayYsuEqgGB09v1nOrwdD0U5c1Hb1ksLqQxTSBzLi3AKGeg9yPt1-eY1fry_0H-KcZLCQ1h8H6/pub?gid=1158916010&single=true&output=csv";
 
-const CURRENT_WEEK = 4;
-const ALLOW_PARTIAL = true;          // turn on partial-picks mode
-const TOTAL_TARGET = 7;              // how many total games you’d like players to reach
-const DEFAULTS_POLICY_TEXT = "Unpicked games receive the default per your rules."; // purely informational
+const CURRENT_WEEK = 5;
+const ALLOW_PARTIAL = true;
+const TOTAL_TARGET = 7;
+const MAX_PICKS = 12;
+const DEFAULTS_POLICY_TEXT = "Unpicked games receive the default per your rules.";
+
+/* >>> GLOBAL PICK DEADLINE (UTC) <<< */
+const PICKS_DEADLINE_UTC = "2025-10-03T21:30:00Z";
 
 /* EmailJS */
 const EMAILJS_SERVICE_ID = "service_txqdfck";
@@ -211,7 +208,7 @@ const EMAILJS_TEMPLATE_ID = "template_o8du7pt";
 const EMAILJS_PUBLIC_KEY  = "YB5J-75APa-V6Giku";
 
 /* Google Apps Script Web App URL (handles upsert) */
-const GSHEET_WEBAPP_URL   = "https://script.google.com/macros/s/AKfycbwbn6FNiK1clBgO5ZGmvhrMX8KBCmTO0pLbDIU9S3CnjAZ_SgYqHBf0KOOPGbFKOxvxFw/exec";
+const GSHEET_WEBAPP_URL   = "https://script.google.com/macros/s/AKfycbzaJaoLIKZ5uDliHD3Cq_O_bnTlrlxYEeW2tQr904020FrGQVFxLVgpUNXDwiR3V63v/exec";
 
 /* Require sheet write? */
 const REQUIRE_SHEETS_OK   = true;
@@ -221,7 +218,7 @@ const DEMO_MODE = false;
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
-const escapeHtml = s => String(s??"").replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[m]));
+const escapeHtml = s => String(s??"").replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;","\"":"&quot;"}[m]));
 const canon = s => String(s||"").toLowerCase().replace(/#\d+\s*/g,'').replace(/[()]/g,'').replace(/\bsta?te\b/g,'state').replace(/\bst\.?\b/g,'state').replace(/[^a-z0-9]+/g,' ').trim();
 
 /* ---- CSV helpers ---- */
@@ -237,7 +234,7 @@ function parseCSV(text){
   return rows.map(r => Object.fromEntries(hdr.map((h,i)=>[h.trim(), (r[i]??"").trim()])));
 }
 
-/* ---------- ET (CSV) → local viewer time ---------- */
+/* ---------- ET → local viewer time ---------- */
 function stripWeekday(dateStr){ if(!dateStr) return ""; return String(dateStr).replace(/^\s*[A-Za-z]+day,\s*/i, "").replace(/^\s*[A-Za-z]{3},\s*/i, "").trim(); }
 function parseDateToken(s){
   s = stripWeekday(String(s||"").replace(/\s+/g," ").trim());
@@ -253,7 +250,11 @@ function ETtoLocal(dateStr,timeStr){ const d=parseDateToken(dateStr); if(!d) ret
 function sortRequiredFirst(arr){return arr.map((r,i)=>({...r,__i:i})).sort((a,b)=>{const req=(b.required===true)-(a.required===true); if(req) return req; const at=a.iso||'9999-12-31T23:59:59Z', bt=b.iso||'9999-12-31T23:59:59Z'; const t=at.localeCompare(bt); if(t) return t; return a.__i-b.__i;}).map(({__i,...r})=>r)}
 
 /* ============== STATE ============== */
-let gamesA=[], gamesB=[]; let paymentByName = new Map(); let existingByQID = new Map(); // qid -> {choice,isDouble}
+let gamesA=[], gamesB=[];
+let paymentByName = new Map();
+let existingByQID = new Map();
+/* committed number of picks for this week (from prior submission) */
+let committedNumPicks = null;
 
 /* ============== CSV → GAMES ============== */
 function normalizeGames(csvRows, prefix){
@@ -327,7 +328,55 @@ function renderSection(container, list){
   list.forEach(g => container.appendChild(buildRow(g)));
 }
 
-/* expiry UI */
+/* ========== DEADLINE HELPERS ========== */
+const DEADLINE_MS = Date.parse(PICKS_DEADLINE_UTC || "") || 0;
+function isAfterDeadline(){ return DEADLINE_MS > 0 && Date.now() >= DEADLINE_MS; }
+function fmtCountdown(ms){
+  if(ms <= 0) return "0s";
+  const s = Math.floor(ms/1000);
+  const d = Math.floor(s/86400);
+  const h = Math.floor((s%86400)/3600);
+  const m = Math.floor((s%3600)/60);
+  const sec = s%60;
+  const parts = [];
+  if(d) parts.push(`${d}d`);
+  if(h || d) parts.push(`${h}h`);
+  if(m || h || d) parts.push(`${m}m`);
+  parts.push(`${sec}s`);
+  return parts.join(" ");
+}
+function setAllInputsDisabled(disabled){
+  $$('input, select, button').forEach(el=>{
+    if(el.id === 'resetBtn') return;
+    el.disabled = disabled;
+  });
+}
+function refreshDeadlineUI(){
+  const banner = $("#deadlineBanner");
+  const txt = $("#deadlineText");
+  if(!DEADLINE_MS){
+    banner.classList.remove("is-hidden");
+    txt.textContent = "No global deadline configured.";
+    return;
+  }
+  const now = Date.now();
+  if(isAfterDeadline()){
+    banner.classList.remove("is-hidden");
+    const when = new Date(DEADLINE_MS).toUTCString();
+    txt.innerHTML = `<strong style="color:#fff">PICKS CLOSED</strong> — deadline passed at <strong>${when}</strong> (UTC).`;
+    setAllInputsDisabled(true);
+    $("#statusBox").textContent = "PICKS CLOSED";
+    $("#statusBox").className = "statusBox status_bad";
+  }else{
+    const msLeft = DEADLINE_MS - now;
+    banner.classList.remove("is-hidden");
+    const when = new Date(DEADLINE_MS).toUTCString();
+    txt.innerHTML = `Picks are <strong style="color:#0f0">OPEN</strong>. Deadline: <strong>${when}</strong> (UTC) — closes in <strong>${fmtCountdown(msLeft)}</strong>.`;
+    setAllInputsDisabled(false);
+  }
+}
+
+/* expiry UI per game */
 function refreshExpiryUI(){
   const updateFor = (rows, games) => {
     rows.forEach(row=>{
@@ -338,11 +387,11 @@ function refreshExpiryUI(){
       const pillExpired = row.querySelector('.badge.expired');
       const pillLocked  = row.querySelector('.badge.locked');
       if(expired){
-        radios.forEach(i=>{ i.disabled = true; /* keep checked state if any */ });
+        radios.forEach(i=>{ i.disabled = true; });
         if(anyChecked){ pillLocked?.classList.remove('is-hidden'); pillExpired?.classList.add('is-hidden'); }
         else{ pillExpired?.classList.remove('is-hidden'); pillLocked?.classList.add('is-hidden'); }
       }else{
-        radios.forEach(i=>{ i.disabled = false; });
+        radios.forEach(i=>{ i.disabled = isAfterDeadline(); });
         pillExpired?.classList.add('is-hidden'); pillLocked?.classList.add('is-hidden');
       }
     });
@@ -352,6 +401,26 @@ function refreshExpiryUI(){
 }
 
 function countChecked(container){ return container.querySelectorAll('input[type="radio"]:checked').length; }
+function totalChecked(){ return countChecked($("#listA")) + countChecked($("#listB")); }
+
+/* ----- REQUIRED MISSING HELPERS ----- */
+function isPicked(qid){
+  return !!document.querySelector(`input[type="radio"][name="${CSS.escape(qid)}"]:checked`);
+}
+function countMissingRequired(){
+  const now = Date.now();
+  const countMissing = (games) => games.filter(g => {
+    if(!g.required) return false;
+    const expired = g.start ? (now >= g.start.getTime()) : false;
+    if(expired) return false;
+    return !isPicked(g.qid);
+  }).length;
+  return {
+    nfl: countMissing(gamesA),
+    ncaa: countMissing(gamesB),
+    total: countMissing(gamesA) + countMissing(gamesB)
+  };
+}
 
 /* Double dropdown shows picked team (even if now locked) */
 function refreshDoubleChoices(){
@@ -364,6 +433,57 @@ function refreshDoubleChoices(){
   if(keep && chosen.some(o=>o.qid===keep)) sel.value = keep;
 }
 
+/* NumPicks UI helpers — BLANK by default unless previously committed */
+function updateNumPicksUI(){
+  const planInput = $("#numPicksPlan");
+  const lockBadge = $("#numPicksLockBadge");
+  const notice = $("#numPicksNotice");
+  const tot = totalChecked();
+  const missingReq = countMissingRequired();
+  const pendingRequired = missingReq.total;
+
+  if (committedNumPicks != null) {
+    planInput.value = committedNumPicks;
+    planInput.disabled = true;
+    lockBadge.classList.remove("is-hidden");
+    const remain = Math.max(0, committedNumPicks - tot);
+    notice.textContent = remain > 0
+      ? `You committed to ${committedNumPicks} picks. You currently have ${tot}. You still need ${remain} more.`
+      : `You committed to ${committedNumPicks} picks. You have reached your committed total. You may still change which games (not the count).`;
+    return;
+  }
+
+  // first-time (no commitment yet)
+  lockBadge.classList.add("is-hidden");
+  planInput.disabled = false;
+
+  // keep the field BLANK unless the user types; just update constraints
+  planInput.min = Math.max(tot, 1);
+  planInput.max = MAX_PICKS;
+
+  const typed = planInput.value.trim();
+  const hasTyped = typed !== "";
+  const planned = hasTyped ? parseInt(typed, 10) : NaN;
+
+  if (tot < 7) {
+    notice.textContent = `With fewer than 7 picks, enter your intended total (7–${MAX_PICKS}). Field cannot be blank.`;
+  } else if (!hasTyped) {
+    const autoLock = Math.min(MAX_PICKS, tot + pendingRequired);
+    if (pendingRequired > 0) {
+      notice.textContent = `You have ${pendingRequired} required game(s) not yet selected. Leaving NumPicks blank will commit you to ${autoLock} (your ${tot} current + ${pendingRequired} required). You can change WHICH games later, but your pick total must remain ${autoLock}.`;
+    } else {
+      notice.textContent = `With ${tot} picks selected: leaving NumPicks blank will commit you to exactly ${tot}. You can change WHICH games later, but your pick total must remain ${tot}.`;
+    }
+  } else {
+    // user typed something; show guardrails
+    const ok = planned >= tot && planned <= MAX_PICKS;
+    notice.textContent = ok
+      ? `Planned total set to ${planned}. You can return to finish up to that number.`
+      : `Planned total must be between your current ${tot} and ${MAX_PICKS}.`;
+  }
+}
+
+/* Build text summary */
 function buildSelectionsText(includeGameLine=false){
   const name  = $("#nameSel").selectedOptions[0]?.textContent || "";
   const email = $("#emailBox").value.trim();
@@ -398,7 +518,8 @@ function buildSelectionsText(includeGameLine=false){
   return lines.join("\n");
 }
 
-function collectSubmission(){
+/* Collect submission w/ NumPicks */
+function collectSubmission(finalNumPicks){
   const name  = $("#nameSel").selectedOptions[0]?.textContent || "";
   const email = $("#emailBox").value.trim();
   const dblQid = $("#doubleSel").value || "";
@@ -407,23 +528,67 @@ function collectSubmission(){
     const row = r.closest(".row"); const qid = row.dataset.qid; const team= (r.parentElement?.textContent || "").trim();
     return { qid, team, isDouble: (qid===dblQid) };
   }).sort((a,b)=>a.qid.localeCompare(b.qid));
-  const rows = picks.map(p => ({ timestamp, week: CURRENT_WEEK, name, email, qid: p.qid, choice: p.team, isDouble: !!p.isDouble }));
+  const rows = picks.map(p => ({
+    timestamp, week: CURRENT_WEEK, name, email, qid: p.qid, choice: p.team, isDouble: !!p.isDouble, NumPicks: finalNumPicks
+  }));
   const doubleTeam = picks.find(x=>x.isDouble)?.team || "";
   const total = picks.length;
-  return { name, email, week: CURRENT_WEEK, timestamp, double_qid: dblQid, double_team: doubleTeam, picks, rows, total_selected: total, target_total: TOTAL_TARGET, missing: Math.max(0, TOTAL_TARGET-total), partial: ALLOW_PARTIAL, summary: buildSelectionsText(false) };
+  return {
+    name, email, week: CURRENT_WEEK, timestamp,
+    double_qid: dblQid, double_team: doubleTeam,
+    picks, rows, total_selected: total, target_total: TOTAL_TARGET,
+    missing: Math.max(0, TOTAL_TARGET-total), partial: ALLOW_PARTIAL,
+    NumPicks: finalNumPicks,
+    summary: buildSelectionsText(false)
+  };
 }
 
 function renderSummary(){ $("#summary").innerHTML = `<pre style="white-space:pre-wrap;margin:0">${escapeHtml(buildSelectionsText(false))}</pre>`; }
 function setCheck(sel, state){ const li=$(sel); li.classList.toggle("check-ok", state===true); li.classList.toggle("check-bad", state===false); li.classList.toggle("check-warn", state==='warn'); li.querySelector(".check-icon").textContent = state===true?"✓":(state===false?"✕":"!"); }
 
+/* Validate including NumPicks logic + DEADLINE (blank allowed only when total >= 7).
+   Also warn if any unexpired required game is unpicked; status pill reflects this. */
 function validateAll(){
+  if(isAfterDeadline()){
+    setCheck("#chkName",  false);
+    setCheck("#chkEmail", false);
+    setCheck("#chkReqNFL",'warn'); setCheck("#chkReqNCAA",'warn');
+    setCheck("#chkAtLeastA",'warn'); setCheck("#chkAtLeastB",'warn');
+    setCheck("#chkRange",'warn'); setCheck("#chkDouble", false); setCheck("#chkNumPicks", false);
+    $("#statusBox").textContent = "PICKS CLOSED"; $("#statusBox").className = "statusBox status_bad";
+    return false;
+  }
+
   const nameOk  = !!$("#nameSel").value;
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test($("#emailBox").value.trim());
   const a = countChecked($("#listA")); const b = countChecked($("#listB")); const total = a + b;
-  const reqAOk = !gamesA.some(g=>{ if(!g.required) return false; const expired = g.start ? (Date.now() >= g.start.getTime()) : false; if(expired) return false; const row = $(`#listA .row[data-qid="${CSS.escape(g.qid)}"]`); return !row?.querySelector('input[type="radio"]:checked'); });
-  const reqBOk = !gamesB.some(g=>{ if(!g.required) return false; const expired = g.start ? (Date.now() >= g.start.getTime()) : false; if(expired) return false; const row = $(`#listB .row[data-qid="${CSS.escape(g.qid)}"]`); return !row?.querySelector('input[type="radio"]:checked'); });
-  const atLeastA = a >= 3; const atLeastB = b >= 3; const rangeOk = total >= 7 && total <= 12;
-  const dbl = $("#doubleSel").value; const chosenQIDs = $$('input[type="radio"]:checked').map(r=>r.name); const doubleOk = !dbl || chosenQIDs.includes(dbl);
+
+  // Missing required (unexpired) calculations
+  const missingReq = countMissingRequired();
+  const reqAOk = missingReq.nfl === 0;
+  const reqBOk = missingReq.ncaa === 0;
+
+  const atLeastA = a >= 3; const atLeastB = b >= 3;
+  const rangeWarn = !(total >= 7 && total <= MAX_PICKS);
+  const dbl = $("#doubleSel").value; const chosenQIDs = $$('input[type="radio"]:checked').map(r=>r.name);
+  const doubleOk = !dbl || chosenQIDs.includes(dbl);
+
+  let numPicksOk = true;
+  const planEl = $("#numPicksPlan");
+  const planned = planEl.value ? parseInt(planEl.value, 10) : NaN;
+  const hasPlanned = !isNaN(planned);
+
+  if (total > MAX_PICKS) {
+    numPicksOk = false;
+  } else if (committedNumPicks != null) {
+    if (total > committedNumPicks) numPicksOk = false;
+  } else {
+    if (hasPlanned) {
+      if (!(planned >= total && planned <= MAX_PICKS)) numPicksOk = false;
+    } else {
+      if (total < 7) numPicksOk = false; // blank only valid when >=7; auto-lock logic handled elsewhere
+    }
+  }
 
   setCheck("#chkName",  nameOk);
   setCheck("#chkEmail", emailOk);
@@ -431,40 +596,85 @@ function validateAll(){
   setCheck("#chkReqNCAA",  reqBOk ? true : 'warn');
   setCheck("#chkAtLeastA", atLeastA ? true : 'warn');
   setCheck("#chkAtLeastB", atLeastB ? true : 'warn');
-  setCheck("#chkRange",    rangeOk ? true : 'warn');
+  setCheck("#chkRange",    rangeWarn ? 'warn' : true);
   setCheck("#chkDouble",   doubleOk);
 
+  if (!numPicksOk) {
+    setCheck("#chkNumPicks", false);
+  } else if (committedNumPicks != null) {
+    if (total < committedNumPicks) setCheck("#chkNumPicks", 'warn');
+    else setCheck("#chkNumPicks", true);
+  } else {
+    setCheck("#chkNumPicks", true);
+  }
+
+  // Status pill: mention missing required when present
   const pill = $("#statusBox");
-  if(ALLOW_PARTIAL && total < TOTAL_TARGET){ pill.textContent = `PARTIAL OK — ${total}/${TOTAL_TARGET} picked`; pill.className = "statusBox status_neutral"; }
-  else if(nameOk && emailOk && doubleOk){ pill.textContent = "BEAR DOWN!"; pill.className = "statusBox status_good"; }
-  else { pill.textContent = "ERRORS DETECTED"; pill.className = "statusBox status_bad"; }
+  const basePartial = (ALLOW_PARTIAL && total < TOTAL_TARGET) ? `PARTIAL OK — ${total}/${TOTAL_TARGET} picked` : "BEAR DOWN!";
+  const withReq = missingReq.total > 0
+    ? `${ALLOW_PARTIAL ? "PARTIAL OK — " : ""}${missingReq.total} required game(s) still unpicked`
+    : basePartial;
+
+  if(nameOk && emailOk && doubleOk && numPicksOk){
+    pill.textContent = withReq;
+    pill.className = (missingReq.total === 0) ? "statusBox status_good" : "statusBox status_neutral";
+  }else{
+    pill.textContent = missingReq.total > 0 ? `ERRORS DETECTED — ${missingReq.total} required game(s) still unpicked` : "ERRORS DETECTED";
+    pill.className = "statusBox status_bad";
+  }
 
   $("#cntA").textContent = `Answered: ${a}`; $("#cntB").textContent = `Answered: ${b}`; $("#totalPicked").textContent = `Total games picked: ${total} (NFL ${a} + NCAA ${b})`;
-  return (nameOk && emailOk && doubleOk); // only hard-blockers
+
+  return (nameOk && emailOk && doubleOk && numPicksOk);
 }
 
-/* Prefill from existing picks CSV for selected name + week */
+/* Prevent exceeding committedNumPicks interactively */
+function enforceCommittedLimitOnChange(changedInput){
+  if(committedNumPicks==null) return;
+  if(!(changedInput && changedInput.type === "radio")) return;
+
+  const qid = changedInput.name;
+  const groupCheckedBefore = $$(`input[type="radio"][name="${CSS.escape(qid)}"]`).some(r => r !== changedInput && r.checked);
+  if(groupCheckedBefore) return;
+
+  const tot = totalChecked();
+  if(tot > committedNumPicks){
+    changedInput.checked = false;
+    alert(`You committed to ${committedNumPicks} picks. You cannot select more than that.`);
+    refreshDoubleChoices(); renderSummary(); validateAll(); updateNumPicksUI();
+  }
+}
+
+/* Prefill from existing picks CSV */
 async function prefillFromExisting(name){
   existingByQID.clear();
-  if(!CSV_URL_PICKS) return; // silently skip if not configured
+  committedNumPicks = null;
+  if(!CSV_URL_PICKS) return;
   try{
     const text = await fetchCSV(CSV_URL_PICKS); const rows = parseCSV(text);
-    // column guesses
     const norm = r => ({
       name: r.Name || r.name || r.Player || r.player || "",
       week: String(r.week || r.Week || r.WEEK || r.round || "").trim(),
       qid:  r.qid || r.QID || r.game || r.Game || r.Question || "",
       choice: r.choice || r.Choice || r.pick || r.Pick || r.selection || r.Selection || "",
       isDouble: /^true|1|y(es)?$/i.test(String(r.isDouble || r.Double || r.double || "")),
+      NumPicks: r.NumPicks ? parseInt(r.NumPicks,10) : (r.numPicks ? parseInt(r.numPicks,10) : NaN),
       ts: Date.parse(r.timestamp || r.Timestamp || r.Time || r.Date || "") || 0
     });
-    const mine = rows.map(norm).filter(r => canon(r.name)===canon(name) && String(r.week)===String(CURRENT_WEEK) && r.qid);
-    // keep latest per qid
-    const latest = new Map();
-    for(const r of mine){ const prev=latest.get(r.qid); if(!prev || r.ts > prev.ts) latest.set(r.qid, r); }
-    // apply
+    const mine = rows.map(norm).filter(r => canon(r.name)===canon(name) && String(r.week)===String(CURRENT_WEEK) && (r.qid || !isNaN(r.NumPicks)));
+    const latestByQID = new Map();
+    let latestGlobal = null;
+    for(const r of mine){
+      if(r.qid){
+        const prev=latestByQID.get(r.qid);
+        if(!prev || r.ts > prev.ts) latestByQID.set(r.qid, r);
+      }
+      if(!isNaN(r.NumPicks)){
+        if(!latestGlobal || r.ts > latestGlobal.ts) latestGlobal = r;
+      }
+    }
     $$('input[type="radio"]').forEach(r=>r.checked=false);
-    for(const r of latest.values()){
+    for(const r of latestByQID.values()){
       existingByQID.set(r.qid, {choice:r.choice, isDouble:r.isDouble});
       const row = document.querySelector(`.row[data-qid="${CSS.escape(r.qid)}"]`); if(!row) continue;
       const awayLbl = row.querySelector('.answers label:nth-child(1)')?.textContent || "";
@@ -474,17 +684,24 @@ async function prefillFromExisting(name){
       const target = awayHit && !homeHit ? row.querySelector('input[value="away"]') : homeHit && !awayHit ? row.querySelector('input[value="home"]') : null;
       if(target){ target.checked = true; }
     }
-    // restore double if present and still among selected
-    const dblQ = [...existingByQID.entries()].find(([qid,v])=>v.isDouble && $$(`input[name="${CSS.escape(qid)}"]:checked`).length);
+    const dblQ = [...latestByQID.entries()].find(([qid,v])=>v.isDouble && $$(`input[name="${CSS.escape(qid)}"]:checked`).length);
     refreshExpiryUI(); refreshDoubleChoices(); renderSummary(); validateAll();
     if(dblQ){ $("#doubleSel").value = dblQ[0]; }
+
+    if(latestGlobal && !isNaN(latestGlobal.NumPicks)){
+      committedNumPicks = latestGlobal.NumPicks;
+    }else{
+      committedNumPicks = null;
+    }
+    updateNumPicksUI();
   }catch(e){ console.warn('prefillFromExisting failed:', e); }
 }
 
-/* ---- Submitting overlay helpers ---- */
+/* Submitting overlay helpers */
 function startSubmitting(){ $("#submitOverlay").hidden = false; $("#submitBtn").disabled = true; $("#resetBtn").disabled = true; }
 function stopSubmitting(){ $("#submitOverlay").hidden = true; $("#submitBtn").disabled = false; $("#resetBtn").disabled = false; }
 
+/* Push to Sheets */
 async function pushToSheets(payload){
   if(!GSHEET_WEBAPP_URL || !/^https?:\/\//i.test(GSHEET_WEBAPP_URL)){
     console.warn('GSHEET_WEBAPP_URL not set; skipping Sheets logging');
@@ -504,50 +721,178 @@ document.addEventListener("change", async e=>{
     const em = e.target.selectedOptions[0]?.dataset.email || ""; if(em) $("#emailBox").value = em;
     const chosenName = e.target.value || ""; const paymentVal = (paymentByName.get(chosenName) || "").trim(); $("#paymentAlert").hidden = !(chosenName && paymentVal === "");
     await prefillFromExisting(chosenName);
-    renderSummary(); validateAll();
+    renderSummary(); validateAll(); updateNumPicksUI(); refreshDeadlineUI(); refreshExpiryUI();
   }
-  if(e.target.matches('input[type="radio"]')){ refreshDoubleChoices(); renderSummary(); validateAll(); }
-  if(e.target.matches('#doubleSel') || e.target.matches('#emailBox')){ renderSummary(); validateAll(); }
+  if(e.target.matches('input[type="radio"]')){
+    enforceCommittedLimitOnChange(e.target);
+    refreshDoubleChoices(); renderSummary(); validateAll(); updateNumPicksUI();
+  }
+  if(e.target.matches('#doubleSel') || e.target.matches('#emailBox') || e.target.matches('#numPicksPlan')){
+    renderSummary(); validateAll(); updateNumPicksUI();
+  }
 });
 
 document.addEventListener("click", e=>{
   if(e.target.matches('.clear')){
     const qid = e.target.dataset.clear; $$(`input[type="radio"][name="${CSS.escape(qid)}"]`).forEach(r=>r.checked=false);
-    refreshDoubleChoices(); renderSummary(); validateAll();
+    refreshDoubleChoices(); renderSummary(); validateAll(); updateNumPicksUI();
   }
 });
 
-$("#resetBtn").addEventListener("click", ()=>{ $$('input[type="radio"]').forEach(r=>r.checked=false); $("#doubleSel").value = ""; renderSummary(); refreshDoubleChoices(); validateAll(); });
+$("#resetBtn").addEventListener("click", ()=>{
+  $$('input[type="radio"]').forEach(r=>r.checked=false);
+  $("#doubleSel").value = "";
+  // leave NumPicks as user typed (still blank by default), just refresh UI
+  renderSummary(); refreshDoubleChoices(); validateAll(); updateNumPicksUI();
+});
 
 $("#submitBtn").addEventListener("click", async ()=>{
+  if(isAfterDeadline()){
+    alert("Picks are closed. The global deadline has passed.");
+    refreshDeadlineUI();
+    return;
+  }
+
   startSubmitting();
   const ok = validateAll();
-  if(!ok){ stopSubmitting(); alert("Please fix Name / Email / Double before submitting."); return; }
+  if(!ok){ stopSubmitting(); alert("Please fix the items marked with ✕ (Name/Email/Double/NumPicks), and ensure the deadline has not passed."); return; }
+
   const a = countChecked($("#listA")); const b = countChecked($("#listB")); const total = a+b;
-  if(ALLOW_PARTIAL && total < TOTAL_TARGET){
-    const go = confirm(`You have selected ${total} of ${TOTAL_TARGET} games. You can submit now and return later. Unpicked games may receive defaults. Continue?`);
-    if(!go){ stopSubmitting(); return; }
+  if(total > MAX_PICKS){ stopSubmitting(); alert(`You cannot pick more than ${MAX_PICKS} games.`); return; }
+
+  // Decide final NumPicks to send
+  let finalNumPicks = committedNumPicks;
+  const missingReq = countMissingRequired();
+  const pendingRequired = missingReq.total;
+
+  if (committedNumPicks != null) {
+    if (total > committedNumPicks) {
+      stopSubmitting();
+      alert(`You committed to ${committedNumPicks} picks. You currently selected ${total}. Reduce your picks — count cannot increase.`);
+      return;
+    }
+  } else {
+    const plannedStr = $("#numPicksPlan").value || "";
+    const planned = plannedStr ? parseInt(plannedStr, 10) : NaN;
+    const hasPlanned = !isNaN(planned);
+
+    if (hasPlanned) {
+      if (!(planned >= total && planned <= MAX_PICKS)) {
+        stopSubmitting();
+        alert(`Your planned total must be between your current ${total} and ${MAX_PICKS}.`);
+        return;
+      }
+      finalNumPicks = planned;
+      const go = confirm(
+        `You have selected ${total} pick(s) and planned to make ${planned} total picks this week.\n` +
+        `You may return to finish, but your pick total may not exceed ${planned}. Continue?`
+      );
+      if (!go) { stopSubmitting(); return; }
+    } else {
+      if (total < 7) {
+        stopSubmitting();
+        alert(`With fewer than 7 picks, you must enter a NumPicks between 7 and ${MAX_PICKS}.`);
+        return;
+      }
+      if (total > MAX_PICKS) {
+        stopSubmitting();
+        alert(`You cannot pick more than ${MAX_PICKS} games.`);
+        return;
+      }
+      // Auto-set NumPicks = total + missingRequired (capped at MAX_PICKS)
+      const autoLock = Math.min(MAX_PICKS, total + pendingRequired);
+      finalNumPicks = autoLock;
+      const reqNote = pendingRequired > 0
+        ? `\nYou have ${pendingRequired} required game(s) not selected. Your total will lock at ${autoLock} (your ${total} current + ${pendingRequired} required).`
+        : "";
+      const go = confirm(
+        `You are committing to ${finalNumPicks} pick(s).${reqNote}\n` +
+        `You may come back and change the selections you have made, but your pick total must be ${finalNumPicks}.\n\n` +
+        `Submit and lock your total at ${finalNumPicks}?`
+      );
+      if (!go) { stopSubmitting(); return; }
+    }
   }
-  if(!$("#doubleSel").value){ const okNoDouble = confirm("Submit with NO Double?"); if(!okNoDouble){ stopSubmitting(); return; }}
-  const participantName = $("#nameSel").selectedOptions[0]?.textContent || ""; const participantEmail = $("#emailBox").value.trim();
-  const selectionsText  = buildSelectionsText(true); const submission = collectSubmission();
+
+  if(!$("#doubleSel").value){
+    const okNoDouble = confirm("Submit with NO Double?");
+    if(!okNoDouble){ stopSubmitting(); return; }
+  }
+
+  // PRE-SUBMIT confirm if UNDER a prior commitment
+  if (committedNumPicks != null && total < committedNumPicks) {
+    const remain = committedNumPicks - total;
+    const go = confirm(
+      `You previously committed to ${committedNumPicks} picks but are submitting ${total}.\n` +
+      `If you don't reach ${committedNumPicks} before kickoff, defaults will be applied to the remaining ${remain} pick(s).\n\n` +
+      `Continue to save anyway?`
+    );
+    if (!go) { stopSubmitting(); return; }
+  }
+
+  const participantName = $("#nameSel").selectedOptions[0]?.textContent || "";
+  const participantEmail = $("#emailBox").value.trim();
+  const selectionsText  = buildSelectionsText(true);
+  const submission = collectSubmission(finalNumPicks);
+
   const sheetResult = await pushToSheets(submission);
   if(!sheetResult.ok && REQUIRE_SHEETS_OK){ stopSubmitting(); alert("Could not log to Google Sheets. Please try again in a moment."); return; }
-  if(DEMO_MODE){ $("#demoBadge").hidden = false; stopSubmitting(); alert("Submitted! (Demo mode — email suppressed)"); return; }
+
+  if(DEMO_MODE){
+    $("#demoBadge").hidden = false; 
+    stopSubmitting();
+    let msg = "Submitted! (Demo mode — email suppressed)";
+    if (committedNumPicks != null && total < committedNumPicks) {
+      const remain = committedNumPicks - total;
+      msg += `\n\nReminder: You previously committed to ${committedNumPicks} picks. You currently have ${total}. If you don't reach ${committedNumPicks} before kickoff, defaults will be applied to the remaining ${remain} pick(s) to reach ${committedNumPicks}.`;
+    }
+    alert(msg);
+    committedNumPicks = finalNumPicks; updateNumPicksUI();
+    return;
+  }
+
   try{
-    if(!window.emailjs){ await new Promise((res,rej)=>{ const s=document.createElement("script"); s.src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"; s.onload=res; s.onerror=rej; document.head.appendChild(s); }); }
+    if(!window.emailjs){
+      await new Promise((res,rej)=>{ const s=document.createElement("script"); s.src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"; s.onload=res; s.onerror=rej; document.head.appendChild(s); });
+    }
     emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
-    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, { participant_name: participantName, selections_text: selectionsText, to_email: participantEmail });
-    stopSubmitting(); alert("Submitted! A copy will be CC’d to you.");
-  }catch(err){ console.error("EmailJS error details:",err); stopSubmitting(); alert("Submitted! (Email copy failed to send.)"); }
+    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+      participant_name: participantName,
+      selections_text: selectionsText,
+      to_email: participantEmail
+    });
+    stopSubmitting();
+    let msg = "Submitted! A copy will be CC’d to you.";
+    if (committedNumPicks != null && total < committedNumPicks) {
+      const remain = committedNumPicks - total;
+      msg += `\n\nReminder: You previously committed to ${committedNumPicks} picks. You currently have ${total}. If you don't reach ${committedNumPicks} before kickoff, defaults will be applied to the remaining ${remain} pick(s).`;
+    }
+    alert(msg);
+  }catch(err){
+    console.error("EmailJS error details:",err);
+    stopSubmitting(); 
+    let msg = "Submitted! (Email copy failed to send.)";
+    if (committedNumPicks != null && total < committedNumPicks) {
+      const remain = committedNumPicks - total;
+      msg += `\n\nReminder: You previously committed to ${committedNumPicks} picks. You currently have ${total}. If you don't reach ${committedNumPicks} before kickoff, defaults will be applied to the remaining ${remain} pick(s).`;
+    }
+    alert(msg);
+  }
+
+  if(committedNumPicks==null){ committedNumPicks = finalNumPicks; updateNumPicksUI(); validateAll(); }
 });
 
 /* ============== LOAD DATA & EXPIRED UI ============== */
 async function loadAll(){
   try{
+    refreshDeadlineUI();
+
     const raw = await fetchCSV(CSV_URL_PARTICIPANTS); const pCSV = parseCSV(raw);
     const paymentKey = Object.keys(pCSV[0] || {}).find(k => k.toLowerCase() === "payment") || "Payment";
-    $("#nameSel").innerHTML = `<option value="">— Select your name —</option>` + pCSV.map(p => { const nm=p.Name||""; const em=p.Email||""; const pay=(p[paymentKey]||""); paymentByName.set(nm, pay); return `<option value="${escapeHtml(nm)}" data-email="${escapeHtml(em)}">${escapeHtml(nm)}</option>`; }).join("");
+    $("#nameSel").innerHTML = `<option value="">— Select your name —</option>` + pCSV.map(p => {
+      const nm=p.Name||""; const em=p.Email||""; const pay=(p[paymentKey]||""); paymentByName.set(nm, pay);
+      return `<option value="${escapeHtml(nm)}" data-email="${escapeHtml(em)}">${escapeHtml(nm)}</option>`;
+    }).join("");
 
     const aRows = parseCSV(await fetchCSV(CSV_URL_NFL));
     const bRows = parseCSV(await fetchCSV(CSV_URL_NCAA));
@@ -555,14 +900,30 @@ async function loadAll(){
     gamesB = normalizeGames(bRows,  "B");
     const hostA = $("#listA"), hostB = $("#listB");
     renderSection(hostA, gamesA); renderSection(hostB, gamesB);
-    hostA.querySelectorAll('input[type="radio"]').forEach(r=>{ r.addEventListener('change', ()=>{ refreshDoubleChoices(); renderSummary(); validateAll(); }); });
-    hostB.querySelectorAll('input[type="radio"]').forEach(r=>{ r.addEventListener('change', ()=>{ refreshDoubleChoices(); renderSummary(); validateAll(); }); });
-    hostA.querySelectorAll('.clear').forEach(b=>{ b.addEventListener('click', ()=>{ const id=b.dataset.clear; $$(`input[name="${CSS.escape(id)}"]`).forEach(i=>i.checked=false); refreshDoubleChoices(); renderSummary(); validateAll(); }); });
-    hostB.querySelectorAll('.clear').forEach(b=>{ b.addEventListener('click', ()=>{ const id=b.dataset.clear; $$(`input[name="${CSS.escape(id)}"]`).forEach(i=>i.checked=false); refreshDoubleChoices(); renderSummary(); validateAll(); }); });
 
-    $("#paymentAlert").hidden = true; refreshExpiryUI(); refreshDoubleChoices(); renderSummary(); validateAll();
-    setInterval(()=>{ refreshExpiryUI(); refreshDoubleChoices(); validateAll(); }, 60_000);
-  }catch(e){ console.error(e); $("#listA").textContent = "Failed to load NFL."; $("#listB").textContent = "Failed to load NCAA."; }
+    hostA.querySelectorAll('input[type="radio"]').forEach(r=>{
+      r.addEventListener('change', (ev)=>{ enforceCommittedLimitOnChange(ev.target); refreshDoubleChoices(); renderSummary(); validateAll(); updateNumPicksUI(); });
+    });
+    hostB.querySelectorAll('input[type="radio"]').forEach(r=>{
+      r.addEventListener('change', (ev)=>{ enforceCommittedLimitOnChange(ev.target); refreshDoubleChoices(); renderSummary(); validateAll(); updateNumPicksUI(); });
+    });
+    hostA.querySelectorAll('.clear').forEach(b=>{
+      b.addEventListener('click', ()=>{ const id=b.dataset.clear; $$(`input[name="${CSS.escape(id)}"]`).forEach(i=>i.checked=false); refreshDoubleChoices(); renderSummary(); validateAll(); updateNumPicksUI(); });
+    });
+    hostB.querySelectorAll('.clear').forEach(b=>{
+      b.addEventListener('click', ()=>{ const id=b.dataset.clear; $$(`input[name="${CSS.escape(id)}"]`).forEach(i=>i.checked=false); refreshDoubleChoices(); renderSummary(); validateAll(); updateNumPicksUI(); });
+    });
+
+    $("#paymentAlert").hidden = true;
+    refreshExpiryUI(); refreshDoubleChoices(); renderSummary(); validateAll(); updateNumPicksUI();
+
+    // Refresh deadline + per-game expiry regularly
+    setInterval(()=>{ refreshDeadlineUI(); refreshExpiryUI(); refreshDoubleChoices(); validateAll(); updateNumPicksUI(); }, 30_000);
+  }catch(e){
+    console.error(e);
+    $("#listA").textContent = "Failed to load NFL.";
+    $("#listB").textContent = "Failed to load NCAA.";
+  }
 }
 loadAll();
 </script>
