@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Spread Pool Week 4 Picks</title>
+<title>Spread Pool Week 5 Picks</title>
 <link rel="preconnect" href="https://cdn.jsdelivr.net/">
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <style>
@@ -182,7 +182,7 @@
   .standings table{width:100%;background:var(--surface);border:1px solid var(--rule);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
   .standings td,.standings th{padding:10px;border-bottom:1px solid var(--rule)}
   .standings th{text-align:left;border-bottom:2px solid #0f172a;background:#f7f9ff;color:#0f172a}
-  .rank{width:42px;text-align:right;color:#7b88a1}
+  .rank{width:42px;text-align:right}
   .stat{width:110px;text-align:right}
   .nameCell{display:flex;align-items:center;gap:8px}
   .nameBtn{
@@ -371,18 +371,15 @@
 
 <script>
 /* ================== CONFIG ================== */
-/* Set the reveal moment here.
-   - INCLUDE a timezone (e.g. -04:00 for ET) to avoid user clock quirks.
-   - Example: "2025-09-13T17:00:00-04:00"  (ET)  or "2025-09-13T21:00:00Z" (UTC). */
-const REVEAL_AT = "2025-09-19T17:30:00"; // <-- CHANGE THIS
+const REVEAL_AT = "2025-10-03T17:30:00"; // <-- CHANGE THIS
 
-const CSV_URL_NCAA_LINES   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTnt4gsei8YMNng5-gtZGGamyb8PRC78abChYr5kEn7zBgDcSsGmuF_rxjRtztiLFJ0WtfulpQSO3pM/pub?gid=0&single=true&output=csv";
-const CSV_URL_NFL_LINES    = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTnt4gsei8YMNng5-gtZGGamyb8PRC78abChYr5kEn7zBgDcSsGmuF_rxjRtztiLFJ0WtfulpQSO3pM/pub?gid=2109553148&single=true&output=csv";
+const CSV_URL_NCAA_LINES   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRr_1RHeumoIiyAnEl6Ff83N_YQcnMwdJF7omhd7tkfU50GZCEd2Zar2kQtFKDTKlmZK-9D2ZyO7sbn/pub?gid=0&single=true&output=csv";
+const CSV_URL_NFL_LINES    = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRr_1RHeumoIiyAnEl6Ff83N_YQcnMwdJF7omhd7tkfU50GZCEd2Zar2kQtFKDTKlmZK-9D2ZyO7sbn/pub?gid=2109553148&single=true&output=csv";
 const CSV_URL_SUBS         = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRys9xayYsuEqgGB09v1nOrwdD0U5c1Hb1ksLqQxTSBzLi3AKGeg9yPt1-eY1fry_0H-KcZLCQ1h8H6/pub?gid=1991283502&single=true&output=csv";
 const CSV_URL_PARTICIPANTS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRj5ieGlGWurIlGuongV3vJhWWAwCYsEFVhEEtjwOG7RiFwTRZkM_JXtjb8QtwsdzhaXPMDRPyU7qZC/pub?gid=0&single=true&output=csv";
 
 const DOUBLE_COUNTS_AS = 2;
-const WeekNumber = 4; // use submissions where Week == WeekNumber
+const WeekNumber = 5; // use submissions where Week == WeekNumber
 
 /* ================ HELPERS =================== */
 const by = f => (a,b)=> f(a)<f(b)?-1:f(a)>f(b)?1:0;
@@ -499,7 +496,7 @@ let qidToDate   = new Map();      // QID -> Date object (if provided)
 let qidToDefault= new Map();      // QID -> boolean Default="Y"
 let qidToFav    = new Map();      // QID -> {fav:'away'|'home', pts:number}
 let results     = new Map();      // QID -> 'away' | 'home' | 'tie'
-let people      = [];             // [{name, picks:[{qid, choice, isDouble}], isDefaults?:true}]
+let people      = [];             // [{name, picks:[{qid, choice, isDouble}], requestedDefaults?:true, isDefaults?:true}]
 let participantNames = [];        // roster
 let defaultTemplate = null;       // { name:"Default Picks", picks:[...] }
 let standingsSort = 'alpha';      // 'alpha' | 'weekPercent' | 'seasonPercent' | 'seasonWins'
@@ -535,8 +532,10 @@ function normalizeLines(rows){
 
 /* ============== SUBMISSIONS & PARTICIPANTS ============== */
 function normalizeSubs(rows){
+  // only this week
   rows = rows.filter(r => String(r["Week"]||r["week"]||"").trim() === String(WeekNumber));
 
+  // latest timestamp per name
   const latest = new Map(); // name => ts
   rows.forEach(r=>{
     const name = String(r["Name"]||r["name"]||"").trim();
@@ -546,26 +545,61 @@ function normalizeSubs(rows){
     if(!prev || ts > prev) latest.set(name, ts);
   });
 
+  // collect *all rows* at each name's latest ts (even if QID is blank)
+  const rowsForLatest = new Map(); // name => [raw rows at latest ts]
+  rows.forEach(r=>{
+    const name = String(r["Name"]||r["name"]||"").trim();
+    if(!name) return;
+    const ts = String(r["Timestamp"]||r["timestamp"]||"").trim();
+    if(latest.get(name) && ts === latest.get(name)){
+      const arr = rowsForLatest.get(name) || [];
+      arr.push(r);
+      rowsForLatest.set(name, arr);
+    }
+  });
+
+  // build person objects (don’t require QID to exist to create the person)
   const byName = new Map();
   rows.forEach(r=>{
     const name = String(r["Name"]||r["name"]||"").trim();
+    if(!name) return;
     const ts   = String(r["Timestamp"]||r["timestamp"]||"").trim();
-    const qid  = String(r["QID"]||r["qid"]||"").trim();
-    const choice = String(r["Choice"]||r["choice"]||"").trim();
-    const isDouble = String(r["IsDouble"]).toUpperCase()==="TRUE";
-    if(!name || !qid) return;
     if(latest.get(name) && ts !== latest.get(name)) return;
 
-    const p = byName.get(name) || { name, picks: [] };
-    p.picks.push({ qid, choice, isDouble });
-    byName.set(name, p);
+    let p = byName.get(name);
+    if(!p){
+      p = { name, picks: [] };
+      byName.set(name, p);
+    }
+
+    // Only add a pick when we actually have a QID
+    const qid  = String(r["QID"]||r["qid"]||"").trim();
+    if(qid){
+      const choice = String(r["Choice"]||r["choice"]||"").trim();
+      const isDouble = String(r["IsDouble"]).toUpperCase()==="TRUE";
+      // keep only qids that exist in lines (done after we push)
+      p.picks.push({ qid, choice, isDouble });
+    }
   });
 
+  // finalize array, filter/sort, and mark requestedDefaults
   const arr = Array.from(byName.values());
   arr.forEach(p => {
+    // keep only qids that exist in lines
     p.picks = p.picks.filter(pk => qidToLine.has(pk.qid));
     p.picks.sort((a,b)=> qidOrder(a.qid)-qidOrder(b.qid));
+
+    // single-row DEFAULTS request at latest timestamp
+    const raw = rowsForLatest.get(p.name) || [];
+    const requestedDefaults =
+      raw.length === 1 &&
+      String(raw[0]["Choice"]||raw[0]["choice"]||"").trim().toUpperCase() === "DEFAULTS";
+    if(requestedDefaults){
+      p.requestedDefaults = true; // loadAll() converts this to actual default picks (no pill)
+    }
   });
+
+  // sort stable by last name
   arr.sort((a,b)=> lastNameKey(a.name).localeCompare(lastNameKey(b.name), undefined, {sensitivity:'base'}));
   return arr;
 }
@@ -674,7 +708,16 @@ async function loadAll(){
     // Default template
     defaultTemplate = { name:"Default Picks", picks: computeDefaultPicksSet(), isDefaults:true };
 
-    // Add defaults for anyone without a submission
+    // APPLY: People who explicitly submitted a single "DEFAULTS" pick get default picks,
+    // but they are NOT marked as isDefaults (no badge anywhere).
+    people.forEach(p=>{
+      if(p.requestedDefaults){
+        p.picks = [...defaultTemplate.picks];
+        // intentionally NOT setting p.isDefaults
+      }
+    });
+
+    // Add defaults for anyone without a submission at all
     const have = new Set(people.map(p=>normName(p.name)));
     participantNames.forEach(nm=>{
       if(!have.has(normName(nm))){
