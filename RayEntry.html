@@ -109,19 +109,30 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
       <strong>Partial Picks Mode is ON:</strong> You may submit a few picks now and return later to add more. After kickoff, any unpicked games will receive the default per rules.
     </p>
 
-    <!-- Num Picks Plan -->
+    <!-- Num Picks + Double Plan -->
     <div id="numPicksCard" class="card" style="margin:12px 0">
-      <h2>Num Picks Plan</h2>
+      <h2>Plans to Lock</h2>
       <div class="small muted" id="numPicksHelp" style="margin-bottom:8px">
-        If you submit fewer than 7 picks, you must declare how many total picks you will make this week (7–12). If you have 7+ now, you can leave this blank to auto-commit to your current total.
+        If you submit fewer than 7 picks, you must declare <em>both</em> how many total picks (7–12) you’ll reach and whether you’ll use a Double this week. If you already have 7–12 and all requirements are satisfied, you may leave these blank to auto-commit to your current total and your current Double state.
       </div>
-      <div style="display:flex;gap:10px;align-items:center;max-width:420px">
+
+      <div style="display:flex;gap:10px;align-items:center;max-width:520px;margin-bottom:10px">
         <label for="numPicksPlan" class="small muted" style="min-width:140px">Planned total:</label>
         <input id="numPicksPlan" type="number" min="1" max="12" step="1" placeholder="leave blank if 7–12"
                style="width:160px;padding:8px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text)"/>
         <span id="numPicksLockBadge" class="badge locked is-hidden">Committed</span>
       </div>
+
+      <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+        <div class="small muted" style="min-width:140px">Double Plan:</div>
+        <label class="small"><input type="radio" name="doublePlan" value="yes"> I will use a Double</label>
+        <label class="small"><input type="radio" name="doublePlan" value="no"> I will not use a Double</label>
+        <button type="button" id="clearDoublePlan" class="clear">Clear</button>
+        <span id="doublePlanLockBadge" class="badge locked is-hidden">Committed</span>
+      </div>
+
       <p id="numPicksNotice" class="small muted" style="margin-top:8px"></p>
+      <p id="doublePlanNotice" class="small muted" style="margin-top:4px"></p>
     </div>
   </section>
 
@@ -144,17 +155,18 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
 
   <section class="card">
     <h2>Checks &amp; Notices</h2>
-    <p class="small muted">You can submit any number of picks. Notices below won’t block submission; they’re just reminders. Items marked ✕ are hard blockers.</p>
+    <p class="small muted">You can submit any number of picks. Notices below won’t block submission; items marked ✕ are hard blockers.</p>
     <ul id="checkList" class="checklist">
-      <li id="chkName"     class="check-bad"><span class="check-icon">✕</span><span class="check-text">Name selected</span></li>
-      <li id="chkEmail"    class="check-bad"><span class="check-icon">✕</span><span class="check-text">Valid email</span></li>
-      <li id="chkReqNFL"   class="check-warn"><span class="check-icon">!</span><span class="check-text">Mandatory NFL game picked (for any unexpired mandatory)</span></li>
-      <li id="chkReqNCAA"  class="check-warn"><span class="check-icon">!</span><span class="check-text">Mandatory College game picked (for any unexpired mandatory)</span></li>
-      <li id="chkAtLeastA" class="check-warn"><span class="check-icon">!</span><span class="check-text">≥ 3 answers in NFL (advised)</span></li>
-      <li id="chkAtLeastB" class="check-warn"><span class="check-icon">!</span><span class="check-text">≥ 3 answers in College (advised)</span></li>
-      <li id="chkRange"    class="check-warn"><span class="check-icon">!</span><span class="check-text">Aim for 7–12 total games; defaults apply to missing</span></li>
-      <li id="chkNumPicks" class="check-bad"><span class="check-icon">✕</span><span class="check-text">NumPicks plan/commitment satisfied</span></li>
-      <li id="chkDouble"   class="check-bad"><span class="check-icon">✕</span><span class="check-text">If Double chosen, it’s one of your selections</span></li>
+      <li id="chkName"        class="check-bad"><span class="check-icon">✕</span><span class="check-text">Name selected</span></li>
+      <li id="chkEmail"       class="check-bad"><span class="check-icon">✕</span><span class="check-text">Valid email</span></li>
+      <li id="chkReqNFL"      class="check-warn"><span class="check-icon">!</span><span class="check-text">Mandatory NFL game picked (for any unexpired mandatory)</span></li>
+      <li id="chkReqNCAA"     class="check-warn"><span class="check-icon">!</span><span class="check-text">Mandatory College game picked (for any unexpired mandatory)</span></li>
+      <li id="chkAtLeastA"    class="check-warn"><span class="check-icon">!</span><span class="check-text">≥ 3 answers in NFL (advised)</span></li>
+      <li id="chkAtLeastB"    class="check-warn"><span class="check-icon">!</span><span class="check-text">≥ 3 answers in College (advised)</span></li>
+      <li id="chkRange"       class="check-warn"><span class="check-icon">!</span><span class="check-text">Aim for 7–12 total games; defaults apply to missing</span></li>
+      <li id="chkNumPicks"    class="check-bad"><span class="check-icon">✕</span><span class="check-text">NumPicks plan/commitment satisfied</span></li>
+      <li id="chkDoublePlan"  class="check-bad"><span class="check-icon">✕</span><span class="check-text">Double Plan declared/consistent</span></li>
+      <li id="chkDouble"      class="check-bad"><span class="check-icon">✕</span><span class="check-text">If a Double is chosen, it’s one of your selections</span></li>
     </ul>
   </section>
 
@@ -187,20 +199,20 @@ footer{position:sticky;bottom:0;left:0;right:0;z-index:9}
 <script>
 /* ===================== CONFIG ===================== */
 const CSV_URL_PARTICIPANTS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRj5ieGlGWurIlGuongV3vJhWWAwCYsEFVhEEtjwOG7RiFwTRZkM_JXtjb8QtwsdzhaXPMDRPyU7qZC/pub?gid=0&single=true&output=csv";
-const CSV_URL_NFL          = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRr_1RHeumoIiyAnEl6Ff83N_YQcnMwdJF7omhd7tkfU50GZCEd2Zar2kQtFKDTKlmZK-9D2ZyO7sbn/pub?gid=2109553148&single=true&output=csv";
-const CSV_URL_NCAA         = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRr_1RHeumoIiyAnEl6Ff83N_YQcnMwdJF7omhd7tkfU50GZCEd2Zar2kQtFKDTKlmZK-9D2ZyO7sbn/pub?gid=0&single=true&output=csv";
+const CSV_URL_NFL          = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRF3uymIsxpChbcWyoVXDlC1JRV0BV6T0xJZXIxGEvrAXFP76yPCgzPWqqIxLe0xiIHC796La9iSk3c/pub?gid=2109553148&single=true&output=csv";
+const CSV_URL_NCAA         = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRF3uymIsxpChbcWyoVXDlC1JRV0BV6T0xJZXIxGEvrAXFP76yPCgzPWqqIxLe0xiIHC796La9iSk3c/pub?gid=0&single=true&output=csv";
 
-/* Picks log (must include / will receive NumPicks) */
-const CSV_URL_PICKS        = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRys9xayYsuEqgGB09v1nOrwdD0U5c1Hb1ksLqQxTSBzLi3AKGeg9yPt1-eY1fry_0H-KcZLCQ1h8H6/pub?gid=1158916010&single=true&output=csv";
+/* Picks log */
+const CSV_URL_PICKS        = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRys9xayYsuEqgGB09v1nOrwdD0U5c1Hb1ksLqQxTSBzLi3AKGeg9yPt1-eY1fry_0H-KcZLCQ1h8H6/pub?gid=665167265&single=true&output=csv";
 
-const CURRENT_WEEK = 5;
+const CURRENT_WEEK = 6;
 const ALLOW_PARTIAL = true;
 const TOTAL_TARGET = 7;
 const MAX_PICKS = 12;
 const DEFAULTS_POLICY_TEXT = "Unpicked games receive the default per your rules.";
 
 /* >>> GLOBAL PICK DEADLINE (UTC) <<< */
-const PICKS_DEADLINE_UTC = "2025-10-03T21:30:00Z";
+const PICKS_DEADLINE_UTC = "2025-10-10T21:30:00Z";
 
 /* EmailJS */
 const EMAILJS_SERVICE_ID = "service_txqdfck";
@@ -208,7 +220,7 @@ const EMAILJS_TEMPLATE_ID = "template_o8du7pt";
 const EMAILJS_PUBLIC_KEY  = "YB5J-75APa-V6Giku";
 
 /* Google Apps Script Web App URL (handles upsert) */
-const GSHEET_WEBAPP_URL   = "https://script.google.com/macros/s/AKfycbzaJaoLIKZ5uDliHD3Cq_O_bnTlrlxYEeW2tQr904020FrGQVFxLVgpUNXDwiR3V63v/exec";
+const GSHEET_WEBAPP_URL   = "https://script.google.com/macros/s/AKfycbxndq_GqiIGOwJPD18jMSkoeT1my6YWnZMrQTlg1iHZkUvwFgJxwQId7DMVG9c-1sSQ/exec";
 
 /* Require sheet write? */
 const REQUIRE_SHEETS_OK   = true;
@@ -253,8 +265,8 @@ function sortRequiredFirst(arr){return arr.map((r,i)=>({...r,__i:i})).sort((a,b)
 let gamesA=[], gamesB=[];
 let paymentByName = new Map();
 let existingByQID = new Map();
-/* committed number of picks for this week (from prior submission) */
 let committedNumPicks = null;
+let committedDoublePlan = null; // true/false once locked
 
 /* ============== CSV → GAMES ============== */
 function normalizeGames(csvRows, prefix){
@@ -433,53 +445,83 @@ function refreshDoubleChoices(){
   if(keep && chosen.some(o=>o.qid===keep)) sel.value = keep;
 }
 
-/* NumPicks UI helpers — BLANK by default unless previously committed */
+/* NumPicks + DoublePlan UI helpers */
+function getDoublePlanUI(){
+  const sel = document.querySelector('input[name="doublePlan"]:checked');
+  if(!sel) return null;
+  return sel.value === 'yes' ? true : false;
+}
+function setDoublePlanUI(val){ // true/false/null
+  $$('input[name="doublePlan"]').forEach(r=>r.checked=false);
+  if(val===true) document.querySelector('input[name="doublePlan"][value="yes"]').checked = true;
+  if(val===false) document.querySelector('input[name="doublePlan"][value="no"]').checked = true;
+}
 function updateNumPicksUI(){
   const planInput = $("#numPicksPlan");
   const lockBadge = $("#numPicksLockBadge");
+  const dblLock   = $("#doublePlanLockBadge");
   const notice = $("#numPicksNotice");
+  const dblNotice = $("#doublePlanNotice");
   const tot = totalChecked();
   const missingReq = countMissingRequired();
   const pendingRequired = missingReq.total;
 
+  // Handle committed locks
   if (committedNumPicks != null) {
     planInput.value = committedNumPicks;
     planInput.disabled = true;
     lockBadge.classList.remove("is-hidden");
-    const remain = Math.max(0, committedNumPicks - tot);
-    notice.textContent = remain > 0
-      ? `You committed to ${committedNumPicks} picks. You currently have ${tot}. You still need ${remain} more.`
-      : `You committed to ${committedNumPicks} picks. You have reached your committed total. You may still change which games (not the count).`;
-    return;
+  } else {
+    lockBadge.classList.add("is-hidden");
+    planInput.disabled = false;
+  }
+  if (committedDoublePlan !== null) {
+    setDoublePlanUI(committedDoublePlan);
+    $$('input[name="doublePlan"]').forEach(r=>r.disabled = true);
+    dblLock.classList.remove("is-hidden");
+  } else {
+    $$('input[name="doublePlan"]').forEach(r=>r.disabled = false);
+    dblLock.classList.add("is-hidden");
   }
 
-  // first-time (no commitment yet)
-  lockBadge.classList.add("is-hidden");
-  planInput.disabled = false;
-
-  // keep the field BLANK unless the user types; just update constraints
+  // NumPicks text
   planInput.min = Math.max(tot, 1);
   planInput.max = MAX_PICKS;
-
   const typed = planInput.value.trim();
   const hasTyped = typed !== "";
   const planned = hasTyped ? parseInt(typed, 10) : NaN;
 
-  if (tot < 7) {
+  if (committedNumPicks != null) {
+    const remain = Math.max(0, committedNumPicks - tot);
+    notice.textContent = remain > 0
+      ? `You committed to ${committedNumPicks} picks. You currently have ${tot}. You still need ${remain} more.`
+      : `You committed to ${committedNumPicks} picks. You have reached your committed total. You may still change which games (not the count).`;
+  } else if (tot < 7) {
     notice.textContent = `With fewer than 7 picks, enter your intended total (7–${MAX_PICKS}). Field cannot be blank.`;
   } else if (!hasTyped) {
     const autoLock = Math.min(MAX_PICKS, tot + pendingRequired);
     if (pendingRequired > 0) {
-      notice.textContent = `You have ${pendingRequired} required game(s) not yet selected. Leaving NumPicks blank will commit you to ${autoLock} (your ${tot} current + ${pendingRequired} required). You can change WHICH games later, but your pick total must remain ${autoLock}.`;
+      notice.textContent = `Leaving NumPicks blank will commit you to ${autoLock} (your ${tot} current + ${pendingRequired} required).`;
     } else {
-      notice.textContent = `With ${tot} picks selected: leaving NumPicks blank will commit you to exactly ${tot}. You can change WHICH games later, but your pick total must remain ${tot}.`;
+      notice.textContent = `Leaving NumPicks blank will commit you to exactly ${tot}.`;
     }
   } else {
-    // user typed something; show guardrails
     const ok = planned >= tot && planned <= MAX_PICKS;
     notice.textContent = ok
-      ? `Planned total set to ${planned}. You can return to finish up to that number.`
+      ? `Planned total set to ${planned}.`
       : `Planned total must be between your current ${tot} and ${MAX_PICKS}.`;
+  }
+
+  // Double Plan text
+  const dblPlanUI = getDoublePlanUI(); // true/false/null
+  const doubledPickChosen = !!$("#doubleSel").value;
+  if (committedDoublePlan !== null) {
+    dblNotice.textContent = `Double Plan committed: ${committedDoublePlan ? "Yes (will use a Double)" : "No (will not use a Double)"}.`;
+  } else if (tot >= 7 && pendingRequired === 0) {
+    const defaultPlan = doubledPickChosen ? "Yes (current has a Double selected)" : "No (no Double selected)";
+    dblNotice.textContent = `With 7–12 picks and requirements satisfied, you may leave this blank. Your Double Plan will default to: ${defaultPlan}.`;
+  } else {
+    dblNotice.textContent = `With fewer than 7 picks or unmet requirements, you must declare whether you will use a Double. If you have already doubled one of your picks, we will assume “Yes”.`;
   }
 }
 
@@ -518,8 +560,27 @@ function buildSelectionsText(includeGameLine=false){
   return lines.join("\n");
 }
 
-/* Collect submission w/ NumPicks */
-function collectSubmission(finalNumPicks){
+/* Decide effective Double Plan based on rules */
+function computeEffectiveDoublePlan(total, pendingRequired){
+  const ui = getDoublePlanUI(); // true/false/null
+  const doubledPickChosen = !!$("#doubleSel").value;
+
+  if (committedDoublePlan !== null) return committedDoublePlan;
+
+  // If <7 or unmet requirements -> must declare; but if doubled pick exists, assume Yes
+  if (total < 7 || pendingRequired > 0) {
+    if (ui === true || ui === false) return ui;
+    if (doubledPickChosen) return true; // assume “Yes”
+    return null; // missing -> block
+  }
+
+  // If 7–12 and requirements satisfied -> allow blank; default to current doubled state
+  if (ui === true || ui === false) return ui;
+  return doubledPickChosen ? true : false;
+}
+
+/* Collect submission w/ NumPicks and DoublePlan */
+function collectSubmission(finalNumPicks, effectiveDoublePlan){
   const name  = $("#nameSel").selectedOptions[0]?.textContent || "";
   const email = $("#emailBox").value.trim();
   const dblQid = $("#doubleSel").value || "";
@@ -529,7 +590,8 @@ function collectSubmission(finalNumPicks){
     return { qid, team, isDouble: (qid===dblQid) };
   }).sort((a,b)=>a.qid.localeCompare(b.qid));
   const rows = picks.map(p => ({
-    timestamp, week: CURRENT_WEEK, name, email, qid: p.qid, choice: p.team, isDouble: !!p.isDouble, NumPicks: finalNumPicks
+    timestamp, week: CURRENT_WEEK, name, email, qid: p.qid, choice: p.team,
+    isDouble: !!p.isDouble, NumPicks: finalNumPicks, WillDouble: effectiveDoublePlan ? "Yes" : "No"
   }));
   const doubleTeam = picks.find(x=>x.isDouble)?.team || "";
   const total = picks.length;
@@ -538,7 +600,7 @@ function collectSubmission(finalNumPicks){
     double_qid: dblQid, double_team: doubleTeam,
     picks, rows, total_selected: total, target_total: TOTAL_TARGET,
     missing: Math.max(0, TOTAL_TARGET-total), partial: ALLOW_PARTIAL,
-    NumPicks: finalNumPicks,
+    NumPicks: finalNumPicks, WillDoublePlan: effectiveDoublePlan ? "Yes" : "No",
     summary: buildSelectionsText(false)
   };
 }
@@ -546,15 +608,14 @@ function collectSubmission(finalNumPicks){
 function renderSummary(){ $("#summary").innerHTML = `<pre style="white-space:pre-wrap;margin:0">${escapeHtml(buildSelectionsText(false))}</pre>`; }
 function setCheck(sel, state){ const li=$(sel); li.classList.toggle("check-ok", state===true); li.classList.toggle("check-bad", state===false); li.classList.toggle("check-warn", state==='warn'); li.querySelector(".check-icon").textContent = state===true?"✓":(state===false?"✕":"!"); }
 
-/* Validate including NumPicks logic + DEADLINE (blank allowed only when total >= 7).
-   Also warn if any unexpired required game is unpicked; status pill reflects this. */
+/* Validate including NumPicks + DoublePlan logic */
 function validateAll(){
   if(isAfterDeadline()){
     setCheck("#chkName",  false);
     setCheck("#chkEmail", false);
     setCheck("#chkReqNFL",'warn'); setCheck("#chkReqNCAA",'warn');
     setCheck("#chkAtLeastA",'warn'); setCheck("#chkAtLeastB",'warn');
-    setCheck("#chkRange",'warn'); setCheck("#chkDouble", false); setCheck("#chkNumPicks", false);
+    setCheck("#chkRange",'warn'); setCheck("#chkDouble", false); setCheck("#chkNumPicks", false); setCheck("#chkDoublePlan", false);
     $("#statusBox").textContent = "PICKS CLOSED"; $("#statusBox").className = "statusBox status_bad";
     return false;
   }
@@ -563,16 +624,17 @@ function validateAll(){
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test($("#emailBox").value.trim());
   const a = countChecked($("#listA")); const b = countChecked($("#listB")); const total = a + b;
 
-  // Missing required (unexpired) calculations
+  // Required
   const missingReq = countMissingRequired();
   const reqAOk = missingReq.nfl === 0;
   const reqBOk = missingReq.ncaa === 0;
 
   const atLeastA = a >= 3; const atLeastB = b >= 3;
   const rangeWarn = !(total >= 7 && total <= MAX_PICKS);
-  const dbl = $("#doubleSel").value; const chosenQIDs = $$('input[type="radio"]:checked').map(r=>r.name);
-  const doubleOk = !dbl || chosenQIDs.includes(dbl);
+  const dblSel = $("#doubleSel").value; const chosenQIDs = $$('input[type="radio"]:checked').map(r=>r.name);
+  const doublePickOk = !dblSel || chosenQIDs.includes(dblSel);
 
+  // NumPicks validity
   let numPicksOk = true;
   const planEl = $("#numPicksPlan");
   const planned = planEl.value ? parseInt(planEl.value, 10) : NaN;
@@ -586,9 +648,17 @@ function validateAll(){
     if (hasPlanned) {
       if (!(planned >= total && planned <= MAX_PICKS)) numPicksOk = false;
     } else {
-      if (total < 7) numPicksOk = false; // blank only valid when >=7; auto-lock logic handled elsewhere
+      if (total < 7) numPicksOk = false;
     }
   }
+
+  // Double Plan validity
+  let dblPlanOk = true;
+  const effPlan = computeEffectiveDoublePlan(total, missingReq.total); // true/false/null
+  if (effPlan === null) dblPlanOk = false; // declaration required but missing
+
+  // If committed, cannot change Yes/No later
+  if (committedDoublePlan !== null && effPlan !== committedDoublePlan) dblPlanOk = false;
 
   setCheck("#chkName",  nameOk);
   setCheck("#chkEmail", emailOk);
@@ -597,25 +667,18 @@ function validateAll(){
   setCheck("#chkAtLeastA", atLeastA ? true : 'warn');
   setCheck("#chkAtLeastB", atLeastB ? true : 'warn');
   setCheck("#chkRange",    rangeWarn ? 'warn' : true);
-  setCheck("#chkDouble",   doubleOk);
+  setCheck("#chkDouble",   doublePickOk);
+  setCheck("#chkNumPicks", numPicksOk ? true : false);
+  setCheck("#chkDoublePlan", dblPlanOk ? true : false);
 
-  if (!numPicksOk) {
-    setCheck("#chkNumPicks", false);
-  } else if (committedNumPicks != null) {
-    if (total < committedNumPicks) setCheck("#chkNumPicks", 'warn');
-    else setCheck("#chkNumPicks", true);
-  } else {
-    setCheck("#chkNumPicks", true);
-  }
-
-  // Status pill: mention missing required when present
+  // Status pill
   const pill = $("#statusBox");
   const basePartial = (ALLOW_PARTIAL && total < TOTAL_TARGET) ? `PARTIAL OK — ${total}/${TOTAL_TARGET} picked` : "BEAR DOWN!";
   const withReq = missingReq.total > 0
     ? `${ALLOW_PARTIAL ? "PARTIAL OK — " : ""}${missingReq.total} required game(s) still unpicked`
     : basePartial;
 
-  if(nameOk && emailOk && doubleOk && numPicksOk){
+  if(nameOk && emailOk && doublePickOk && numPicksOk && dblPlanOk){
     pill.textContent = withReq;
     pill.className = (missingReq.total === 0) ? "statusBox status_good" : "statusBox status_neutral";
   }else{
@@ -625,7 +688,7 @@ function validateAll(){
 
   $("#cntA").textContent = `Answered: ${a}`; $("#cntB").textContent = `Answered: ${b}`; $("#totalPicked").textContent = `Total games picked: ${total} (NFL ${a} + NCAA ${b})`;
 
-  return (nameOk && emailOk && doubleOk && numPicksOk);
+  return (nameOk && emailOk && doublePickOk && numPicksOk && dblPlanOk);
 }
 
 /* Prevent exceeding committedNumPicks interactively */
@@ -649,6 +712,7 @@ function enforceCommittedLimitOnChange(changedInput){
 async function prefillFromExisting(name){
   existingByQID.clear();
   committedNumPicks = null;
+  committedDoublePlan = null;
   if(!CSV_URL_PICKS) return;
   try{
     const text = await fetchCSV(CSV_URL_PICKS); const rows = parseCSV(text);
@@ -659,20 +723,28 @@ async function prefillFromExisting(name){
       choice: r.choice || r.Choice || r.pick || r.Pick || r.selection || r.Selection || "",
       isDouble: /^true|1|y(es)?$/i.test(String(r.isDouble || r.Double || r.double || "")),
       NumPicks: r.NumPicks ? parseInt(r.NumPicks,10) : (r.numPicks ? parseInt(r.numPicks,10) : NaN),
+      WillDouble: (String(r.WillDouble||r.DoublePlan||"")).toLowerCase(), // "yes"/"no" if present
       ts: Date.parse(r.timestamp || r.Timestamp || r.Time || r.Date || "") || 0
     });
-    const mine = rows.map(norm).filter(r => canon(r.name)===canon(name) && String(r.week)===String(CURRENT_WEEK) && (r.qid || !isNaN(r.NumPicks)));
+    const mine = rows.map(norm).filter(r => canon(r.name)===canon(name) && String(r.week)===String(CURRENT_WEEK) && (r.qid || !isNaN(r.NumPicks) || r.WillDouble));
     const latestByQID = new Map();
-    let latestGlobal = null;
+    let latestNumPicks = null;
+    let latestDoublePlan = null;
+
     for(const r of mine){
       if(r.qid){
         const prev=latestByQID.get(r.qid);
         if(!prev || r.ts > prev.ts) latestByQID.set(r.qid, r);
       }
       if(!isNaN(r.NumPicks)){
-        if(!latestGlobal || r.ts > latestGlobal.ts) latestGlobal = r;
+        if(!latestNumPicks || r.ts > latestNumPicks.ts) latestNumPicks = r;
+      }
+      if(r.WillDouble === "yes" || r.WillDouble === "no"){
+        if(!latestDoublePlan || r.ts > latestDoublePlan.ts) latestDoublePlan = r;
       }
     }
+
+    // Apply picks
     $$('input[type="radio"]').forEach(r=>r.checked=false);
     for(const r of latestByQID.values()){
       existingByQID.set(r.qid, {choice:r.choice, isDouble:r.isDouble});
@@ -684,15 +756,27 @@ async function prefillFromExisting(name){
       const target = awayHit && !homeHit ? row.querySelector('input[value="away"]') : homeHit && !awayHit ? row.querySelector('input[value="home"]') : null;
       if(target){ target.checked = true; }
     }
+
+    // Restore double selection if one of the saved picks was doubled
     const dblQ = [...latestByQID.entries()].find(([qid,v])=>v.isDouble && $$(`input[name="${CSS.escape(qid)}"]:checked`).length);
     refreshExpiryUI(); refreshDoubleChoices(); renderSummary(); validateAll();
     if(dblQ){ $("#doubleSel").value = dblQ[0]; }
 
-    if(latestGlobal && !isNaN(latestGlobal.NumPicks)){
-      committedNumPicks = latestGlobal.NumPicks;
-    }else{
+    // Commitments
+    if(latestNumPicks && !isNaN(latestNumPicks.NumPicks)){
+      committedNumPicks = latestNumPicks.NumPicks;
+    } else {
       committedNumPicks = null;
     }
+
+    if(latestDoublePlan && (latestDoublePlan.WillDouble === "yes" || latestDoublePlan.WillDouble === "no")){
+      committedDoublePlan = (latestDoublePlan.WillDouble === "yes");
+    } else {
+      // Infer from any doubled pick if present and user had 7–12 previously (best effort)
+      const anyDouble = [...latestByQID.values()].some(v=>v.isDouble);
+      committedDoublePlan = anyDouble ? true : null;
+    }
+
     updateNumPicksUI();
   }catch(e){ console.warn('prefillFromExisting failed:', e); }
 }
@@ -727,7 +811,7 @@ document.addEventListener("change", async e=>{
     enforceCommittedLimitOnChange(e.target);
     refreshDoubleChoices(); renderSummary(); validateAll(); updateNumPicksUI();
   }
-  if(e.target.matches('#doubleSel') || e.target.matches('#emailBox') || e.target.matches('#numPicksPlan')){
+  if(e.target.matches('#doubleSel') || e.target.matches('#emailBox') || e.target.matches('#numPicksPlan') || e.target.name === 'doublePlan'){
     renderSummary(); validateAll(); updateNumPicksUI();
   }
 });
@@ -737,12 +821,16 @@ document.addEventListener("click", e=>{
     const qid = e.target.dataset.clear; $$(`input[type="radio"][name="${CSS.escape(qid)}"]`).forEach(r=>r.checked=false);
     refreshDoubleChoices(); renderSummary(); validateAll(); updateNumPicksUI();
   }
+  if(e.target.matches('#clearDoublePlan')){
+    setDoublePlanUI(null);
+    validateAll(); updateNumPicksUI();
+  }
 });
 
 $("#resetBtn").addEventListener("click", ()=>{
   $$('input[type="radio"]').forEach(r=>r.checked=false);
   $("#doubleSel").value = "";
-  // leave NumPicks as user typed (still blank by default), just refresh UI
+  setDoublePlanUI(null);
   renderSummary(); refreshDoubleChoices(); validateAll(); updateNumPicksUI();
 });
 
@@ -754,17 +842,24 @@ $("#submitBtn").addEventListener("click", async ()=>{
   }
 
   startSubmitting();
-  const ok = validateAll();
-  if(!ok){ stopSubmitting(); alert("Please fix the items marked with ✕ (Name/Email/Double/NumPicks), and ensure the deadline has not passed."); return; }
+  const okEarly = validateAll();
+  if(!okEarly){ stopSubmitting(); alert("Please fix the items marked with ✕ (Name/Email/Double/NumPicks/Double Plan), and ensure the deadline has not passed."); return; }
 
   const a = countChecked($("#listA")); const b = countChecked($("#listB")); const total = a+b;
   if(total > MAX_PICKS){ stopSubmitting(); alert(`You cannot pick more than ${MAX_PICKS} games.`); return; }
 
-  // Decide final NumPicks to send
-  let finalNumPicks = committedNumPicks;
+  // Compute pending req & effective Double Plan
   const missingReq = countMissingRequired();
   const pendingRequired = missingReq.total;
+  const effectiveDoublePlan = computeEffectiveDoublePlan(total, pendingRequired); // true/false
+  if (effectiveDoublePlan === null) {
+    stopSubmitting();
+    alert("Please declare whether you will use a Double this week.");
+    return;
+  }
 
+  // Decide final NumPicks
+  let finalNumPicks = committedNumPicks;
   if (committedNumPicks != null) {
     if (total > committedNumPicks) {
       stopSubmitting();
@@ -785,13 +880,14 @@ $("#submitBtn").addEventListener("click", async ()=>{
       finalNumPicks = planned;
       const go = confirm(
         `You have selected ${total} pick(s) and planned to make ${planned} total picks this week.\n` +
-        `You may return to finish, but your pick total may not exceed ${planned}. Continue?`
+        `You are also declaring your Double Plan: ${effectiveDoublePlan ? "YES (you will use a Double)" : "NO (you will not use a Double)"}.\n\n` +
+        `You may return to finish, but your pick total may not exceed ${planned}, and your Double Plan (${effectiveDoublePlan ? "YES" : "NO"}) will be locked. Continue?`
       );
       if (!go) { stopSubmitting(); return; }
     } else {
       if (total < 7) {
         stopSubmitting();
-        alert(`With fewer than 7 picks, you must enter a NumPicks between 7 and ${MAX_PICKS}.`);
+        alert(`With fewer than 7 picks, you must enter a NumPicks between 7 and ${MAX_PICKS} and declare your Double Plan.`);
         return;
       }
       if (total > MAX_PICKS) {
@@ -807,16 +903,18 @@ $("#submitBtn").addEventListener("click", async ()=>{
         : "";
       const go = confirm(
         `You are committing to ${finalNumPicks} pick(s).${reqNote}\n` +
-        `You may come back and change the selections you have made, but your pick total must be ${finalNumPicks}.\n\n` +
-        `Submit and lock your total at ${finalNumPicks}?`
+        `Your Double Plan will be locked as: ${effectiveDoublePlan ? "YES (you will use a Double)" : "NO (you will not use a Double)"}.\n` +
+        `You can change WHICH games (and which game is doubled, if YES) before kickoff, but not the fact of doubling.\n\n` +
+        `Submit and lock these?`
       );
       if (!go) { stopSubmitting(); return; }
     }
   }
 
-  if(!$("#doubleSel").value){
-    const okNoDouble = confirm("Submit with NO Double?");
-    if(!okNoDouble){ stopSubmitting(); return; }
+  // Prevent inconsistent specific double choice
+  if(!$("#doubleSel").value && effectiveDoublePlan){
+    const okNoSpecific = confirm("You declared that you WILL use a Double, but no specific doubled game is chosen yet.\nYou can choose the game later before kickoff. Continue?");
+    if(!okNoSpecific){ stopSubmitting(); return; }
   }
 
   // PRE-SUBMIT confirm if UNDER a prior commitment
@@ -829,11 +927,16 @@ $("#submitBtn").addEventListener("click", async ()=>{
     );
     if (!go) { stopSubmitting(); return; }
   }
+  if (committedDoublePlan !== null && computeEffectiveDoublePlan(total, pendingRequired) !== committedDoublePlan){
+    stopSubmitting();
+    alert(`Your Double Plan is locked to ${committedDoublePlan ? "YES" : "NO"} and cannot be changed.`);
+    return;
+  }
 
   const participantName = $("#nameSel").selectedOptions[0]?.textContent || "";
   const participantEmail = $("#emailBox").value.trim();
   const selectionsText  = buildSelectionsText(true);
-  const submission = collectSubmission(finalNumPicks);
+  const submission = collectSubmission(finalNumPicks, effectiveDoublePlan);
 
   const sheetResult = await pushToSheets(submission);
   if(!sheetResult.ok && REQUIRE_SHEETS_OK){ stopSubmitting(); alert("Could not log to Google Sheets. Please try again in a moment."); return; }
@@ -846,8 +949,11 @@ $("#submitBtn").addEventListener("click", async ()=>{
       const remain = committedNumPicks - total;
       msg += `\n\nReminder: You previously committed to ${committedNumPicks} picks. You currently have ${total}. If you don't reach ${committedNumPicks} before kickoff, defaults will be applied to the remaining ${remain} pick(s) to reach ${committedNumPicks}.`;
     }
+    msg += `\nDouble Plan: ${submission.WillDoublePlan}.`;
     alert(msg);
-    committedNumPicks = finalNumPicks; updateNumPicksUI();
+    if(committedNumPicks==null){ committedNumPicks = finalNumPicks; }
+    if(committedDoublePlan===null){ committedDoublePlan = (submission.WillDoublePlan === "Yes"); }
+    updateNumPicksUI();
     return;
   }
 
@@ -867,6 +973,7 @@ $("#submitBtn").addEventListener("click", async ()=>{
       const remain = committedNumPicks - total;
       msg += `\n\nReminder: You previously committed to ${committedNumPicks} picks. You currently have ${total}. If you don't reach ${committedNumPicks} before kickoff, defaults will be applied to the remaining ${remain} pick(s).`;
     }
+    msg += `\nDouble Plan: ${submission.WillDoublePlan}.`;
     alert(msg);
   }catch(err){
     console.error("EmailJS error details:",err);
@@ -876,10 +983,13 @@ $("#submitBtn").addEventListener("click", async ()=>{
       const remain = committedNumPicks - total;
       msg += `\n\nReminder: You previously committed to ${committedNumPicks} picks. You currently have ${total}. If you don't reach ${committedNumPicks} before kickoff, defaults will be applied to the remaining ${remain} pick(s).`;
     }
+    msg += `\nDouble Plan: ${submission.WillDoublePlan}.`;
     alert(msg);
   }
 
-  if(committedNumPicks==null){ committedNumPicks = finalNumPicks; updateNumPicksUI(); validateAll(); }
+  if(committedNumPicks==null){ committedNumPicks = finalNumPicks; }
+  if(committedDoublePlan===null){ committedDoublePlan = (submission.WillDoublePlan === "Yes"); }
+  updateNumPicksUI(); validateAll();
 });
 
 /* ============== LOAD DATA & EXPIRED UI ============== */
