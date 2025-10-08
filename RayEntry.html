@@ -467,6 +467,8 @@ function refreshDoubleChoices(){
   if (committedDoublePlan === false) {
     sel.value = "";
     sel.disabled = true;
+  } else {
+    sel.disabled = false;
   }
 }
 
@@ -522,7 +524,7 @@ function updateNumPicksUI(){
   const missingReq = countMissingRequired();
   const pendingRequired = missingReq.total;
 
-  // NumPicks text (unchanged aside from locks)
+  // NumPicks text
   planInput.min = Math.max(tot, 1);
   planInput.max = MAX_PICKS;
   const typed = planInput.value.trim();
@@ -751,7 +753,7 @@ async function prefillFromExisting(name){
       choice: r.choice || r.Choice || r.pick || r.Pick || r.selection || r.Selection || "",
       isDouble: /^true|1|y(es)?$/i.test(String(r.isDouble || r.Double || r.double || "")),
       NumPicks: r.NumPicks ? parseInt(r.NumPicks,10) : (r.numPicks ? parseInt(r.numPicks,10) : NaN),
-      WillDouble: (String(r.WillDouble||r.WillDoublePlan||r.DoublePlan||"")).toLowerCase(), // accept multiple headings
+      WillDouble: (String(r.WillDouble||r.WillDoublePlan||r.DoublePlan||"")).toLowerCase(),
       ts: Date.parse(r.timestamp || r.Timestamp || r.Time || r.Date || "") || 0
     });
 
@@ -771,11 +773,9 @@ async function prefillFromExisting(name){
 
     // Lock values derived from FIRST submission
     if (firstSubRows.length){
-      // Double Plan: prefer WillDouble yes/no, else infer from any isDouble in that submission
       const wd = (firstSubRows.find(r => r.WillDouble === "yes" || r.WillDouble === "no") || {}).WillDouble;
       committedDoublePlan = (wd === "yes") ? true : (wd === "no" ? false : (firstSubRows.some(r=>r.isDouble) ? true : false));
 
-      // NumPicks: prefer provided NumPicks; fallback to count of distinct qids in the first submission (cap MAX_PICKS)
       const np = firstSubRows.find(r => !isNaN(r.NumPicks));
       if (np && !isNaN(np.NumPicks)) {
         committedNumPicks = np.NumPicks;
@@ -785,7 +785,7 @@ async function prefillFromExisting(name){
       }
     }
 
-    // Apply latest picks to check currently-selected teams (visual), but keep locks from first submission
+    // Apply latest picks visually
     const latestByQID = new Map();
     for(const r of mine){
       if(!r.qid) continue;
@@ -805,12 +805,10 @@ async function prefillFromExisting(name){
       if(target){ target.checked = true; }
     }
 
-    // If Double Plan was Yes originally, restore which QID is doubled (latest that is marked)
     const dblQ = committedDoublePlan ? [...latestByQID.entries()].find(([qid,v])=>v.isDouble && $$(`input[name="${CSS.escape(qid)}"]:checked`).length) : null;
     refreshExpiryUI(); refreshDoubleChoices(); renderSummary(); validateAll();
     if(dblQ){ $("#doubleSel").value = dblQ[0]; }
 
-    // Apply locks to UI (disable controls appropriately)
     applyCommitmentLocksUI();
     updateNumPicksUI();
   }catch(e){
@@ -823,18 +821,30 @@ async function prefillFromExisting(name){
 function startSubmitting(){ $("#submitOverlay").hidden = false; $("#submitBtn").disabled = true; $("#resetBtn").disabled = true; }
 function stopSubmitting(){ $("#submitOverlay").hidden = true; $("#submitBtn").disabled = false; $("#resetBtn").disabled = false; }
 
-/* Push to Sheets */
+/* Push to Sheets with timeout + application/json */
 async function pushToSheets(payload){
   if(!GSHEET_WEBAPP_URL || !/^https?:\/\//i.test(GSHEET_WEBAPP_URL)){
     console.warn('GSHEET_WEBAPP_URL not set; skipping Sheets logging');
     return { ok:false, skipped:true };
   }
+  const controller = new AbortController();
+  const t = setTimeout(()=>controller.abort(), 12000); // 12s
   try{
-    const res = await fetch(GSHEET_WEBAPP_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) });
+    const res = await fetch(GSHEET_WEBAPP_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
     const data = await res.json().catch(()=>({}));
     if(!res.ok || data.ok !== true){ throw new Error(`Sheets response not ok: ${res.status} ${JSON.stringify(data)}`); }
     return { ok:true };
-  }catch(err){ console.error('Sheets logging failed:', err); return { ok:false, error:String(err) }; }
+  }catch(err){
+    console.error('Sheets logging failed:', err);
+    return { ok:false, error:String(err) };
+  }finally{
+    clearTimeout(t);
+  }
 }
 
 /* ============== EVENTS ============== */
@@ -872,117 +882,127 @@ $("#resetBtn").addEventListener("click", ()=>{
   renderSummary(); refreshDoubleChoices(); validateAll(); updateNumPicksUI();
 });
 
+/* ===== Submit handler with robust overlay & email isolation ===== */
 $("#submitBtn").addEventListener("click", async ()=>{
-  if(isAfterDeadline()){
-    alert("Picks are closed. The global deadline has passed.");
-    refreshDeadlineUI();
-    return;
-  }
-
-  startSubmitting();
-  const okEarly = validateAll();
-  if(!okEarly){ stopSubmitting(); alert("Please fix the items marked with ✕ in the Checks section."); return; }
-
-  const a = countChecked($("#listA")); const b = countChecked($("#listB")); const total = a+b;
-  if(total > MAX_PICKS){ stopSubmitting(); alert(`You cannot pick more than ${MAX_PICKS} games.`); return; }
-
-  const missingReq = countMissingRequired();
-  const pendingRequired = missingReq.total;
-  const effectiveDoublePlan = computeEffectiveDoublePlan(total, pendingRequired);
-  if (effectiveDoublePlan === null) { stopSubmitting(); alert("Please declare whether you will use a Double this week."); return; }
-
-  // Decide final NumPicks
-  let finalNumPicks = committedNumPicks;
-  if (committedNumPicks != null) {
-    if (total > committedNumPicks) { stopSubmitting(); alert(`You committed to ${committedNumPicks} picks. You currently selected ${total}. Reduce your picks — count cannot increase.`); return; }
-  } else {
-    const plannedStr = $("#numPicksPlan").value || "";
-    const planned = plannedStr ? parseInt(plannedStr, 10) : NaN;
-    const hasPlanned = !isNaN(planned);
-
-    if (hasPlanned) {
-      if (!(planned >= total && planned <= MAX_PICKS)) { stopSubmitting(); alert(`Your planned total must be between your current ${total} and ${MAX_PICKS}.`); return; }
-      finalNumPicks = planned;
-      const go = confirm(
-        `You have selected ${total} pick(s) and planned to make ${planned} total picks this week.\n` +
-        `You are also declaring your Double Plan: ${effectiveDoublePlan ? "YES (you will use a Double)" : "NO (you will not use a Double)"}.\n\n` +
-        `You may return to finish, but your pick total may not exceed ${planned}, and your Double Plan (${effectiveDoublePlan ? "YES" : "NO"}) will be locked. Continue?`
-      );
-      if (!go) { stopSubmitting(); return; }
-    } else {
-      if (total < 7) { stopSubmitting(); alert(`With fewer than 7 picks, you must enter a NumPicks between 7 and ${MAX_PICKS} and declare your Double Plan.`); return; }
-      if (total > MAX_PICKS) { stopSubmitting(); alert(`You cannot pick more than ${MAX_PICKS} games.`); return; }
-      // Auto-set NumPicks
-      const autoLock = Math.min(MAX_PICKS, total + pendingRequired);
-      finalNumPicks = autoLock;
-      const reqNote = pendingRequired > 0 ? `\nYou have ${pendingRequired} required game(s) not selected. Your total will lock at ${autoLock} (your ${total} current + ${pendingRequired} required).` : "";
-      const go = confirm(
-        `You are committing to ${finalNumPicks} pick(s).${reqNote}\n` +
-        `Your Double Plan will be locked as: ${effectiveDoublePlan ? "YES (you will use a Double)" : "NO (you will not use a Double)"}.\n` +
-        `You can change WHICH games (and which game is doubled, if YES) before kickoff, but not the fact of doubling.\n\n` +
-        `Submit and lock these?`
-      );
-      if (!go) { stopSubmitting(); return; }
+  try{
+    if(isAfterDeadline()){
+      alert("Picks are closed. The global deadline has passed.");
+      refreshDeadlineUI();
+      return;
     }
-  }
 
-  // If plan is locked No, prevent choosing a doubled game
-  if (committedDoublePlan === false && $("#doubleSel").value) {
+    startSubmitting();
+
+    const okEarly = validateAll();
+    if(!okEarly){ alert("Please fix the items marked with ✕ in the Checks section."); return; }
+
+    const a = countChecked($("#listA")); const b = countChecked($("#listB")); const total = a+b;
+    if(total > MAX_PICKS){ alert(`You cannot pick more than ${MAX_PICKS} games.`); return; }
+
+    const missingReq = countMissingRequired();
+    const pendingRequired = missingReq.total;
+    const effectiveDoublePlan = computeEffectiveDoublePlan(total, pendingRequired);
+    if (effectiveDoublePlan === null) { alert("Please declare whether you will use a Double this week."); return; }
+
+    // Decide final NumPicks
+    let finalNumPicks = committedNumPicks;
+    if (committedNumPicks != null) {
+      if (total > committedNumPicks) { alert(`You committed to ${committedNumPicks} picks. You currently selected ${total}. Reduce your picks — count cannot increase.`); return; }
+    } else {
+      const plannedStr = $("#numPicksPlan").value || "";
+      const planned = plannedStr ? parseInt(plannedStr, 10) : NaN;
+      const hasPlanned = !isNaN(planned);
+
+      if (hasPlanned) {
+        if (!(planned >= total && planned <= MAX_PICKS)) { alert(`Your planned total must be between your current ${total} and ${MAX_PICKS}.`); return; }
+        finalNumPicks = planned;
+        const go = confirm(
+          `You have selected ${total} pick(s) and planned to make ${planned} total picks this week.\n` +
+          `You are also declaring your Double Plan: ${effectiveDoublePlan ? "YES (you will use a Double)" : "NO (you will not use a Double)"}.\n\n` +
+          `You may return to finish, but your pick total may not exceed ${planned}, and your Double Plan (${effectiveDoublePlan ? "YES" : "NO"}) will be locked. Continue?`
+        );
+        if (!go) { return; }
+      } else {
+        if (total < 7) { alert(`With fewer than 7 picks, you must enter a NumPicks between 7 and ${MAX_PICKS} and declare your Double Plan.`); return; }
+        if (total > MAX_PICKS) { alert(`You cannot pick more than ${MAX_PICKS} games.`); return; }
+        const autoLock = Math.min(MAX_PICKS, total + pendingRequired);
+        finalNumPicks = autoLock;
+        const reqNote = pendingRequired > 0 ? `\nYou have ${pendingRequired} required game(s) not selected. Your total will lock at ${autoLock} (your ${total} current + ${pendingRequired} required).` : "";
+        const go = confirm(
+          `You are committing to ${finalNumPicks} pick(s).${reqNote}\n` +
+          `Your Double Plan will be locked as: ${effectiveDoublePlan ? "YES (you will use a Double)" : "NO (you will not use a Double)"}.\n` +
+          `You can change WHICH games (and which game is doubled, if YES) before kickoff, but not the fact of doubling.\n\n` +
+          `Submit and lock these?`
+        );
+        if (!go) { return; }
+      }
+    }
+
+    // If plan is locked No, prevent choosing a doubled game
+    if (committedDoublePlan === false && $("#doubleSel").value) {
+      alert("Your Double Plan is locked to NO. You cannot select a doubled game.");
+      return;
+    }
+
+    // If plan is locked Yes, allow changing which pick is doubled, but never flipping to No
+    if (committedDoublePlan !== null && computeEffectiveDoublePlan(total, pendingRequired) !== committedDoublePlan){
+      alert(`Your Double Plan is locked to ${committedDoublePlan ? "YES" : "NO"} and cannot be changed.`);
+      return;
+    }
+
+    const participantName = $("#nameSel").selectedOptions[0]?.textContent || "";
+    const participantEmail = $("#emailBox").value.trim();
+    const selectionsText  = buildSelectionsText(true);
+    const submission = collectSubmission(finalNumPicks, (committedDoublePlan !== null ? committedDoublePlan : effectiveDoublePlan));
+
+    const sheetResult = await pushToSheets(submission);
+
+    if(!sheetResult.ok && REQUIRE_SHEETS_OK){
+      alert("Could not log to Google Sheets. Please try again in a moment.");
+      return;
+    }
+
+    // ✅ Sheets is done — unblock UI BEFORE email
     stopSubmitting();
-    alert("Your Double Plan is locked to NO. You cannot select a doubled game.");
-    return;
-  }
 
-  // If plan is locked Yes, allow changing which pick is doubled, but never flipping to No
-  if (committedDoublePlan !== null && computeEffectiveDoublePlan(total, pendingRequired) !== committedDoublePlan){
-    stopSubmitting();
-    alert(`Your Double Plan is locked to ${committedDoublePlan ? "YES" : "NO"} and cannot be changed.`);
-    return;
-  }
+    if(DEMO_MODE){
+      $("#demoBadge").hidden = false;
+      alert(`Submitted! (Demo mode — email suppressed)\nDouble Plan: ${submission.WillDoublePlan}.`);
+    }else{
+      try{
+        if(!window.emailjs){
+          await new Promise((res,rej)=>{ const s=document.createElement("script"); s.src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"; s.onload=res; s.onerror=rej; document.head.appendChild(s); });
+        }
+        emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+          participant_name: participantName,
+          selections_text: selectionsText,
+          to_email: participantEmail
+        });
+        alert(`Submitted! A copy will be CC’d to you.\nDouble Plan: ${submission.WillDoublePlan}.`);
+      }catch(err){
+        console.error("EmailJS error details:",err);
+        alert(`Submitted! (Email copy failed to send.)\nDouble Plan: ${submission.WillDoublePlan}.`);
+      }
+    }
 
-  const participantName = $("#nameSel").selectedOptions[0]?.textContent || "";
-  const participantEmail = $("#emailBox").value.trim();
-  const selectionsText  = buildSelectionsText(true);
-  const submission = collectSubmission(finalNumPicks, (committedDoublePlan !== null ? committedDoublePlan : effectiveDoublePlan));
-
-  const sheetResult = await pushToSheets(submission);
-  if(!sheetResult.ok && REQUIRE_SHEETS_OK){ stopSubmitting(); alert("Could not log to Google Sheets. Please try again in a moment."); return; }
-
-  if(DEMO_MODE){
-    $("#demoBadge").hidden = false; 
-    stopSubmitting();
-    alert(`Submitted! (Demo mode — email suppressed)\nDouble Plan: ${submission.WillDoublePlan}.`);
+    // After first local submission, if not yet locked, lock now to these values
     if(committedNumPicks==null){ committedNumPicks = finalNumPicks; }
     if(committedDoublePlan===null){ committedDoublePlan = (submission.WillDoublePlan === "Yes"); }
     applyCommitmentLocksUI();
-    updateNumPicksUI();
-    return;
-  }
+    updateNumPicksUI(); validateAll();
 
-  try{
-    if(!window.emailjs){
-      await new Promise((res,rej)=>{ const s=document.createElement("script"); s.src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"; s.onload=res; s.onerror=rej; document.head.appendChild(s); });
-    }
-    emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
-    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-      participant_name: participantName,
-      selections_text: selectionsText,
-      to_email: participantEmail
-    });
+  } catch (e){
+    console.error("Unexpected submit error:", e);
+    alert("Something went wrong while submitting.");
+  } finally {
+    // Always hide overlay in case of any early return/throw
     stopSubmitting();
-    alert(`Submitted! A copy will be CC’d to you.\nDouble Plan: ${submission.WillDoublePlan}.`);
-  }catch(err){
-    console.error("EmailJS error details:",err);
-    stopSubmitting(); 
-    alert(`Submitted! (Email copy failed to send.)\nDouble Plan: ${submission.WillDoublePlan}.`);
   }
-
-  // After first local submission, if not yet locked, lock now to these values
-  if(committedNumPicks==null){ committedNumPicks = finalNumPicks; }
-  if(committedDoublePlan===null){ committedDoublePlan = (submission.WillDoublePlan === "Yes"); }
-  applyCommitmentLocksUI();
-  updateNumPicksUI(); validateAll();
 });
+
+/* Safety net: hide spinner on unhandled promise rejections */
+window.addEventListener('unhandledrejection', ()=>{ try{ stopSubmitting(); }catch{} });
 
 /* ============== LOAD DATA & EXPIRED UI ============== */
 async function loadAll(){
@@ -996,8 +1016,8 @@ async function loadAll(){
       return `<option value="${escapeHtml(nm)}" data-email="${escapeHtml(em)}">${escapeHtml(nm)}</option>`;
     }).join("");
 
-    const aRows = parseCSV(await fetchCSV("https://docs.google.com/spreadsheets/d/e/2PACX-1vRF3uymIsxpChbcWyoVXDlC1JRV0BV6T0xJZXIxGEvrAXFP76yPCgzPWqqIxLe0xiIHC796La9iSk3c/pub?gid=2109553148&single=true&output=csv"));
-    const bRows = parseCSV(await fetchCSV("https://docs.google.com/spreadsheets/d/e/2PACX-1vRF3uymIsxpChbcWyoVXDlC1JRV0BV6T0xJZXIxGEvrAXFP76yPCgzPWqqIxLe0xiIHC796La9iSk3c/pub?gid=0&single=true&output=csv"));
+    const aRows = parseCSV(await fetchCSV(CSV_URL_NFL));
+    const bRows = parseCSV(await fetchCSV(CSV_URL_NCAA));
     gamesA = normalizeGames(aRows,  "A");
     gamesB = normalizeGames(bRows,  "B");
     const hostA = $("#listA"), hostB = $("#listB");
