@@ -453,15 +453,34 @@ function countMissingRequired(){
   };
 }
 
+/* >>> DOUBLE LOCK FIX: helper to enforce UI state for double select */
+function applyDoubleSelectLock(){
+  const sel = $("#doubleSel");
+  if (committedDoublePlan === false){
+    sel.value = "";
+    sel.disabled = true;
+  } else {
+    sel.disabled = false;
+  }
+}
+
 /* Double dropdown shows picked team (even if now locked) */
 function refreshDoubleChoices(){
-  const sel = $("#doubleSel"); const keep = sel.value;
+  const sel = $("#doubleSel"); 
+  const keep = sel.value;
   const chosen = $$('input[type="radio"]:checked').map(r => {
       const row = r.closest(".row"); const teamLabel = (r.parentElement?.textContent || "").trim();
       return { qid: r.name, teamLabel, row };
     });
-  sel.innerHTML = `<option value="">No double</option>` + chosen.map(o => `<option value="${escapeHtml(o.qid)}">${escapeHtml(o.teamLabel)}</option>`).join("");
-  if(keep && chosen.some(o=>o.qid===keep)) sel.value = keep;
+  // >>> DOUBLE LOCK FIX: if locked to NO, force only "No double"
+  if (committedDoublePlan === false){
+    sel.innerHTML = `<option value="">No double</option>`;
+    sel.value = "";
+  } else {
+    sel.innerHTML = `<option value="">No double</option>` + chosen.map(o => `<option value="${escapeHtml(o.qid)}">${escapeHtml(o.teamLabel)}</option>`).join("");
+    if(keep && chosen.some(o=>o.qid===keep)) sel.value = keep;
+  }
+  applyDoubleSelectLock();
 }
 
 /* NumPicks + DoublePlan UI helpers */
@@ -502,6 +521,8 @@ function updateNumPicksUI(){
     $$('input[name="doublePlan"]').forEach(r=>r.disabled = false);
     dblLock.classList.add("is-hidden");
   }
+  // >>> DOUBLE LOCK FIX: keep dropdown consistent with lock
+  applyDoubleSelectLock();
 
   // NumPicks text
   planInput.min = Math.max(tot, 1);
@@ -602,7 +623,8 @@ function computeEffectiveDoublePlan(total, pendingRequired){
 function collectSubmission(finalNumPicks, effectiveDoublePlan){
   const name  = $("#nameSel").selectedOptions[0]?.textContent || "";
   const email = $("#emailBox").value.trim();
-  const dblQid = $("#doubleSel").value || "";
+  // >>> DOUBLE LOCK FIX: clear specific doubled game if plan is locked NO
+  const dblQid = (committedDoublePlan === false) ? "" : ($("#doubleSel").value || "");
   const timestamp = new Date().toISOString();
   const picks = $$('input[type="radio"]:checked').map(r=>{
     const row = r.closest(".row"); const qid = row.dataset.qid; const team= (r.parentElement?.textContent || "").trim();
@@ -653,6 +675,12 @@ function validateAll(){
   const dblSel = $("#doubleSel").value; const chosenQIDs = $$('input[type="radio"]:checked').map(r=>r.name);
   const doublePickOk = !dblSel || chosenQIDs.includes(dblSel);
 
+  // >>> DOUBLE LOCK FIX: if plan locked NO, disallow any doubled selection
+  let doubleLockOk = true;
+  if (committedDoublePlan === false && dblSel){
+    doubleLockOk = false;
+  }
+
   // NumPicks validity
   let numPicksOk = true;
   const planEl = $("#numPicksPlan");
@@ -675,8 +703,8 @@ function validateAll(){
   let dblPlanOk = true;
   const effPlan = computeEffectiveDoublePlan(total, missingReq.total); // true/false/null
   if (effPlan === null) dblPlanOk = false; // declaration required but missing
-
   if (committedDoublePlan !== null && effPlan !== committedDoublePlan) dblPlanOk = false;
+  if (!doubleLockOk) dblPlanOk = false;
 
   setCheck("#chkName",  nameOk);
   setCheck("#chkEmail", emailOk);
@@ -685,24 +713,24 @@ function validateAll(){
   setCheck("#chkAtLeastA", atLeastA ? true : 'warn');
   setCheck("#chkAtLeastB", atLeastB ? true : 'warn');
   setCheck("#chkRange",    rangeWarn ? 'warn' : true);
-  setCheck("#chkDouble",   doublePickOk);
+  setCheck("#chkDouble",   doublePickOk && doubleLockOk);
   setCheck("#chkNumPicks", numPicksOk ? true : false);
   setCheck("#chkDoublePlan", dblPlanOk ? true : false);
 
-  // ===== Footer status text rules (simplified) =====
+  // ===== Footer status text rules =====
   const pill = $("#statusBox");
-  if(nameOk && emailOk && doublePickOk && numPicksOk && dblPlanOk){
+  if(nameOk && emailOk && doublePickOk && doubleLockOk && numPicksOk && dblPlanOk){
     const basePartial = (ALLOW_PARTIAL && total < TOTAL_TARGET) ? `PARTIAL OK — ${total}/${TOTAL_TARGET} picked` : "BEAR DOWN!";
     pill.textContent = basePartial;
     pill.className = "statusBox " + (total < TOTAL_TARGET ? "status_neutral" : "status_good");
   }else{
-    pill.textContent = "ERRORS DETECTED";   // << simplified per request
+    pill.textContent = "ERRORS DETECTED";
     pill.className = "statusBox status_bad";
   }
 
   $("#cntA").textContent = `Answered: ${a}`; $("#cntB").textContent = `Answered: ${b}`; $("#totalPicked").textContent = `Total games picked: ${total} (NFL ${a} + NCAA ${b})`;
 
-  return (nameOk && emailOk && doublePickOk && numPicksOk && dblPlanOk);
+  return (nameOk && emailOk && doublePickOk && doubleLockOk && numPicksOk && dblPlanOk);
 }
 
 /* Prevent exceeding committedNumPicks interactively */
@@ -783,14 +811,19 @@ async function prefillFromExisting(name){
       committedNumPicks = null;
     }
 
+    // >>> DOUBLE LOCK FIX:
+    // Priority 1: explicit WillDouble yes/no if present
     if(latestDoublePlan && (latestDoublePlan.WillDouble === "yes" || latestDoublePlan.WillDouble === "no")){
       committedDoublePlan = (latestDoublePlan.WillDouble === "yes");
     } else {
+      // Otherwise infer from any submission this week:
+      const anyRowsThisWeek = latestByQID.size > 0 || !!latestNumPicks;
       const anyDouble = [...latestByQID.values()].some(v=>v.isDouble);
-      committedDoublePlan = anyDouble ? true : null;
+      committedDoublePlan = anyRowsThisWeek ? (anyDouble ? true : false) : null;
     }
 
     updateNumPicksUI();
+    refreshDoubleChoices();
   }catch(e){ console.warn('prefillFromExisting failed:', e); }
 }
 
@@ -825,7 +858,11 @@ document.addEventListener("change", async e=>{
     refreshDoubleChoices(); renderSummary(); validateAll(); updateNumPicksUI();
   }
   if(e.target.matches('#doubleSel') || e.target.matches('#emailBox') || e.target.matches('#numPicksPlan') || e.target.name === 'doublePlan'){
-    renderSummary(); validateAll(); updateNumPicksUI();
+    // >>> DOUBLE LOCK FIX: if locked NO, revert any attempt to set a double
+    if (e.target.id === 'doubleSel' && committedDoublePlan === false){
+      $("#doubleSel").value = "";
+    }
+    renderSummary(); validateAll(); updateNumPicksUI(); refreshDoubleChoices();
   }
 });
 
@@ -860,6 +897,13 @@ $("#submitBtn").addEventListener("click", async ()=>{
 
   const a = countChecked($("#listA")); const b = countChecked($("#listB")); const total = a+b;
   if(total > MAX_PICKS){ stopSubmitting(); alert(`You cannot pick more than ${MAX_PICKS} games.`); return; }
+
+  // >>> DOUBLE LOCK FIX: hard-block selecting a double when locked NO
+  if (committedDoublePlan === false && $("#doubleSel").value){
+    stopSubmitting();
+    alert("Your Double Plan is locked to NO DOUBLE from your first submission. You cannot add a Double.");
+    return;
+  }
 
   // Compute pending req & effective Double Plan
   const missingReq = countMissingRequired();
@@ -924,7 +968,7 @@ $("#submitBtn").addEventListener("click", async ()=>{
     }
   }
 
-  // Prevent inconsistent specific double choice
+  // Prevent inconsistent specific double choice (plan YES but no game yet)
   if(!$("#doubleSel").value && effectiveDoublePlan){
     const okNoSpecific = confirm("You declared that you WILL use a Double, but no specific doubled game is chosen yet.\nYou can choose the game later before kickoff. Continue?");
     if(!okNoSpecific){ stopSubmitting(); return; }
@@ -967,6 +1011,7 @@ $("#submitBtn").addEventListener("click", async ()=>{
     if(committedNumPicks==null){ committedNumPicks = finalNumPicks; }
     if(committedDoublePlan===null){ committedDoublePlan = (submission.WillDoublePlan === "Yes"); }
     updateNumPicksUI();
+    refreshDoubleChoices();
     return;
   }
 
@@ -1002,7 +1047,9 @@ $("#submitBtn").addEventListener("click", async ()=>{
 
   if(committedNumPicks==null){ committedNumPicks = finalNumPicks; }
   if(committedDoublePlan===null){ committedDoublePlan = (submission.WillDoublePlan === "Yes"); }
-  updateNumPicksUI(); validateAll();
+  updateNumPicksUI(); 
+  refreshDoubleChoices();
+  validateAll();
 });
 
 /* ============== LOAD DATA & EXPIRED UI ============== */
