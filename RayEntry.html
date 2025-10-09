@@ -247,7 +247,7 @@ const DEMO_MODE = false;
 
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
-const escapeHtml = s => String(s??"").replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;","\"":"&quot;"}[m]));
+const escapeHtml = s => String(s??"").replace(/[&<>"]/g, m => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[m]));
 const canon = s => String(s||"").toLowerCase().replace(/#\d+\s*/g,'').replace(/[()]/g,'').replace(/\bsta?te\b/g,'state').replace(/\bst\.?\b/g,'state').replace(/[^a-z0-9]+/g,' ').trim();
 
 /* ---------- NULL-SAFE HELPERS (the fix) ---------- */
@@ -333,7 +333,7 @@ const lineNum = isPK ? 0 : (lineStr ? Math.abs(parseFloat(lineStr)) : null);
 
   const toTokens = s => canon(s).split(/\s+/).filter(Boolean);
   function phraseHitLen(teamTok, hay){ if(teamTok.length===0||hay.length===0) return 0; for(let i=0;i<=hay.length-teamTok.length;i++){ let ok=true; for(let j=0;j<teamTok.length;j++){ if(hay[i+j]!==teamTok[j]){ok=false;break;} } if(ok) return teamTok.length; } return 0; }
-  const spreadTokens = toTokens(spreadRaw), awayTokens = toTokens(away), homeTokens = toTokens(home);
+  const spreadTokens = toTokens(cleaned), awayTokens = toTokens(away), homeTokens = toTokens(home);
   const awayHit = phraseHitLen(awayTokens, spreadTokens);
   const homeHit = phraseHitLen(homeTokens, spreadTokens);
   let favored=null, favoredTeam="", favoredMinus="";
@@ -355,7 +355,7 @@ return {
   favoriteLine: favLine,
   favored, favoredTeam, favoredMinus
 };
-
+} // <-- close favoriteInfo
 
 function buildRow(g){
   const el = document.createElement("div"); el.className = "row"; el.dataset.qid = g.qid;
