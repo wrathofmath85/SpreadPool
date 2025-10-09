@@ -315,9 +315,22 @@ function normalizeGames(csvRows, prefix){
 
 function favoriteInfo(away, home, spreadText){
   const spreadRaw = String(spreadText||"");
-  const numMatch = spreadRaw.match(/[+-]?\d+(?:\.\d+)?/g);
-  const lineStr = numMatch ? numMatch[numMatch.length - 1] : "";
-  const lineNum = lineStr ? Math.abs(parseFloat(lineStr)) : null;
+
+// Drop rankings like "#24 " so they aren't mistaken for a point spread
+const cleaned = spreadRaw.replace(/#\d+\s*/g, "");
+
+// Detect Pick'em / PK (any reasonable variant)
+const isPK =
+  /\bPICK'?[-\s]*EM\b/i.test(cleaned) ||
+  /\bPK\b/i.test(cleaned);
+
+// Only capture **signed** numbers like -3.5 / +7; this avoids bare "24" from "#24"
+const signedNums = cleaned.match(/[+-]\d+(?:\.\d+)?/g);
+
+// If PK, line = 0; otherwise take the last signed number if present
+const lineStr = isPK ? "PK" : (signedNums ? signedNums[signedNums.length - 1] : "");
+const lineNum = isPK ? 0 : (lineStr ? Math.abs(parseFloat(lineStr)) : null);
+
   const toTokens = s => canon(s).split(/\s+/).filter(Boolean);
   function phraseHitLen(teamTok, hay){ if(teamTok.length===0||hay.length===0) return 0; for(let i=0;i<=hay.length-teamTok.length;i++){ let ok=true; for(let j=0;j<teamTok.length;j++){ if(hay[i+j]!==teamTok[j]){ok=false;break;} } if(ok) return teamTok.length; } return 0; }
   const spreadTokens = toTokens(spreadRaw), awayTokens = toTokens(away), homeTokens = toTokens(home);
@@ -326,12 +339,23 @@ function favoriteInfo(away, home, spreadText){
   let favored=null, favoredTeam="", favoredMinus="";
   if(awayHit>homeHit){ favored="away"; favoredTeam=away; }
   else if(homeHit>awayHit){ favored="home"; favoredTeam=home; }
-  if(favored && lineNum!=null) favoredMinus = `-${lineNum}`;
+  if (favored && lineNum != null && lineNum > 0) favoredMinus = `-${lineNum}`;
   const fmt = n => (String(n).startsWith('-') ? n : `-${n}`);
-  return { awayLabel: favored==="away" && lineStr ? `${away} (${fmt(lineStr)})` : away,
-           homeLabel: favored==="home" && lineStr ? `${home} (${fmt(lineStr)})` : home,
-           favoriteLine: spreadRaw || "—", favored, favoredTeam, favoredMinus };
-}
+
+// Only tag team labels when we have a numeric line (> 0)
+const awayLab = (favored === "away" && lineNum != null && lineNum > 0) ? `${away} (${fmt(lineStr)})` : away;
+const homeLab = (favored === "home" && lineNum != null && lineNum > 0) ? `${home} (${fmt(lineStr)})` : home;
+
+// Show "PK" in the Favorite line, not on the team labels
+const favLine = isPK ? "PK" : (spreadRaw || "—");
+
+return {
+  awayLabel: awayLab,
+  homeLabel: homeLab,
+  favoriteLine: favLine,
+  favored, favoredTeam, favoredMinus
+};
+
 
 function buildRow(g){
   const el = document.createElement("div"); el.className = "row"; el.dataset.qid = g.qid;
