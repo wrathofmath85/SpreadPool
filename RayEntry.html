@@ -753,90 +753,106 @@ function enforceCommittedLimitOnChange(changedInput){
 }
 
 /* Prefill from existing picks CSV */
-async function prefillFromExisting(name){
+/* Prefill from existing picks CSV (latest submission only) */
+async function prefillFromExisting(name) {
   existingByQID.clear();
   committedNumPicks = null;
   committedDoublePlan = null;
-  if(!CSV_URL_PICKS) return;
-  try{
-    const text = await fetchCSV(CSV_URL_PICKS); const rows = parseCSV(text);
+  if (!CSV_URL_PICKS) return;
+
+  try {
+    const text = await fetchCSV(CSV_URL_PICKS);
+    const rows = parseCSV(text);
+
     const norm = r => ({
       name: r.Name || r.name || r.Player || r.player || "",
       week: String(r.week || r.Week || r.WEEK || r.round || "").trim(),
-      qid:  r.qid || r.QID || r.game || r.Game || r.Question || "",
+      qid: r.qid || r.QID || r.game || r.Game || r.Question || "",
       choice: r.choice || r.Choice || r.pick || r.Pick || r.selection || r.Selection || "",
       isDouble: /^true|1|y(es)?$/i.test(String(r.isDouble || r.Double || r.double || "")),
-      NumPicks: r.NumPicks ? parseInt(r.NumPicks,10) : (r.numPicks ? parseInt(r.numPicks,10) : NaN),
-      WillDouble: (String(r.WillDouble||r.DoublePlan||"")).toLowerCase(),
+      NumPicks: r.NumPicks ? parseInt(r.NumPicks, 10)
+              : (r.numPicks ? parseInt(r.numPicks, 10) : NaN),
+      WillDouble: (String(r.WillDouble || r.DoublePlan || "")).toLowerCase(),
       ts: Date.parse(r.timestamp || r.Timestamp || r.Time || r.Date || "") || 0
     });
-    const mine = rows.map(norm).filter(r => canon(r.name)===canon(name) && String(r.week)===String(CURRENT_WEEK) && (r.qid || !isNaN(r.NumPicks) || r.WillDouble));
+
+    // Filter rows to this participant and week
+    const mine = rows
+      .map(norm)
+      .filter(r =>
+        canon(r.name) === canon(name) &&
+        String(r.week) === String(CURRENT_WEEK) &&
+        (r.qid || !isNaN(r.NumPicks) || r.WillDouble)
+      );
+
+    if (mine.length === 0) return;
+
+    /* --- FIX: only use picks from the single latest submission timestamp --- */
+    const latestTs = Math.max(...mine.map(r => r.ts || 0));
+    const threshold = latestTs - 30_000; // allow 30s window for same batch
+    const mineLatest = mine.filter(r => r.ts >= threshold);
+
+    /* now pick only the newest set of picks and declarations */
     const latestByQID = new Map();
     let latestNumPicks = null;
     let latestDoublePlan = null;
 
-/* --- FIX: ensure newest (latest timestamp) submissions are used --- */
-for (const r of mine) {
-  if (!r.ts) continue; // skip missing timestamps for safety
-
-  // keep the LATEST pick for each QID
-  if (r.qid) {
-    const prev = latestByQID.get(r.qid);
-    if (!prev || r.ts > prev.ts) {
-      latestByQID.set(r.qid, r);
+    for (const r of mineLatest) {
+      if (r.qid) latestByQID.set(r.qid, r);
+      if (!isNaN(r.NumPicks)) latestNumPicks = r;
+      const will = (r.WillDouble || "").toLowerCase();
+      if (will === "yes" || will === "no") latestDoublePlan = r;
     }
-  }
 
-  // keep the LATEST NumPicks declaration
-  if (!isNaN(r.NumPicks)) {
-    if (!latestNumPicks || r.ts > latestNumPicks.ts) {
-      latestNumPicks = r;
-    }
-  }
+    // clear all radio inputs before applying saved ones
+    $$('input[type="radio"]').forEach(r => (r.checked = false));
 
-  // keep the LATEST Double Plan declaration
-  const will = (r.WillDouble || "").toLowerCase();
-  if (will === "yes" || will === "no") {
-    if (!latestDoublePlan || r.ts > latestDoublePlan.ts) {
-      latestDoublePlan = r;
-    }
-  }
-}
-
-
-    $$('input[type="radio"]').forEach(r=>r.checked=false);
-    for(const r of latestByQID.values()){
-      existingByQID.set(r.qid, {choice:r.choice, isDouble:r.isDouble});
-      const row = document.querySelector(`.row[data-qid="${CSS.escape(r.qid)}"]`); if(!row) continue;
+    // apply saved picks
+    for (const r of latestByQID.values()) {
+      existingByQID.set(r.qid, { choice: r.choice, isDouble: r.isDouble });
+      const row = document.querySelector(`.row[data-qid="${CSS.escape(r.qid)}"]`);
+      if (!row) continue;
       const awayLbl = row.querySelector('.answers label:nth-child(1)')?.textContent || "";
       const homeLbl = row.querySelector('.answers label:nth-child(2)')?.textContent || "";
-      const awayHit = canon(r.choice).includes(canon(awayLbl.split('(')[0]||""));
-      const homeHit = canon(r.choice).includes(canon(homeLbl.split('(')[0]||""));
-      const target = awayHit && !homeHit ? row.querySelector('input[value="away"]') : homeHit && !awayHit ? row.querySelector('input[value="home"]') : null;
-      if(target){ target.checked = true; }
+      const awayHit = canon(r.choice).includes(canon(awayLbl.split('(')[0] || ""));
+      const homeHit = canon(r.choice).includes(canon(homeLbl.split('(')[0] || ""));
+      const target =
+        awayHit && !homeHit
+          ? row.querySelector('input[value="away"]')
+          : homeHit && !awayHit
+          ? row.querySelector('input[value="home"]')
+          : null;
+      if (target) target.checked = true;
     }
 
-    const dblQ = [...latestByQID.entries()].find(([qid,v])=>v.isDouble && $$(`input[name="${CSS.escape(qid)}"]:checked`).length);
-    refreshExpiryUI(); refreshDoubleChoices(); renderSummary(); validateAll();
-    if(dblQ){ $("#doubleSel").value = dblQ[0]; }
+    // set double pick if present
+    const dblQ = [...latestByQID.entries()].find(
+      ([qid, v]) =>
+        v.isDouble && $$(`input[name="${CSS.escape(qid)}"]:checked`).length
+    );
+    if (dblQ) $("#doubleSel").value = dblQ[0];
 
-    if(latestNumPicks && !isNaN(latestNumPicks.NumPicks)){
-      committedNumPicks = latestNumPicks.NumPicks;
-    } else {
-      committedNumPicks = null;
-    }
+    // assign committed states
+    committedNumPicks = latestNumPicks && !isNaN(latestNumPicks.NumPicks)
+      ? latestNumPicks.NumPicks
+      : null;
 
-    if(latestDoublePlan && (latestDoublePlan.WillDouble === "yes" || latestDoublePlan.WillDouble === "no")){
-      committedDoublePlan = (latestDoublePlan.WillDouble === "yes");
+    if (latestDoublePlan && (latestDoublePlan.WillDouble === "yes" || latestDoublePlan.WillDouble === "no")) {
+      committedDoublePlan = latestDoublePlan.WillDouble === "yes";
     } else {
       const anyRowsThisWeek = latestByQID.size > 0 || !!latestNumPicks;
-      const anyDouble = [...latestByQID.values()].some(v=>v.isDouble);
+      const anyDouble = [...latestByQID.values()].some(v => v.isDouble);
       committedDoublePlan = anyRowsThisWeek ? (anyDouble ? true : false) : null;
     }
 
-    updateNumPicksUI();
+    refreshExpiryUI();
     refreshDoubleChoices();
-  }catch(e){ console.warn('prefillFromExisting failed:', e); }
+    renderSummary();
+    validateAll();
+    updateNumPicksUI();
+  } catch (e) {
+    console.warn("prefillFromExisting failed:", e);
+  }
 }
 
 /* Submitting overlay helpers */
