@@ -775,18 +775,34 @@ async function prefillFromExisting(name){
     let latestNumPicks = null;
     let latestDoublePlan = null;
 
-    for(const r of mine){
-      if(r.qid){
-        const prev=latestByQID.get(r.qid);
-        if(!prev || r.ts > prev.ts) latestByQID.set(r.qid, r);
-      }
-      if(!isNaN(r.NumPicks)){
-        if(!latestNumPicks || r.ts > latestNumPicks.ts) latestNumPicks = r;
-      }
-      if(r.WillDouble === "yes" || r.WillDouble === "no"){
-        if(!latestDoublePlan || r.ts > latestDoublePlan.ts) latestDoublePlan = r;
-      }
+/* --- FIX: ensure newest (latest timestamp) submissions are used --- */
+for (const r of mine) {
+  if (!r.ts) continue; // skip missing timestamps for safety
+
+  // keep the LATEST pick for each QID
+  if (r.qid) {
+    const prev = latestByQID.get(r.qid);
+    if (!prev || r.ts > prev.ts) {
+      latestByQID.set(r.qid, r);
     }
+  }
+
+  // keep the LATEST NumPicks declaration
+  if (!isNaN(r.NumPicks)) {
+    if (!latestNumPicks || r.ts > latestNumPicks.ts) {
+      latestNumPicks = r;
+    }
+  }
+
+  // keep the LATEST Double Plan declaration
+  const will = (r.WillDouble || "").toLowerCase();
+  if (will === "yes" || will === "no") {
+    if (!latestDoublePlan || r.ts > latestDoublePlan.ts) {
+      latestDoublePlan = r;
+    }
+  }
+}
+
 
     $$('input[type="radio"]').forEach(r=>r.checked=false);
     for(const r of latestByQID.values()){
