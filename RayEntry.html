@@ -42,7 +42,7 @@ h2{margin:0 0 12px 0;font-size:20px}
 .check-bad .check-icon{background:var(--bad);color:#fff}
 .check-text{flex:1 1 auto}
 
-/* ======== New, cleaner sticky footer ======== */
+/* ======== Sticky footer ======== */
 .site-footer{
   position:sticky;bottom:0;left:0;right:0;z-index:9;
   background:linear-gradient(180deg, rgba(16,23,33,.82), rgba(16,23,33,.92));
@@ -101,11 +101,11 @@ h2{margin:0 0 12px 0;font-size:20px}
 }
 </style>
 </head>
+
 <body>
 <div class="wrap">
   <h1>Spread Pool — Week 6</h1>
 
-  <!-- GLOBAL DEADLINE BANNER -->
   <div id="deadlineBanner" class="card" style="border:2px solid var(--border);">
     <div id="deadlineText" class="small"></div>
   </div>
@@ -127,7 +127,6 @@ h2{margin:0 0 12px 0;font-size:20px}
       <strong>Partial Picks Mode is ON:</strong> You may submit a few picks now and return later to add more. After kickoff, any unpicked games will receive the default per rules.
     </p>
 
-    <!-- Num Picks + Double Plan -->
     <div id="numPicksCard" class="card" style="margin:12px 0">
       <h2>Plans to Lock</h2>
       <div class="small muted" id="numPicksHelp" style="margin-bottom:8px">
@@ -194,7 +193,6 @@ h2{margin:0 0 12px 0;font-size:20px}
   </section>
 </div>
 
-<!-- Refreshed Footer -->
 <footer class="site-footer">
   <div class="footer-inner">
     <div class="footer-left">
@@ -252,6 +250,13 @@ const $$ = s => [...document.querySelectorAll(s)];
 const escapeHtml = s => String(s??"").replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;","\"":"&quot;"}[m]));
 const canon = s => String(s||"").toLowerCase().replace(/#\d+\s*/g,'').replace(/[()]/g,'').replace(/\bsta?te\b/g,'state').replace(/\bst\.?\b/g,'state').replace(/[^a-z0-9]+/g,' ').trim();
 
+/* ---------- NULL-SAFE HELPERS (the fix) ---------- */
+const rowOf = el => (el && typeof el.closest === "function") ? (el.closest(".row") || null) : null;
+const qidOf = el => {
+  const r = rowOf(el);
+  return r?.dataset?.qid || (el && el.name) || "";
+};
+
 /* ---- CSV helpers ---- */
 function fetchCSV(url){
   if(!url) return Promise.reject(new Error('CSV URL missing'));
@@ -286,7 +291,9 @@ let paymentByName = new Map();
 let existingByQID = new Map();
 let committedNumPicks = null;
 let committedDoublePlan = null; // true/false once locked
+</script>
 
+<script>
 /* ============== CSV → GAMES ============== */
 function normalizeGames(csvRows, prefix){
   const out=[]; let idx=0;
@@ -407,11 +414,12 @@ function refreshDeadlineUI(){
   }
 }
 
-/* expiry UI per game */
+/* expiry UI per game (null-safe) */
 function refreshExpiryUI(){
   const updateFor = (rows, games) => {
     rows.forEach(row=>{
-      const qid = row.dataset.qid; const g = games.find(x=>x.qid===qid);
+      const qid = row?.dataset?.qid || "";
+      const g = games.find(x=>x.qid===qid);
       const expired = g?.start ? (Date.now() >= g.start.getTime()) : false;
       const radios = row.querySelectorAll('input[type="radio"]');
       const anyChecked = [...radios].some(r=>r.checked);
@@ -464,15 +472,15 @@ function applyDoubleSelectLock(){
   }
 }
 
-/* Double dropdown shows picked team (even if now locked) */
+/* Double dropdown shows picked team (null-safe) */
 function refreshDoubleChoices(){
   const sel = $("#doubleSel"); 
   const keep = sel.value;
   const chosen = $$('input[type="radio"]:checked').map(r => {
-      const row = r.closest(".row"); const teamLabel = (r.parentElement?.textContent || "").trim();
-      return { qid: r.name, teamLabel, row };
-    });
-  // >>> DOUBLE LOCK FIX: if locked to NO, force only "No double"
+      const row = rowOf(r);
+      const teamLabel = (r.parentElement?.textContent || "").trim();
+      return row ? { qid: r.name, teamLabel, row } : null;
+    }).filter(Boolean);
   if (committedDoublePlan === false){
     sel.innerHTML = `<option value="">No double</option>`;
     sel.value = "";
@@ -504,7 +512,6 @@ function updateNumPicksUI(){
   const missingReq = countMissingRequired();
   const pendingRequired = missingReq.total;
 
-  // Handle committed locks
   if (committedNumPicks != null) {
     planInput.value = committedNumPicks;
     planInput.disabled = true;
@@ -521,10 +528,8 @@ function updateNumPicksUI(){
     $$('input[name="doublePlan"]').forEach(r=>r.disabled = false);
     dblLock.classList.add("is-hidden");
   }
-  // >>> DOUBLE LOCK FIX: keep dropdown consistent with lock
   applyDoubleSelectLock();
 
-  // NumPicks text
   planInput.min = Math.max(tot, 1);
   planInput.max = MAX_PICKS;
   const typed = planInput.value.trim();
@@ -552,7 +557,6 @@ function updateNumPicksUI(){
       : `Planned total must be between your current ${tot} and ${MAX_PICKS}.`;
   }
 
-  // Double Plan text
   const dblPlanUI = getDoublePlanUI(); // true/false/null
   const doubledPickChosen = !!$("#doubleSel").value;
   if (committedDoublePlan !== null) {
@@ -565,17 +569,21 @@ function updateNumPicksUI(){
   }
 }
 
-/* Build text summary */
+/* Build text summary (null-safe) */
 function buildSelectionsText(includeGameLine=false){
   const name  = $("#nameSel").selectedOptions[0]?.textContent || "";
   const email = $("#emailBox").value.trim();
   const stamp = new Date().toISOString();
   const checked = $$('input[type="radio"]:checked').map(r=>{
-    const row = r.closest(".row"); const qid = row.dataset.qid;
-    const team= r.value === "away" ? row.querySelector(".answers label:nth-child(1)")?.textContent.trim()
-                                   : row.querySelector(".answers label:nth-child(2)")?.textContent.trim();
-    return {qid, team};
-  }).sort((a,b)=>a.qid.localeCompare(b.qid));
+    const row = rowOf(r);
+    const qid = qidOf(r);
+    const teamText =
+      (r.value === "away"
+        ? (row?.querySelector(".answers label:nth-child(1)")?.textContent || r.parentElement?.textContent)
+        : (row?.querySelector(".answers label:nth-child(2)")?.textContent || r.parentElement?.textContent)
+      )?.trim() || "";
+    return {qid, team: teamText};
+  }).filter(o=>o.qid).sort((a,b)=>a.qid.localeCompare(b.qid));
   const dbl = $("#doubleSel").value;
   const lines = [];
   lines.push(`Name: ${name}`);
@@ -604,32 +612,28 @@ function buildSelectionsText(includeGameLine=false){
 function computeEffectiveDoublePlan(total, pendingRequired){
   const ui = getDoublePlanUI(); // true/false/null
   const doubledPickChosen = !!$("#doubleSel").value;
-
   if (committedDoublePlan !== null) return committedDoublePlan;
-
-  // If <7 or unmet requirements -> must declare; but if doubled pick exists, assume Yes
   if (total < 7 || pendingRequired > 0) {
     if (ui === true || ui === false) return ui;
-    if (doubledPickChosen) return true; // assume “Yes”
-    return null; // missing -> block
+    if (doubledPickChosen) return true;
+    return null;
   }
-
-  // If 7–12 and requirements satisfied -> allow blank; default to current doubled state
   if (ui === true || ui === false) return ui;
   return doubledPickChosen ? true : false;
 }
 
-/* Collect submission w/ NumPicks and DoublePlan */
+/* Collect submission (null-safe) */
 function collectSubmission(finalNumPicks, effectiveDoublePlan){
   const name  = $("#nameSel").selectedOptions[0]?.textContent || "";
   const email = $("#emailBox").value.trim();
-  // >>> DOUBLE LOCK FIX: clear specific doubled game if plan is locked NO
   const dblQid = (committedDoublePlan === false) ? "" : ($("#doubleSel").value || "");
   const timestamp = new Date().toISOString();
   const picks = $$('input[type="radio"]:checked').map(r=>{
-    const row = r.closest(".row"); const qid = row.dataset.qid; const team= (r.parentElement?.textContent || "").trim();
-    return { qid, team, isDouble: (qid===dblQid) };
-  }).sort((a,b)=>a.qid.localeCompare(b.qid));
+    const row = rowOf(r);
+    const qid = qidOf(r);
+    const team= (r.parentElement?.textContent || "").trim();
+    return qid ? { qid, team, isDouble: (qid===dblQid) } : null;
+  }).filter(Boolean).sort((a,b)=>a.qid.localeCompare(b.qid));
   const rows = picks.map(p => ({
     timestamp, week: CURRENT_WEEK, name, email, qid: p.qid, choice: p.team,
     isDouble: !!p.isDouble, NumPicks: finalNumPicks, WillDouble: effectiveDoublePlan ? "Yes" : "No"
@@ -649,7 +653,7 @@ function collectSubmission(finalNumPicks, effectiveDoublePlan){
 function renderSummary(){ $("#summary").innerHTML = `<pre style="white-space:pre-wrap;margin:0">${escapeHtml(buildSelectionsText(false))}</pre>`; }
 function setCheck(sel, state){ const li=$(sel); li.classList.toggle("check-ok", state===true); li.classList.toggle("check-bad", state===false); li.classList.toggle("check-warn", state==='warn'); li.querySelector(".check-icon").textContent = state===true?"✓":(state===false?"✕":"!"); }
 
-/* Validate including NumPicks + DoublePlan logic */
+/* Validate including NumPicks + DoublePlan logic (unchanged except null-safe array use) */
 function validateAll(){
   if(isAfterDeadline()){
     setCheck("#chkName",  false);
@@ -665,7 +669,6 @@ function validateAll(){
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test($("#emailBox").value.trim());
   const a = countChecked($("#listA")); const b = countChecked($("#listB")); const total = a + b;
 
-  // Required
   const missingReq = countMissingRequired();
   const reqAOk = missingReq.nfl === 0;
   const reqBOk = missingReq.ncaa === 0;
@@ -675,13 +678,11 @@ function validateAll(){
   const dblSel = $("#doubleSel").value; const chosenQIDs = $$('input[type="radio"]:checked').map(r=>r.name);
   const doublePickOk = !dblSel || chosenQIDs.includes(dblSel);
 
-  // >>> DOUBLE LOCK FIX: if plan locked NO, disallow any doubled selection
   let doubleLockOk = true;
   if (committedDoublePlan === false && dblSel){
     doubleLockOk = false;
   }
 
-  // NumPicks validity
   let numPicksOk = true;
   const planEl = $("#numPicksPlan");
   const planned = planEl.value ? parseInt(planEl.value, 10) : NaN;
@@ -699,10 +700,9 @@ function validateAll(){
     }
   }
 
-  // Double Plan validity
   let dblPlanOk = true;
   const effPlan = computeEffectiveDoublePlan(total, missingReq.total); // true/false/null
-  if (effPlan === null) dblPlanOk = false; // declaration required but missing
+  if (effPlan === null) dblPlanOk = false;
   if (committedDoublePlan !== null && effPlan !== committedDoublePlan) dblPlanOk = false;
   if (!doubleLockOk) dblPlanOk = false;
 
@@ -717,7 +717,6 @@ function validateAll(){
   setCheck("#chkNumPicks", numPicksOk ? true : false);
   setCheck("#chkDoublePlan", dblPlanOk ? true : false);
 
-  // ===== Footer status text rules =====
   const pill = $("#statusBox");
   if(nameOk && emailOk && doublePickOk && doubleLockOk && numPicksOk && dblPlanOk){
     const basePartial = (ALLOW_PARTIAL && total < TOTAL_TARGET) ? `PARTIAL OK — ${total}/${TOTAL_TARGET} picked` : "BEAR DOWN!";
@@ -733,13 +732,16 @@ function validateAll(){
   return (nameOk && emailOk && doublePickOk && doubleLockOk && numPicksOk && dblPlanOk);
 }
 
-/* Prevent exceeding committedNumPicks interactively */
+/* Prevent exceeding committedNumPicks (null-safe) */
 function enforceCommittedLimitOnChange(changedInput){
   if(committedNumPicks==null) return;
   if(!(changedInput && changedInput.type === "radio")) return;
 
-  const qid = changedInput.name;
-  const groupCheckedBefore = $$(`input[type="radio"][name="${CSS.escape(qid)}"]`).some(r => r !== changedInput && r.checked);
+  const qid = qidOf(changedInput);
+  if(!qid) return;
+
+  const group = $$(`input[type="radio"][name="${CSS.escape(qid)}"]`);
+  const groupCheckedBefore = group.some(r => r !== changedInput && r.checked);
   if(groupCheckedBefore) return;
 
   const tot = totalChecked();
@@ -765,7 +767,7 @@ async function prefillFromExisting(name){
       choice: r.choice || r.Choice || r.pick || r.Pick || r.selection || r.Selection || "",
       isDouble: /^true|1|y(es)?$/i.test(String(r.isDouble || r.Double || r.double || "")),
       NumPicks: r.NumPicks ? parseInt(r.NumPicks,10) : (r.numPicks ? parseInt(r.numPicks,10) : NaN),
-      WillDouble: (String(r.WillDouble||r.DoublePlan||"")).toLowerCase(), // "yes"/"no" if present
+      WillDouble: (String(r.WillDouble||r.DoublePlan||"")).toLowerCase(),
       ts: Date.parse(r.timestamp || r.Timestamp || r.Time || r.Date || "") || 0
     });
     const mine = rows.map(norm).filter(r => canon(r.name)===canon(name) && String(r.week)===String(CURRENT_WEEK) && (r.qid || !isNaN(r.NumPicks) || r.WillDouble));
@@ -786,7 +788,6 @@ async function prefillFromExisting(name){
       }
     }
 
-    // Apply picks
     $$('input[type="radio"]').forEach(r=>r.checked=false);
     for(const r of latestByQID.values()){
       existingByQID.set(r.qid, {choice:r.choice, isDouble:r.isDouble});
@@ -799,24 +800,19 @@ async function prefillFromExisting(name){
       if(target){ target.checked = true; }
     }
 
-    // Restore double selection if one of the saved picks was doubled
     const dblQ = [...latestByQID.entries()].find(([qid,v])=>v.isDouble && $$(`input[name="${CSS.escape(qid)}"]:checked`).length);
     refreshExpiryUI(); refreshDoubleChoices(); renderSummary(); validateAll();
     if(dblQ){ $("#doubleSel").value = dblQ[0]; }
 
-    // Commitments
     if(latestNumPicks && !isNaN(latestNumPicks.NumPicks)){
       committedNumPicks = latestNumPicks.NumPicks;
     } else {
       committedNumPicks = null;
     }
 
-    // >>> DOUBLE LOCK FIX:
-    // Priority 1: explicit WillDouble yes/no if present
     if(latestDoublePlan && (latestDoublePlan.WillDouble === "yes" || latestDoublePlan.WillDouble === "no")){
       committedDoublePlan = (latestDoublePlan.WillDouble === "yes");
     } else {
-      // Otherwise infer from any submission this week:
       const anyRowsThisWeek = latestByQID.size > 0 || !!latestNumPicks;
       const anyDouble = [...latestByQID.values()].some(v=>v.isDouble);
       committedDoublePlan = anyRowsThisWeek ? (anyDouble ? true : false) : null;
@@ -858,7 +854,6 @@ document.addEventListener("change", async e=>{
     refreshDoubleChoices(); renderSummary(); validateAll(); updateNumPicksUI();
   }
   if(e.target.matches('#doubleSel') || e.target.matches('#emailBox') || e.target.matches('#numPicksPlan') || e.target.name === 'doublePlan'){
-    // >>> DOUBLE LOCK FIX: if locked NO, revert any attempt to set a double
     if (e.target.id === 'doubleSel' && committedDoublePlan === false){
       $("#doubleSel").value = "";
     }
@@ -898,14 +893,12 @@ $("#submitBtn").addEventListener("click", async ()=>{
   const a = countChecked($("#listA")); const b = countChecked($("#listB")); const total = a+b;
   if(total > MAX_PICKS){ stopSubmitting(); alert(`You cannot pick more than ${MAX_PICKS} games.`); return; }
 
-  // >>> DOUBLE LOCK FIX: hard-block selecting a double when locked NO
   if (committedDoublePlan === false && $("#doubleSel").value){
     stopSubmitting();
     alert("Your Double Plan is locked to NO DOUBLE from your first submission. You cannot add a Double.");
     return;
   }
 
-  // Compute pending req & effective Double Plan
   const missingReq = countMissingRequired();
   const pendingRequired = missingReq.total;
   const effectiveDoublePlan = computeEffectiveDoublePlan(total, pendingRequired); // true/false
@@ -915,7 +908,6 @@ $("#submitBtn").addEventListener("click", async ()=>{
     return;
   }
 
-  // Decide final NumPicks
   let finalNumPicks = committedNumPicks;
   if (committedNumPicks != null) {
     if (total > committedNumPicks) {
@@ -952,7 +944,6 @@ $("#submitBtn").addEventListener("click", async ()=>{
         alert(`You cannot pick more than ${MAX_PICKS} games.`);
         return;
       }
-      // Auto-set NumPicks = total + missingRequired (capped at MAX_PICKS)
       const autoLock = Math.min(MAX_PICKS, total + pendingRequired);
       finalNumPicks = autoLock;
       const reqNote = pendingRequired > 0
@@ -968,13 +959,11 @@ $("#submitBtn").addEventListener("click", async ()=>{
     }
   }
 
-  // Prevent inconsistent specific double choice (plan YES but no game yet)
   if(!$("#doubleSel").value && effectiveDoublePlan){
     const okNoSpecific = confirm("You declared that you WILL use a Double, but no specific doubled game is chosen yet.\nYou can choose the game later before kickoff. Continue?");
     if(!okNoSpecific){ stopSubmitting(); return; }
   }
 
-  // PRE-SUBMIT confirm if UNDER a prior commitment
   if (committedNumPicks != null && total < committedNumPicks) {
     const remain = committedNumPicks - total;
     const go = confirm(
@@ -1087,7 +1076,6 @@ async function loadAll(){
     $("#paymentAlert").hidden = true;
     refreshExpiryUI(); refreshDoubleChoices(); renderSummary(); validateAll(); updateNumPicksUI();
 
-    // Refresh deadline + per-game expiry regularly
     setInterval(()=>{ refreshDeadlineUI(); refreshExpiryUI(); refreshDoubleChoices(); validateAll(); updateNumPicksUI(); }, 30_000);
   }catch(e){
     console.error(e);
@@ -1097,5 +1085,8 @@ async function loadAll(){
 }
 loadAll();
 </script>
+
 </body>
 </html>
+
+
