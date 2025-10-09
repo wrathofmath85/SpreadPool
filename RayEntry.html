@@ -683,10 +683,13 @@ function validateAll(){
     doubleLockOk = false;
   }
 
-  let numPicksOk = true;
+   let numPicksOk = true;
   const planEl = $("#numPicksPlan");
   const planned = planEl.value ? parseInt(planEl.value, 10) : NaN;
   const hasPlanned = !isNaN(planned);
+
+  // What count is "declared" right now?
+  const declaredNum = (committedNumPicks != null) ? committedNumPicks : (hasPlanned ? planned : null);
 
   if (total > MAX_PICKS) {
     numPicksOk = false;
@@ -699,6 +702,12 @@ function validateAll(){
       if (total < 7) numPicksOk = false;
     }
   }
+
+  // NEW RULE: if you've hit the declared total, all unexpired required games must be included
+  if (declaredNum !== null && total === declaredNum && missingReq.total > 0) {
+    numPicksOk = false;
+  }
+
 
   let dblPlanOk = true;
   const effPlan = computeEffectiveDoublePlan(total, missingReq.total); // true/false/null
@@ -941,25 +950,39 @@ $("#submitBtn").addEventListener("click", async ()=>{
   }
 
   let finalNumPicks = committedNumPicks;
-  if (committedNumPicks != null) {
+    if (committedNumPicks != null) {
     if (total > committedNumPicks) {
       stopSubmitting();
       alert(`You committed to ${committedNumPicks} picks. You currently selected ${total}. Reduce your picks — count cannot increase.`);
       return;
     }
+    // NEW RULE: full declared total reached but missing required games
+    if (total === committedNumPicks && pendingRequired > 0) {
+      stopSubmitting();
+      alert(`You have selected your full committed total (${committedNumPicks}) but you're missing ${pendingRequired} required game(s). You must include all required games before submitting.`);
+      return;
+    }
   } else {
+
     const plannedStr = $("#numPicksPlan").value || "";
     const planned = plannedStr ? parseInt(plannedStr, 10) : NaN;
     const hasPlanned = !isNaN(planned);
 
-    if (hasPlanned) {
+        if (hasPlanned) {
       if (!(planned >= total && planned <= MAX_PICKS)) {
         stopSubmitting();
         alert(`Your planned total must be between your current ${total} and ${MAX_PICKS}.`);
         return;
       }
+      // NEW RULE: planned total equals current picks → required must be included
+      if (planned === total && pendingRequired > 0) {
+        stopSubmitting();
+        alert(`You planned ${planned} and have selected all ${total}, but you are missing ${pendingRequired} required game(s). You must include all required games before submitting.`);
+        return;
+      }
       finalNumPicks = planned;
       const go = confirm(
+
         `You have selected ${total} pick(s) and planned to make ${planned} total picks this week.\n` +
         `You are also declaring your Double Plan: ${effectiveDoublePlan ? "YES (you will use a Double)" : "NO (you will not use a Double)"}.\n\n` +
         `You may return to finish, but your pick total may not exceed ${planned}, and your Double Plan (${effectiveDoublePlan ? "YES" : "NO"}) will be locked. Continue?`
