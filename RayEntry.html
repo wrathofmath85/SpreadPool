@@ -522,9 +522,13 @@ function getDoublePlanUI(){
   return sel.value === 'yes' ? true : false;
 }
 function setDoublePlanUI(val){ // true/false/null
+  // HARD LOCK: once committed, always reflect the committed value
+  if (committedDoublePlan !== null) {
+    val = committedDoublePlan;
+  }
   $$('input[name="doublePlan"]').forEach(r=>r.checked=false);
-  if(val===true) document.querySelector('input[name="doublePlan"][value="yes"]').checked = true;
-  if(val===false) document.querySelector('input[name="doublePlan"][value="no"]').checked = true;
+  if (val === true)  document.querySelector('input[name="doublePlan"][value="yes"]').checked = true;
+  if (val === false) document.querySelector('input[name="doublePlan"][value="no"]').checked  = true;
 }
 function updateNumPicksUI(){
   const planInput = $("#numPicksPlan");
@@ -545,14 +549,26 @@ function updateNumPicksUI(){
     planInput.disabled = false;
   }
   if (committedDoublePlan !== null) {
-    setDoublePlanUI(committedDoublePlan);
-    $$('input[name="doublePlan"]').forEach(r=>r.disabled = true);
-    dblLock.classList.remove("is-hidden");
-  } else {
-    $$('input[name="doublePlan"]').forEach(r=>r.disabled = false);
-    dblLock.classList.add("is-hidden");
+  setDoublePlanUI(committedDoublePlan);
+  $$('input[name="doublePlan"]').forEach(r=>r.disabled = true);
+  // Disable & hide Clear when locked
+  const clr = $("#clearDoublePlan");
+  if (clr) {
+    clr.disabled = true;
+    clr.classList.add("is-hidden");
   }
-  applyDoubleSelectLock();
+  dblLock.classList.remove("is-hidden");
+} else {
+  $$('input[name="doublePlan"]').forEach(r=>r.disabled = false);
+  const clr = $("#clearDoublePlan");
+  if (clr) {
+    clr.disabled = false;
+    clr.classList.remove("is-hidden");
+  }
+  dblLock.classList.add("is-hidden");
+}
+applyDoubleSelectLock();
+
 
   planInput.min = Math.max(tot, 1);
   planInput.max = MAX_PICKS;
@@ -928,12 +944,23 @@ document.addEventListener("change", async e=>{
     enforceCommittedLimitOnChange(e.target);
     refreshDoubleChoices(); renderSummary(); validateAll(); updateNumPicksUI();
   }
-  if(e.target.matches('#doubleSel') || e.target.matches('#emailBox') || e.target.matches('#numPicksPlan') || e.target.name === 'doublePlan'){
-    if (e.target.id === 'doubleSel' && committedDoublePlan === false){
-      $("#doubleSel").value = "";
-    }
-    renderSummary(); validateAll(); updateNumPicksUI(); refreshDoubleChoices();
+  if (
+  e.target.matches('#doubleSel') ||
+  e.target.matches('#emailBox') ||
+  e.target.matches('#numPicksPlan') ||
+  e.target.name === 'doublePlan'
+){
+  // If locked, immediately revert radio UI to committed state
+  if (e.target.name === 'doublePlan' && committedDoublePlan !== null) {
+    setDoublePlanUI(committedDoublePlan);
   }
+  // If locked to NO, keep the Double dropdown empty/disabled
+  if (e.target.id === 'doubleSel' && committedDoublePlan === false){
+    $("#doubleSel").value = "";
+  }
+  renderSummary(); validateAll(); updateNumPicksUI(); refreshDoubleChoices();
+}
+
 });
 
 document.addEventListener("click", e=>{
@@ -942,9 +969,15 @@ document.addEventListener("click", e=>{
     refreshDoubleChoices(); renderSummary(); validateAll(); updateNumPicksUI();
   }
   if(e.target.matches('#clearDoublePlan')){
+  if (committedDoublePlan !== null) {
+    // Ignore attempts to clear when locked; snap UI back
+    setDoublePlanUI(committedDoublePlan);
+  } else {
     setDoublePlanUI(null);
-    validateAll(); updateNumPicksUI();
   }
+  validateAll(); updateNumPicksUI();
+}
+
 });
 
 $("#resetBtn").addEventListener("click", ()=>{
