@@ -883,25 +883,36 @@ async function prefillFromExisting(name) {
 
     // assign committed states
     committedNumPicks = latestNumPicks && !isNaN(latestNumPicks.NumPicks)
-      ? latestNumPicks.NumPicks
-      : null;
+  ? latestNumPicks.NumPicks
+  : null;
 
-// NEW: determine Double Plan using the most recent explicit declaration across ALL
-// submissions this week (not just the latest ~30s batch window).
-const explicitDecls = mine
-  .map(r => ({ ts: r.ts, will: (r.WillDouble || "").toLowerCase() }))
-  .filter(x => x.will === "yes" || x.will === "no");
+/* LOCK RULE (FIRST SUBMISSION WINS):
+   - Find the earliest timestamp this week for this user.
+   - Consider the ~30s batch at that time the "first submission".
+   - If that batch has an explicit WillDouble (yes/no), lock to it.
+   - Else, if that batch has any doubled pick, lock YES.
+   - Else, if that batch has any picks at all, lock NO.
+   - Else leave null (no picks yet). */
+const firstTs = Math.min(...mine.map(r => (r.ts || Infinity)));
+if (isFinite(firstTs)) {
+  const windowStart = firstTs;
+  const windowEnd   = firstTs + 30_000; // same batching window idea
+  const firstBatch  = mine.filter(r => r.ts >= windowStart && r.ts <= windowEnd);
 
-if (explicitDecls.length) {
-  // If the user ever explicitly said YES/NO, honor the most recent explicit value.
-  const latestExplicit = explicitDecls.reduce((a, b) => (b.ts > a.ts ? b : a));
-  committedDoublePlan = (latestExplicit.will === "yes");
-} else {
-  // No explicit declaration anywhere. If we see a previously doubled pick, lock YES.
-  // Otherwise leave it UNLOCKED (null) so the player can choose a Double later.
-  const anyDouble = [...latestByQID.values()].some(v => v.isDouble);
-  committedDoublePlan = anyDouble ? true : null;
+  const firstExplicit = firstBatch.find(r => {
+    const w = String(r.WillDouble || "").toLowerCase();
+    return w === "yes" || w === "no";
+  });
+
+  if (firstExplicit) {
+    committedDoublePlan = (String(firstExplicit.WillDouble).toLowerCase() === "yes");
+  } else {
+    const anyDoubleFirst = firstBatch.some(r => r.isDouble === true);
+    const anyPickFirst   = firstBatch.some(r => !!r.qid);
+    committedDoublePlan  = anyPickFirst ? (anyDoubleFirst ? true : false) : null;
+  }
 }
+
 
 
     refreshExpiryUI();
