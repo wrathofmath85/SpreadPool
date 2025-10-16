@@ -496,7 +496,7 @@ let qidToDate   = new Map();      // QID -> Date object (if provided)
 let qidToDefault= new Map();      // QID -> boolean Default="Y"
 let qidToFav    = new Map();      // QID -> {fav:'away'|'home', pts:number}
 let results     = new Map();      // QID -> 'away' | 'home' | 'tie'
-let people      = [];             // [{name, picks:[{qid, choice, isDouble}], requestedDefaults?:true, isDefaults?:true}]
+let people      = [];             // [{name, picks:[{qid, choice, isDouble, missingCount?}], requestedDefaults?:true, isDefaults?:true}]
 let participantNames = [];        // roster
 let defaultTemplate = null;       // { name:"Default Picks", picks:[...] }
 let standingsSort = 'alpha';      // 'alpha' | 'weekPercent' | 'seasonPercent' | 'seasonWins'
@@ -572,17 +572,17 @@ function normalizeSubs(rows){
       byName.set(name, p);
     }
 
-    // Only add a pick when we actually have a QID
-    const qid  = String(r["QID"]||r["qid"]||"").trim();
-    if(qid){
+    // Only add a pick when we actually have a QID, and ignore "doublePlan"
+    const qidRaw  = String(r["QID"]||r["qid"]||"").trim();
+    if(qidRaw && qidRaw.toLowerCase() === "doubleplan") return; // <-- IGNORE special sentinel
+    if(qidRaw){
       const choice = String(r["Choice"]||r["choice"]||"").trim();
       const isDouble = String(r["IsDouble"]).toUpperCase()==="TRUE";
-      // keep only qids that exist in lines (done after we push)
-      p.picks.push({ qid, choice, isDouble });
+      p.picks.push({ qid: qidRaw, choice, isDouble });
     }
   });
 
-  // finalize array, filter/sort, and mark requestedDefaults
+  // finalize array, filter/sort, and mark requestedDefaults + attach declared counts
   const arr = Array.from(byName.values());
   arr.forEach(p => {
     // keep only qids that exist in lines
@@ -596,6 +596,33 @@ function normalizeSubs(rows){
       String(raw[0]["Choice"]||raw[0]["choice"]||"").trim().toUpperCase() === "DEFAULTS";
     if(requestedDefaults){
       p.requestedDefaults = true; // loadAll() converts this to actual default picks (no pill)
+    }
+
+    // Declared picks & willDouble from the latest submission block
+    // (take from the first row in that block; they should be identical across the block)
+    const numPicksDeclared = parseInt(String(raw?.[0]?.["NumPicks"] ?? "").replace(/[^0-9-]/g,""), 10);
+    const willDoubleDeclared = String(raw?.[0]?.["WillDouble"]||"").toUpperCase()==="TRUE";
+
+    // Compare actual latest submission picks (after filtering & ignoring doublePlan) to NumPicks
+    const actualCount = p.picks.length;
+    const hasADouble = p.picks.some(pk => pk.isDouble === true);
+
+    let missing = 0;
+    if(Number.isFinite(numPicksDeclared) && numPicksDeclared >= 0){
+      missing = Math.max(0, numPicksDeclared - actualCount);
+    }
+    if(willDoubleDeclared && !hasADouble){
+      missing += 1; // extra loss for not placing the promised double
+    }
+
+    // If short, append ONE synthetic row carrying all missing losses
+    if(missing > 0){
+      p.picks.push({
+        qid: "__MISSING_DECLARED__",
+        choice: "",
+        isDouble: false,
+        missingCount: missing  // custom marker; handled in renderPeople()
+      });
     }
   });
 
@@ -763,7 +790,7 @@ function renderGames(){
   panel.innerHTML = '';
 
   const pickedQids = new Set();
-  people.forEach(p=>p.picks.forEach(pk=> pickedQids.add(pk.qid)));
+  people.forEach(p=>p.picks.forEach(pk=> { if(qidToLine.has(pk.qid)) pickedQids.add(pk.qid); }));
 
   const defaultQids = new Set((defaultTemplate?.picks||[]).map(p=>p.qid));
 
@@ -920,6 +947,24 @@ function renderPeople(){
     let tw=0, tl=0, tt=0;
 
     p.picks.forEach((pk, idx)=>{
+      // Handle synthetic "Missing Declared Picks" row
+      if(pk.qid === "__MISSING_DECLARED__"){
+        const losses = pk.missingCount || 0;
+        tl += losses; // add directly to totals
+        const rowNum = idx+1;
+        rowsHtml += `
+          <tr>
+            <td class="col-idx">${rowNum}</td>
+            <td class="col-line">Missing Declared Picks</td>
+            <td class="col-pick"></td>
+            <td></td>
+            <td>${losses}</td>
+            <td></td>
+          </tr>
+        `;
+        return; // continue
+      }
+
       const s = scorePick(pk.qid, pk.choice, pk.isDouble);
       tw += s.w; tl += s.l; tt += s.t;
       const cls = s.w ? 'result-win' : s.l ? 'result-loss' : s.t ? 'result-tie' : '';
