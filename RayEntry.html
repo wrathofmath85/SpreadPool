@@ -885,20 +885,14 @@ if (dblQ) $("#doubleSel").value = dblQ[0];
 committedNumPicks =
   (latestNumPicks && !isNaN(latestNumPicks.NumPicks)) ? latestNumPicks.NumPicks : null;
 
-// Prefer explicit yes/no in the latest batch; otherwise infer from a doubled pick
+// Lock decision strictly from the declared plan stored with the batch
 const explicitLatest = mineLatest.find(r => {
   const w = String(r.WillDouble || "").toLowerCase();
   return w === "yes" || w === "no";
 });
-if (explicitLatest) {
-  committedDoublePlan = (String(explicitLatest.WillDouble).toLowerCase() === "yes");
-} else if (mineLatest.some(r => r.isDouble === true)) {
-  committedDoublePlan = true;
-} else {
-  committedDoublePlan = null; // not declared and no doubled pick in latest batch
-}
-
-
+committedDoublePlan = explicitLatest
+  ? (String(explicitLatest.WillDouble).toLowerCase() === "yes")
+  : null;
 
     refreshExpiryUI();
     refreshDoubleChoices();
