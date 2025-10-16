@@ -821,7 +821,15 @@ async function prefillFromExisting(name) {
       isDouble: /^true|1|y(es)?$/i.test(String(r.isDouble || r.Double || r.double || "")),
       NumPicks: r.NumPicks ? parseInt(r.NumPicks, 10)
               : (r.numPicks ? parseInt(r.numPicks, 10) : NaN),
-      WillDouble: (String(r.WillDouble || r.DoublePlan || "")).toLowerCase(),
+      WillDouble: String(
+  r.WillDouble ??
+  r.DoublePlan ??
+  r.WillDoublePlan ??
+  r.willDouble ??
+  r.willdouble ??
+  ""
+).toLowerCase(),
+
       ts: Date.parse(r.timestamp || r.Timestamp || r.Time || r.Date || "") || 0
     });
 
@@ -885,14 +893,11 @@ if (dblQ) $("#doubleSel").value = dblQ[0];
 committedNumPicks =
   (latestNumPicks && !isNaN(latestNumPicks.NumPicks)) ? latestNumPicks.NumPicks : null;
 
-// Lock decision strictly from the declared plan stored with the batch
-const explicitLatest = mineLatest.find(r => {
-  const w = String(r.WillDouble || "").toLowerCase();
-  return w === "yes" || w === "no";
-});
-committedDoublePlan = explicitLatest
-  ? (String(explicitLatest.WillDouble).toLowerCase() === "yes")
-  : null;
+// Lock decision strictly from the declared plan stored with the *newest* row in the latest batch window
+const planRows = mineLatest.filter(r => r.WillDouble === "yes" || r.WillDouble === "no");
+planRows.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+const explicitLatest = planRows[planRows.length - 1] || null;
+committedDoublePlan = explicitLatest ? (explicitLatest.WillDouble === "yes") : null;
 
     refreshExpiryUI();
     refreshDoubleChoices();
@@ -924,6 +929,12 @@ async function pushToSheets(payload){
 
 /* ============== EVENTS ============== */
 document.addEventListener("change", async e=>{
+  // Hard guard: never allow changing the Double Plan radios once locked
+  if (e.target && e.target.name === 'doublePlan' && committedDoublePlan !== null) {
+    setDoublePlanUI(committedDoublePlan); // snap back
+    return; // swallow the change
+  }
+
   if(e.target.matches('#nameSel')){
     const em = e.target.selectedOptions[0]?.dataset.email || ""; if(em) $("#emailBox").value = em;
     const chosenName = e.target.value || ""; const paymentVal = (paymentByName.get(chosenName) || "").trim(); $("#paymentAlert").hidden = !(chosenName && paymentVal === "");
