@@ -738,13 +738,13 @@ function collectSubmission(finalNumPicks, effectiveDoublePlan){
     const row = rowOf(r);
     const qid = qidOf(r);
     const team= (r.parentElement?.textContent || "").trim();
-    return qid ? { qid, team, isDouble: (qid===dblQid) } : null;
+    return qid ? { qid, team, IsDouble: (qid===dblQid) } : null;
   }).filter(Boolean).sort((a,b)=>a.qid.localeCompare(b.qid));
   const rows = picks.map(p => ({
     timestamp, week: CURRENT_WEEK, name, email, qid: p.qid, choice: p.team,
-    isDouble: !!p.isDouble, NumPicks: finalNumPicks, WillDouble: effectiveDoublePlan ? "Yes" : "No"
+    IsDouble: !!p.IsDouble, NumPicks: finalNumPicks, WillDouble: effectiveDoublePlan ? "Yes" : "No"
   }));
-  const doubleTeam = picks.find(x=>x.isDouble)?.team || "";
+  const doubleTeam = picks.find(x=>x.IsDouble)?.team || "";
   const total = picks.length;
   return {
     name, email, week: CURRENT_WEEK, timestamp,
@@ -884,7 +884,7 @@ async function prefillFromExisting(name) {
       week: String(r.week || r.Week || r.WEEK || r.round || "").trim(),
       qid: r.qid || r.QID || r.game || r.Game || r.Question || "",
       choice: r.choice || r.Choice || r.pick || r.Pick || r.selection || r.Selection || "",
-      isDouble: /^true|1|y(es)?$/i.test(String(r.isDouble || r.Double || r.double || "")),
+      IsDouble: /^true|1|y(es)?$/i.test(String(r.IsDouble || r.Double || r.double || "")),
       NumPicks: r.NumPicks ? parseInt(r.NumPicks, 10)
               : (r.numPicks ? parseInt(r.numPicks, 10) : NaN),
       // Normalize to "yes"/"no" so downstream logic can lock correctly
@@ -939,7 +939,7 @@ WillDouble: (() => {
 
     // apply saved picks
     for (const r of latestByQID.values()) {
-      existingByQID.set(r.qid, { choice: r.choice, isDouble: r.isDouble });
+      existingByQID.set(r.qid, { choice: r.choice, IsDouble: r.IsDouble });
       const row = document.querySelector(`.row[data-qid="${CSS.escape(r.qid)}"]`);
       if (!row) continue;
       const awayLbl = row.querySelector('.answers label:nth-child(1)')?.textContent || "";
@@ -962,7 +962,7 @@ originalDoubleQid = "";
 doubleLockedByStart = false;
 
 // Find any entry in latest batch that was flagged as double
-const doubledEntries = [...latestByQID.entries()].filter(([qid, v]) => v.isDouble);
+const doubledEntries = [...latestByQID.entries()].filter(([qid, v]) => v.IsDouble);
 
 if (doubledEntries.length > 0){
   const [qid, rec] = doubledEntries[0]; // only one should be doubled; take the first if multiple
