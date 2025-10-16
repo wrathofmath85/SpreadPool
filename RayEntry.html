@@ -874,43 +874,28 @@ async function prefillFromExisting(name) {
       if (target) target.checked = true;
     }
 
-    // set double pick if present
-    const dblQ = [...latestByQID.entries()].find(
-      ([qid, v]) =>
-        v.isDouble && $$(`input[name="${CSS.escape(qid)}"]:checked`).length
-    );
-    if (dblQ) $("#doubleSel").value = dblQ[0];
+    // set double pick if present (from latest batch)
+const dblQ = [...latestByQID.entries()].find(
+  ([qid, v]) =>
+    v.isDouble && $$(`input[name="${CSS.escape(qid)}"]:checked`).length
+);
+if (dblQ) $("#doubleSel").value = dblQ[0];
 
-    // assign committed states
-    committedNumPicks = latestNumPicks && !isNaN(latestNumPicks.NumPicks)
-  ? latestNumPicks.NumPicks
-  : null;
+// ----- Assign committed states from the MOST RECENT batch -----
+committedNumPicks =
+  (latestNumPicks && !isNaN(latestNumPicks.NumPicks)) ? latestNumPicks.NumPicks : null;
 
-/* LOCK RULE (FIRST SUBMISSION WINS):
-   - Find the earliest timestamp this week for this user.
-   - Consider the ~30s batch at that time the "first submission".
-   - If that batch has an explicit WillDouble (yes/no), lock to it.
-   - Else, if that batch has any doubled pick, lock YES.
-   - Else, if that batch has any picks at all, lock NO.
-   - Else leave null (no picks yet). */
-const firstTs = Math.min(...mine.map(r => (r.ts || Infinity)));
-if (isFinite(firstTs)) {
-  const windowStart = firstTs;
-  const windowEnd   = firstTs + 30_000; // same batching window idea
-  const firstBatch  = mine.filter(r => r.ts >= windowStart && r.ts <= windowEnd);
-
-  const firstExplicit = firstBatch.find(r => {
-    const w = String(r.WillDouble || "").toLowerCase();
-    return w === "yes" || w === "no";
-  });
-
-  if (firstExplicit) {
-    committedDoublePlan = (String(firstExplicit.WillDouble).toLowerCase() === "yes");
-  } else {
-    const anyDoubleFirst = firstBatch.some(r => r.isDouble === true);
-    const anyPickFirst   = firstBatch.some(r => !!r.qid);
-    committedDoublePlan  = anyPickFirst ? (anyDoubleFirst ? true : false) : null;
-  }
+// Prefer explicit yes/no in the latest batch; otherwise infer from a doubled pick
+const explicitLatest = mineLatest.find(r => {
+  const w = String(r.WillDouble || "").toLowerCase();
+  return w === "yes" || w === "no";
+});
+if (explicitLatest) {
+  committedDoublePlan = (String(explicitLatest.WillDouble).toLowerCase() === "yes");
+} else if (mineLatest.some(r => r.isDouble === true)) {
+  committedDoublePlan = true;
+} else {
+  committedDoublePlan = null; // not declared and no doubled pick in latest batch
 }
 
 
