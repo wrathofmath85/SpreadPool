@@ -500,19 +500,36 @@ function applyDoubleSelectLock(){
 function refreshDoubleChoices(){
   const sel = $("#doubleSel"); 
   const keep = sel.value;
+
+  // Build list from *picked* and *not yet started* games
   const chosen = $$('input[type="radio"]:checked').map(r => {
-      const row = rowOf(r);
-      const teamLabel = (r.parentElement?.textContent || "").trim();
-      return row ? { qid: r.name, teamLabel, row } : null;
-    }).filter(Boolean);
+    const row = rowOf(r);
+    const qid = r.name;
+    if (!row || !qid) return null;
+
+    // find the game object to check expiry
+    const g = (qid.startsWith("A") ? gamesA : gamesB).find(x => x.qid === qid);
+    const expired = g?.start ? (Date.now() >= g.start.getTime()) : false;
+    if (expired) return null;
+
+    const teamLabel = (r.parentElement?.textContent || "").trim();
+    return { qid, teamLabel };
+  }).filter(Boolean);
+
   if (committedDoublePlan === false){
+    // Locked NO: dropdown must be disabled & empty
     sel.innerHTML = `<option value="">No double</option>`;
     sel.value = "";
+    sel.disabled = true;
   } else {
-    sel.innerHTML = `<option value="">No double</option>` + chosen.map(o => `<option value="${escapeHtml(o.qid)}">${escapeHtml(o.teamLabel)}</option>`).join("");
-    if(keep && chosen.some(o=>o.qid===keep)) sel.value = keep;
+    // Plan YES or undecided: dropdown enabled; options are from picked & unexpired games
+    sel.innerHTML = `<option value="">No double</option>` + chosen
+      .map(o => `<option value="${escapeHtml(o.qid)}">${escapeHtml(o.teamLabel)}</option>`)
+      .join("");
+    // keep previous selection if still valid
+    if (keep && chosen.some(o => o.qid === keep)) sel.value = keep;
+    sel.disabled = false;
   }
-  applyDoubleSelectLock();
 }
 
 /* NumPicks + DoublePlan UI helpers */
@@ -821,14 +838,21 @@ async function prefillFromExisting(name) {
       isDouble: /^true|1|y(es)?$/i.test(String(r.isDouble || r.Double || r.double || "")),
       NumPicks: r.NumPicks ? parseInt(r.NumPicks, 10)
               : (r.numPicks ? parseInt(r.numPicks, 10) : NaN),
-      WillDouble: String(
-  r.WillDouble ??
-  r.DoublePlan ??
-  r.WillDoublePlan ??
-  r.willDouble ??
-  r.willdouble ??
-  ""
-).toLowerCase(),
+      // Normalize to "yes"/"no" so downstream logic can lock correctly
+WillDouble: (() => {
+  const raw = String(
+    r.WillDouble ??
+    r.DoublePlan ??
+    r.WillDoublePlan ??
+    r.willDouble ??
+    r.willdouble ??
+    ""
+  ).trim().toLowerCase();
+  if (raw === "yes" || raw === "y" || raw === "true" || raw === "1") return "yes";
+  if (raw === "no"  || raw === "n" || raw === "false"|| raw === "0") return "no";
+  return "";
+})(),
+
 
       ts: Date.parse(r.timestamp || r.Timestamp || r.Time || r.Date || "") || 0
     });
@@ -894,10 +918,12 @@ committedNumPicks =
   (latestNumPicks && !isNaN(latestNumPicks.NumPicks)) ? latestNumPicks.NumPicks : null;
 
 // Lock decision strictly from the declared plan stored with the *newest* row in the latest batch window
+// (WillDouble already normalized to "yes"/"no" above)
 const planRows = mineLatest.filter(r => r.WillDouble === "yes" || r.WillDouble === "no");
 planRows.sort((a, b) => (a.ts || 0) - (b.ts || 0));
 const explicitLatest = planRows[planRows.length - 1] || null;
 committedDoublePlan = explicitLatest ? (explicitLatest.WillDouble === "yes") : null;
+
 
     refreshExpiryUI();
     refreshDoubleChoices();
