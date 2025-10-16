@@ -124,7 +124,7 @@ h2{margin:0 0 12px 0;font-size:20px}
     </div>
     <div id="paymentAlert" class="pay-alert" hidden>Payment still needed</div>
     <p id="partialBanner" class="small" style="margin-top:8px;background:#1f2937;border:1px solid var(--border);padding:10px;border-radius:10px">
-      <strong>Partial Picks Mode is ON:</strong> You may submit a few picks now and return later to add more. After kickoff, any unpicked games will receive the default per rules.
+      <strong>Partial Picks Mode is ON:</strong> You may submit a few picks now and return later to add more. After close, any unpicked games will receive losses per rules.
     </p>
 
     <div id="numPicksCard" class="card" style="margin:12px 0">
@@ -226,7 +226,7 @@ const CURRENT_WEEK = 7;
 const ALLOW_PARTIAL = true;
 const TOTAL_TARGET = 7;
 const MAX_PICKS = 12;
-const DEFAULTS_POLICY_TEXT = "Unpicked games receive the default per your rules.";
+const DEFAULTS_POLICY_TEXT = "Unpicked games receive losses per your rules.";
 
 /* >>> GLOBAL PICK DEADLINE (UTC) <<< */
 const PICKS_DEADLINE_UTC = "2025-10-17T21:30:00Z";
@@ -1204,7 +1204,7 @@ $("#submitBtn").addEventListener("click", async ()=>{
     const remain = committedNumPicks - total;
     const go = confirm(
       `You previously committed to ${committedNumPicks} picks but are submitting ${total}.\n` +
-      `If you don't reach ${committedNumPicks} before kickoff, defaults will be applied to the remaining ${remain} pick(s).\n\n` +
+      `If you don't reach ${committedNumPicks} before kickoff, losses will be applied to the remaining ${remain} pick(s).\n\n` +
       `Continue to save anyway?`
     );
     if (!go) { stopSubmitting(); return; }
@@ -1236,7 +1236,7 @@ if (doubleLockedByStart && originalDoubleQid && $("#doubleSel").value !== origin
     let msg = "Submitted! (Demo mode — email suppressed)";
     if (committedNumPicks != null && total < committedNumPicks) {
       const remain = committedNumPicks - total;
-      msg += `\n\nReminder: You previously committed to ${committedNumPicks} picks. You currently have ${total}. If you don't reach ${committedNumPicks} before kickoff, defaults will be applied to the remaining ${remain} pick(s) to reach ${committedNumPicks}.`;
+      msg += `\n\nReminder: You previously committed to ${committedNumPicks} picks. You currently have ${total}. If you don't reach ${committedNumPicks} before close, losses will be applied to the remaining ${remain} pick(s) to reach ${committedNumPicks}.`;
     }
     msg += `\nDouble Plan: ${submission.WillDoublePlan}.`;
     alert(msg);
@@ -1261,7 +1261,7 @@ if (doubleLockedByStart && originalDoubleQid && $("#doubleSel").value !== origin
     let msg = "Submitted! A copy will be CC’d to you.";
     if (committedNumPicks != null && total < committedNumPicks) {
       const remain = committedNumPicks - total;
-      msg += `\n\nReminder: You previously committed to ${committedNumPicks} picks. You currently have ${total}. If you don't reach ${committedNumPicks} before kickoff, defaults will be applied to the remaining ${remain} pick(s).`;
+      msg += `\n\nReminder: You previously committed to ${committedNumPicks} picks. You currently have ${total}. If you don't reach ${committedNumPicks} before close, losses will be applied to the remaining ${remain} pick(s).`;
     }
     msg += `\nDouble Plan: ${submission.WillDoublePlan}.`;
     alert(msg);
@@ -1271,7 +1271,7 @@ if (doubleLockedByStart && originalDoubleQid && $("#doubleSel").value !== origin
     let msg = "Submitted! (Email copy failed to send.)";
     if (committedNumPicks != null && total < committedNumPicks) {
       const remain = committedNumPicks - total;
-      msg += `\n\nReminder: You previously committed to ${committedNumPicks} picks. You currently have ${total}. If you don't reach ${committedNumPicks} before kickoff, defaults will be applied to the remaining ${remain} pick(s).`;
+      msg += `\n\nReminder: You previously committed to ${committedNumPicks} picks. You currently have ${total}. If you don't reach ${committedNumPicks} before close, losses will be applied to the remaining ${remain} pick(s).`;
     }
     msg += `\nDouble Plan: ${submission.WillDoublePlan}.`;
     alert(msg);
