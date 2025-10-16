@@ -526,11 +526,23 @@ function refreshDoubleChoices(){
     return { qid, teamLabel };
   }).filter(Boolean);
 
+  // Helper: label for any qid from saved CSV choice or game fallback
+  function labelForQid(qid){
+    // Prefer the exact saved choice label from CSV if we have it
+    const saved = existingByQID.get(qid)?.choice;
+    if (saved) return saved;
+    // Fallback to team names if needed
+    const g = (qid.startsWith("A") ? gamesA : gamesB).find(x => x.qid === qid);
+    if (!g) return "Saved double";
+    const fav = favoriteInfo(g.away, g.home, g.spread);
+    // Neutral label (no away/home prefix)
+    return `${g.away} @ ${g.home}` + (fav.favoriteLine && fav.favoriteLine !== "—" ? ` — ${fav.favoriteLine}` : "");
+  }
+
   // If a previously doubled game has started, freeze dropdown to that game
   if (doubleLockedByStart && originalDoubleQid){
-    sel.innerHTML = `<option value="${escapeHtml(originalDoubleQid)}">` +
-      (chosen.find(o => o.qid === originalDoubleQid)?.teamLabel || "Previously doubled game") +
-      `</option>`;
+    sel.innerHTML =
+      `<option value="${escapeHtml(originalDoubleQid)}">${escapeHtml(labelForQid(originalDoubleQid))}</option>`;
     sel.value = originalDoubleQid;
     sel.disabled = true;
     return;
@@ -541,15 +553,32 @@ function refreshDoubleChoices(){
     sel.innerHTML = `<option value="">No double</option>`;
     sel.value = "";
     sel.disabled = true;
-  } else {
-    // Plan YES or undecided: dropdown enabled; options are from picked & unexpired games
-    sel.innerHTML = `<option value="">No double</option>` + chosen
-      .map(o => `<option value="${escapeHtml(o.qid)}">${escapeHtml(o.teamLabel)}</option>`)
-      .join("");
-    // keep previous selection if still valid
-    if (keep && chosen.some(o => o.qid === keep)) sel.value = keep;
-    sel.disabled = false;
+    return;
   }
+
+  // Plan YES or undecided: dropdown enabled; options are from picked & unexpired games
+  let optionsHtml = `<option value="">No double</option>` +
+    chosen.map(o => `<option value="${escapeHtml(o.qid)}">${escapeHtml(o.teamLabel)}</option>`).join("");
+
+  // If we have a currently selected/saved double (keep or original) that isn't in the "chosen" list,
+  // include it so the selection doesn't disappear.
+  const current = keep || originalDoubleQid || "";
+  if (current && !chosen.some(o => o.qid === current)) {
+    optionsHtml += `<option value="${escapeHtml(current)}">${escapeHtml(labelForQid(current))}</option>`;
+  }
+
+  sel.innerHTML = optionsHtml;
+
+  // keep previous selection if present; otherwise prefer saved original
+  if (current && [...sel.options].some(o => o.value === current)) {
+    sel.value = current;
+  } else if (keep && [...sel.options].some(o => o.value === keep)) {
+    sel.value = keep;
+  } else {
+    sel.value = "";
+  }
+
+  sel.disabled = false;
 }
 
 /* NumPicks + DoublePlan UI helpers */
@@ -927,17 +956,16 @@ WillDouble: (() => {
     }
 
     // set double pick if present (from latest batch)
-const dblQ = [...latestByQID.entries()].find(
-  ([qid, v]) =>
-    v.isDouble && $$(`input[name="${CSS.escape(qid)}"]:checked`).length
-);
-
+// set double pick strictly from CSV IsDouble (latest batch), not depending on UI state
 // Reset double lock flags before applying
 originalDoubleQid = "";
 doubleLockedByStart = false;
 
-if (dblQ){
-  const qid = dblQ[0];
+// Find any entry in latest batch that was flagged as double
+const doubledEntries = [...latestByQID.entries()].filter(([qid, v]) => v.isDouble);
+
+if (doubledEntries.length > 0){
+  const [qid, rec] = doubledEntries[0]; // only one should be doubled; take the first if multiple
   $("#doubleSel").value = qid;
   originalDoubleQid = qid;
 
@@ -947,6 +975,9 @@ if (dblQ){
   if (started){
     doubleLockedByStart = true;
   }
+} else {
+  // No doubled game in CSV for latest batch
+  $("#doubleSel").value = "";
 }
 
 // ----- Assign committed states from the MOST RECENT batch -----
@@ -962,10 +993,12 @@ committedDoublePlan = explicitLatest ? (explicitLatest.WillDouble === "yes") : n
 
 
     refreshExpiryUI();
-    refreshDoubleChoices();
-    renderSummary();
-    validateAll();
-    updateNumPicksUI();
+refreshDoubleChoices();
+applyDoubleSelectLock(); // ensure dropdown disabled if needed
+renderSummary();
+validateAll();
+updateNumPicksUI();
+
   } catch (e) {
     console.warn("prefillFromExisting failed:", e);
   }
