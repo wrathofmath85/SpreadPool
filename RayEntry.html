@@ -291,6 +291,8 @@ let paymentByName = new Map();
 let existingByQID = new Map();
 let committedNumPicks = null;
 let committedDoublePlan = null; // true/false once locked
+let originalDoubleQid = "";     // the qid that was doubled on load
+let doubleLockedByStart = false; // if the previously doubled game has started, lock dropdown to it
 </script>
 
 <script>
@@ -488,12 +490,20 @@ function countMissingRequired(){
 /* >>> DOUBLE LOCK FIX: helper to enforce UI state for double select */
 function applyDoubleSelectLock(){
   const sel = $("#doubleSel");
+  // If plan is locked to NO, always disabled/empty
   if (committedDoublePlan === false){
     sel.value = "";
     sel.disabled = true;
-  } else {
-    sel.disabled = false;
+    return;
   }
+  // If a previously doubled game has already started, freeze selection on that game
+  if (doubleLockedByStart && originalDoubleQid){
+    sel.value = originalDoubleQid;
+    sel.disabled = true;
+    return;
+  }
+  // Otherwise free to change
+  sel.disabled = false;
 }
 
 /* Double dropdown shows picked team (null-safe) */
@@ -515,6 +525,16 @@ function refreshDoubleChoices(){
     const teamLabel = (r.parentElement?.textContent || "").trim();
     return { qid, teamLabel };
   }).filter(Boolean);
+
+  // If a previously doubled game has started, freeze dropdown to that game
+  if (doubleLockedByStart && originalDoubleQid){
+    sel.innerHTML = `<option value="${escapeHtml(originalDoubleQid)}">` +
+      (chosen.find(o => o.qid === originalDoubleQid)?.teamLabel || "Previously doubled game") +
+      `</option>`;
+    sel.value = originalDoubleQid;
+    sel.disabled = true;
+    return;
+  }
 
   if (committedDoublePlan === false){
     // Locked NO: dropdown must be disabled & empty
@@ -911,7 +931,23 @@ const dblQ = [...latestByQID.entries()].find(
   ([qid, v]) =>
     v.isDouble && $$(`input[name="${CSS.escape(qid)}"]:checked`).length
 );
-if (dblQ) $("#doubleSel").value = dblQ[0];
+
+// Reset double lock flags before applying
+originalDoubleQid = "";
+doubleLockedByStart = false;
+
+if (dblQ){
+  const qid = dblQ[0];
+  $("#doubleSel").value = qid;
+  originalDoubleQid = qid;
+
+  // If that doubled game's kickoff has passed, lock the dropdown to it
+  const g = (qid.startsWith("A") ? gamesA : gamesB).find(x => x.qid === qid);
+  const started = g?.start ? (Date.now() >= g.start.getTime()) : false;
+  if (started){
+    doubleLockedByStart = true;
+  }
+}
 
 // ----- Assign committed states from the MOST RECENT batch -----
 committedNumPicks =
@@ -985,8 +1021,15 @@ document.addEventListener("change", async e=>{
   if (e.target.id === 'doubleSel' && committedDoublePlan === false){
     $("#doubleSel").value = "";
   }
+  // If previously doubled game already started, prevent changing the doubled game
+  if (e.target.id === 'doubleSel' && doubleLockedByStart && originalDoubleQid){
+    $("#doubleSel").value = originalDoubleQid;
+    alert("Your previously doubled game has already started, so the Double selection cannot be changed.");
+  }
+
   renderSummary(); validateAll(); updateNumPicksUI(); refreshDoubleChoices();
 }
+
 
 });
 
@@ -1123,10 +1166,17 @@ $("#submitBtn").addEventListener("click", async ()=>{
     if (!go) { stopSubmitting(); return; }
   }
   if (committedDoublePlan !== null && computeEffectiveDoublePlan(total, pendingRequired) !== committedDoublePlan){
-    stopSubmitting();
-    alert(`Your Double Plan is locked to ${committedDoublePlan ? "YES" : "NO"} and cannot be changed.`);
-    return;
-  }
+  stopSubmitting();
+  alert(`Your Double Plan is locked to ${committedDoublePlan ? "YES" : "NO"} and cannot be changed.`);
+  return;
+}
+// If a previously doubled game already started, the doubled game cannot be changed
+if (doubleLockedByStart && originalDoubleQid && $("#doubleSel").value !== originalDoubleQid){
+  stopSubmitting();
+  alert("You can't change which game is doubled after that game has started.");
+  return;
+}
+
 
   const participantName = $("#nameSel").selectedOptions[0]?.textContent || "";
   const participantEmail = $("#emailBox").value.trim();
