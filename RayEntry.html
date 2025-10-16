@@ -732,17 +732,25 @@ function computeEffectiveDoublePlan(total, pendingRequired){
 function collectSubmission(finalNumPicks, effectiveDoublePlan){
   const name  = $("#nameSel").selectedOptions[0]?.textContent || "";
   const email = $("#emailBox").value.trim();
-  const dblQid = (committedDoublePlan === false) ? "" : ($("#doubleSel").value || "");
+  const dblQid = (committedDoublePlan === false)
+  ? ""
+  : ($("#doubleSel").value || originalDoubleQid || "");
+
   const timestamp = new Date().toISOString();
   const picks = $$('input[type="radio"]:checked').map(r=>{
     const row = rowOf(r);
     const qid = qidOf(r);
     const team= (r.parentElement?.textContent || "").trim();
-    return qid ? { qid, team, IsDouble: (qid===dblQid) } : null;
+    return qid ? { qid, team, IsDouble: (qid===dblQid), isDouble: (qid===dblQid) } : null;
+
   }).filter(Boolean).sort((a,b)=>a.qid.localeCompare(b.qid));
   const rows = picks.map(p => ({
     timestamp, week: CURRENT_WEEK, name, email, qid: p.qid, choice: p.team,
-    IsDouble: !!p.IsDouble, NumPicks: finalNumPicks, WillDouble: effectiveDoublePlan ? "Yes" : "No"
+    IsDouble: !!p.IsDouble,
+isDouble: !!p.isDouble,   // <-- keep lowercase too for the Apps Script
+NumPicks: finalNumPicks,
+WillDouble: effectiveDoublePlan ? "Yes" : "No"
+
   }));
   const doubleTeam = picks.find(x=>x.IsDouble)?.team || "";
   const total = picks.length;
@@ -884,7 +892,10 @@ async function prefillFromExisting(name) {
       week: String(r.week || r.Week || r.WEEK || r.round || "").trim(),
       qid: r.qid || r.QID || r.game || r.Game || r.Question || "",
       choice: r.choice || r.Choice || r.pick || r.Pick || r.selection || r.Selection || "",
-      IsDouble: /^true|1|y(es)?$/i.test(String(r.IsDouble || r.Double || r.double || "")),
+      IsDouble: /^(true|1|y(es)?)$/i.test(String(
+  r.IsDouble ?? r.isDouble ?? r.Double ?? r.double ?? ""
+).trim()),
+
       NumPicks: r.NumPicks ? parseInt(r.NumPicks, 10)
               : (r.numPicks ? parseInt(r.numPicks, 10) : NaN),
       // Normalize to "yes"/"no" so downstream logic can lock correctly
