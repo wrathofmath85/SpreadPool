@@ -11,182 +11,102 @@
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <style>
 :root{
-  --bg:#0a140f;
-  --bg-2:#0d1b14;
-  --field:#10271c;
-  --surface:#122a1e;
-  --surface-2:#16331f;
-  --line:#234534;
-  --chalk:#eef3ea;
-  --chalk-dim:#9bb1a3;
-  --gold:#f4c542;
-  --gold-deep:#d9a516;
-  --turf:#3fae6b;
+  --bg:#0a140f; --bg-2:#0d1b14; --field:#10271c; --surface:#122a1e; --surface-2:#16331f;
+  --line:#234534; --chalk:#eef3ea; --chalk-dim:#9bb1a3;
+  --gold:#f4c542; --gold-deep:#d9a516; --turf:#3fae6b;
   --shadow:0 18px 40px -18px rgba(0,0,0,.75);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
 body{
-  font-family:'Archivo',system-ui,sans-serif;
-  color:var(--chalk);
-  background:var(--bg);
+  font-family:'Archivo',system-ui,sans-serif;color:var(--chalk);background:var(--bg);
   background-image:
     radial-gradient(1200px 600px at 70% -10%, rgba(63,174,107,.16), transparent 60%),
     radial-gradient(900px 500px at 0% 100%, rgba(244,197,66,.07), transparent 55%),
     linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
-  background-attachment:fixed;
-  min-height:100vh;
-  line-height:1.5;
-  -webkit-font-smoothing:antialiased;
+  background-attachment:fixed;min-height:100vh;line-height:1.5;-webkit-font-smoothing:antialiased;
 }
-
-/* faint chalk yard-lines running down the page */
 body::before{
-  content:"";
-  position:fixed;inset:0;z-index:0;pointer-events:none;
-  background-image:repeating-linear-gradient(
-    90deg,
-    transparent 0,
-    transparent 119px,
-    rgba(255,255,255,.035) 119px,
-    rgba(255,255,255,.035) 120px
-  );
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:repeating-linear-gradient(90deg,transparent 0,transparent 119px,rgba(255,255,255,.035) 119px,rgba(255,255,255,.035) 120px);
   mask-image:linear-gradient(180deg, transparent, #000 18%, #000 82%, transparent);
 }
-
 .wrap{position:relative;z-index:1;max-width:1120px;margin:0 auto;padding:0 22px}
 
-/* ---------- MASTHEAD ---------- */
-header{padding:64px 0 40px;text-align:center}
-.kicker{
-  font-family:'Oswald',sans-serif;
-  letter-spacing:.42em;text-transform:uppercase;
-  font-size:.78rem;font-weight:600;color:var(--gold);
-  display:inline-flex;align-items:center;gap:14px;
-  margin-bottom:18px;
-}
-.kicker::before,.kicker::after{
-  content:"";height:1px;width:34px;background:linear-gradient(90deg,transparent,var(--gold));
-}
+/* MASTHEAD */
+header{padding:64px 0 36px;text-align:center}
+.kicker{font-family:'Oswald',sans-serif;letter-spacing:.42em;text-transform:uppercase;font-size:.78rem;font-weight:600;color:var(--gold);display:inline-flex;align-items:center;gap:14px;margin-bottom:18px}
+.kicker::before,.kicker::after{content:"";height:1px;width:34px;background:linear-gradient(90deg,transparent,var(--gold))}
 .kicker::after{background:linear-gradient(90deg,var(--gold),transparent)}
-h1{
-  font-family:'Anton',sans-serif;
-  font-weight:400;line-height:.9;
-  font-size:clamp(3.4rem,11vw,7.2rem);
-  letter-spacing:.01em;text-transform:uppercase;
-  background:linear-gradient(180deg,#fff 0%,#dfe7df 55%,#9fb6a5 100%);
-  -webkit-background-clip:text;background-clip:text;color:transparent;
-  text-shadow:0 2px 0 rgba(0,0,0,.2);
-}
+h1{font-family:'Anton',sans-serif;font-weight:400;line-height:.9;font-size:clamp(3.4rem,11vw,7.2rem);letter-spacing:.01em;text-transform:uppercase;background:linear-gradient(180deg,#fff 0%,#dfe7df 55%,#9fb6a5 100%);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 2px 0 rgba(0,0,0,.2)}
 h1 .yr{color:transparent;-webkit-text-stroke:2px var(--gold);background:none;display:inline-block}
-.tagline{
-  margin-top:14px;color:var(--chalk-dim);
-  font-size:clamp(1rem,2.4vw,1.18rem);max-width:46ch;margin-left:auto;margin-right:auto;
-}
-
-/* ---------- REGISTER CTA ---------- */
-.cta-row{margin-top:34px;display:flex;justify-content:center;gap:14px;flex-wrap:wrap}
-.btn-register{
-  font-family:'Oswald',sans-serif;font-weight:700;text-transform:uppercase;
-  letter-spacing:.14em;font-size:1.02rem;
-  display:inline-flex;align-items:center;gap:12px;
-  padding:16px 34px;border-radius:999px;text-decoration:none;
-  color:#0a140f;background:linear-gradient(180deg,var(--gold),var(--gold-deep));
-  box-shadow:0 14px 30px -10px rgba(244,197,66,.55),inset 0 1px 0 rgba(255,255,255,.4);
-  transition:transform .18s ease, box-shadow .18s ease;
-}
+.tagline{margin-top:14px;color:var(--chalk-dim);font-size:clamp(1rem,2.4vw,1.18rem);max-width:46ch;margin-left:auto;margin-right:auto}
+.cta-row{margin-top:30px;display:flex;justify-content:center;gap:14px;flex-wrap:wrap}
+.btn-register{font-family:'Oswald',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.14em;font-size:1.02rem;display:inline-flex;align-items:center;gap:12px;padding:16px 34px;border-radius:999px;text-decoration:none;color:#0a140f;background:linear-gradient(180deg,var(--gold),var(--gold-deep));box-shadow:0 14px 30px -10px rgba(244,197,66,.55),inset 0 1px 0 rgba(255,255,255,.4);transition:transform .18s ease, box-shadow .18s ease}
 .btn-register:hover{transform:translateY(-3px);box-shadow:0 20px 40px -10px rgba(244,197,66,.7),inset 0 1px 0 rgba(255,255,255,.4)}
 .btn-register svg{width:20px;height:20px}
 
-/* ---------- SECTION TITLES ---------- */
+/* SECTION TITLES */
 .section-head{display:flex;align-items:baseline;gap:16px;margin:18px 0 22px}
-.section-head h2{
-  font-family:'Anton',sans-serif;font-weight:400;text-transform:uppercase;
-  font-size:clamp(1.6rem,4vw,2.3rem);letter-spacing:.02em;
-}
+.section-head h2{font-family:'Anton',sans-serif;font-weight:400;text-transform:uppercase;font-size:clamp(1.6rem,4vw,2.3rem);letter-spacing:.02em}
 .section-head .rule{flex:1;height:2px;background:linear-gradient(90deg,var(--line),transparent);align-self:center}
 .section-head .count{font-family:'Oswald',sans-serif;color:var(--gold);font-weight:600;font-size:.95rem;letter-spacing:.1em}
-
 section{padding:26px 0}
 
-/* ---------- WEEK GRID ---------- */
-.weeks{
-  display:grid;gap:14px;
-  grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
-}
-.week{
-  position:relative;overflow:hidden;
-  background:linear-gradient(180deg,var(--surface),var(--field));
-  border:1px solid var(--line);border-radius:16px;padding:18px 18px 16px;
-  box-shadow:var(--shadow);
-  opacity:0;transform:translateY(14px);
-  animation:rise .5s cubic-bezier(.2,.7,.2,1) forwards;
-}
-@keyframes rise{to{opacity:1;transform:none}}
-.week::after{
-  content:"";position:absolute;right:-30px;top:-30px;width:120px;height:120px;
-  background:radial-gradient(circle,rgba(244,197,66,.14),transparent 70%);
-  opacity:0;transition:opacity .25s ease;
-}
-.week:hover{border-color:var(--gold);transform:translateY(-4px);transition:transform .2s ease,border-color .2s ease}
-.week:hover::after{opacity:1}
-.week-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
-.week-label{font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.22em;font-size:.72rem;color:var(--chalk-dim);font-weight:600}
-.week-num{font-family:'Anton',sans-serif;font-size:2.6rem;line-height:.8;color:var(--gold)}
-.week-links{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.week-links a{
-  font-family:'Oswald',sans-serif;font-weight:600;text-transform:uppercase;
-  letter-spacing:.06em;font-size:.74rem;text-align:center;text-decoration:none;
-  padding:11px 6px;border-radius:9px;transition:all .16s ease;
-}
-.lk-entry{color:#0a140f;background:var(--turf)}
-.lk-entry:hover{background:#56c682}
-.lk-summary{color:var(--chalk);background:rgba(255,255,255,.05);border:1px solid var(--line)}
-.lk-summary:hover{background:rgba(255,255,255,.1);border-color:var(--gold)}
+/* THIS-WEEK MARQUEE */
+.marquee{position:relative;overflow:hidden;display:flex;align-items:center;gap:30px;flex-wrap:wrap;
+  background:linear-gradient(120deg,var(--surface),var(--field));border:1px solid var(--gold);border-radius:20px;
+  padding:30px 34px;box-shadow:0 22px 50px -20px rgba(0,0,0,.8),0 0 0 4px rgba(244,197,66,.06)}
+.marquee::after{content:"";position:absolute;right:-60px;top:-60px;width:260px;height:260px;background:radial-gradient(circle,rgba(244,197,66,.16),transparent 70%);pointer-events:none}
+.mq-num{position:relative;font-family:'Anton',sans-serif;line-height:.78;color:var(--gold);text-align:center}
+.mq-num .wk{display:block;font-family:'Oswald',sans-serif;font-weight:600;font-size:.8rem;letter-spacing:.34em;color:var(--chalk-dim);margin-bottom:6px}
+.mq-num .n{display:block;font-size:clamp(4.4rem,15vw,7rem)}
+.mq-mid{flex:1;min-width:180px}
+.mq-mid .now{font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.16em;font-weight:700;font-size:1.05rem}
+.mq-mid .when{color:var(--chalk-dim);margin-top:4px;font-size:.95rem}
+.mq-mid .next{margin-top:12px;font-family:'Oswald',sans-serif;font-size:.78rem;letter-spacing:.08em;color:var(--chalk-dim);text-transform:uppercase}
+.mq-mid .next b{color:var(--turf);font-weight:600}
+.mq-actions{display:flex;gap:12px;flex-wrap:wrap}
+.mq-btn{font-family:'Oswald',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.1em;font-size:.92rem;text-decoration:none;padding:15px 26px;border-radius:11px;transition:all .17s ease;white-space:nowrap}
+.mq-entry{color:#0a140f;background:var(--turf);box-shadow:0 10px 24px -10px rgba(63,174,107,.7)}
+.mq-entry:hover{background:#56c682;transform:translateY(-2px)}
+.mq-summary{color:var(--chalk);background:rgba(255,255,255,.05);border:1px solid var(--line)}
+.mq-summary:hover{background:rgba(255,255,255,.1);border-color:var(--gold);transform:translateY(-2px)}
+.mq-loading{color:var(--chalk-dim);font-family:'Oswald',sans-serif;letter-spacing:.1em;padding:20px}
 
-/* ---------- HALL OF CHAMPIONS ---------- */
-.champ-card{
-  background:linear-gradient(180deg,var(--surface),var(--bg-2));
-  border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:var(--shadow);
-}
-.champ-banner{
-  display:flex;align-items:center;gap:14px;padding:18px 22px;
-  background:linear-gradient(90deg,rgba(244,197,66,.12),transparent);
-  border-bottom:1px solid var(--line);
-}
+/* HALL OF CHAMPIONS */
+.champ-card{background:linear-gradient(180deg,var(--surface),var(--bg-2));border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:var(--shadow)}
+.champ-banner{display:flex;align-items:center;gap:14px;padding:18px 22px;background:linear-gradient(90deg,rgba(244,197,66,.12),transparent);border-bottom:1px solid var(--line)}
 .champ-banner svg{width:30px;height:30px;color:var(--gold);flex:none}
 .champ-banner h3{font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.16em;font-size:1rem;font-weight:700}
 .champ-banner p{color:var(--chalk-dim);font-size:.85rem;margin-top:2px}
-
-table{width:100%;border-collapse:collapse}
-thead th{
-  font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.14em;
-  font-size:.72rem;font-weight:600;color:var(--chalk-dim);text-align:left;
-  padding:14px 22px;border-bottom:1px solid var(--line);
-}
+.table-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:560px}
+thead th{font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.12em;font-size:.7rem;font-weight:600;color:var(--chalk-dim);text-align:left;padding:14px 20px;border-bottom:1px solid var(--line);white-space:nowrap}
 thead th.num,tbody td.num{text-align:right}
-tbody td{padding:15px 22px;border-bottom:1px solid rgba(35,69,52,.55);font-size:.98rem}
+tbody td{padding:14px 20px;border-bottom:1px solid rgba(35,69,52,.55);font-size:.96rem}
 tbody tr{transition:background .15s ease}
 tbody tr:hover{background:rgba(244,197,66,.05)}
 tbody tr:last-child td{border-bottom:none}
 .yr-cell{font-family:'Oswald',sans-serif;font-weight:700;color:var(--gold);letter-spacing:.04em}
-.win-cell{font-weight:600}
-.record-cell{font-family:'Oswald',sans-serif;letter-spacing:.05em;color:var(--chalk-dim)}
+.name-cell{font-weight:600}
 .pct-cell{font-family:'Oswald',sans-serif;font-weight:600}
-.crown{display:inline-block;margin-left:8px;filter:saturate(1.2)}
+.wins-cell{font-family:'Oswald',sans-serif;font-weight:600;color:var(--chalk-dim)}
+.crown{display:inline-block;margin-left:7px}
 .state-msg{padding:34px 22px;text-align:center;color:var(--chalk-dim);font-size:.95rem}
 .state-msg code{background:rgba(255,255,255,.06);padding:2px 7px;border-radius:5px;font-size:.85em;color:var(--gold)}
-
 footer{padding:42px 0 56px;text-align:center;color:var(--chalk-dim);font-size:.82rem}
 footer .dot{color:var(--gold);margin:0 8px}
 
-@media (max-width:560px){
+@media (max-width:620px){
+  .table-scroll{overflow-x:visible}
+  table{min-width:0}
   thead{display:none}
   table,tbody,tr,td{display:block;width:100%}
   tbody tr{padding:12px 0;border-bottom:1px solid var(--line)}
-  tbody td{padding:4px 22px;border:none;display:flex;justify-content:space-between;gap:16px}
+  tbody td{padding:5px 20px;border:none;display:flex;justify-content:space-between;gap:16px}
   tbody td::before{content:attr(data-label);font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.1em;font-size:.7rem;color:var(--chalk-dim)}
-  thead th.num,tbody td.num{text-align:right}
+  tbody td.num{text-align:right}
 }
 </style>
 </head>
@@ -205,13 +125,15 @@ footer .dot{color:var(--gold);margin:0 8px}
     </div>
   </header>
 
-  <section id="schedule">
+  <section id="thisweek">
     <div class="section-head">
-      <h2>The Season</h2>
+      <h2>This Week</h2>
       <span class="rule"></span>
-      <span class="count">13 Weeks</span>
+      <span class="count" id="seasonState"></span>
     </div>
-    <div class="weeks" id="weeksGrid"></div>
+    <div class="marquee" id="weekCard">
+      <span class="mq-loading">Finding this week...</span>
+    </div>
   </section>
 
   <section id="champions">
@@ -224,124 +146,190 @@ footer .dot{color:var(--gold);margin:0 8px}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
         <div>
           <h3>Past Champions</h3>
-          <p>Every season's winner, straight from the record book.</p>
+          <p>Percent winners and most-wins leaders, all the way back to 2009.</p>
         </div>
       </div>
-      <table id="champTable">
-        <thead>
-          <tr>
-            <th style="width:22%">Year</th>
-            <th>Winner</th>
-            <th style="width:20%">Record</th>
-            <th class="num" style="width:18%">Win %</th>
-          </tr>
-        </thead>
-        <tbody id="champBody">
-          <tr><td colspan="4" class="state-msg" id="champState">Loading past champions…</td></tr>
-        </tbody>
-      </table>
+      <div class="table-scroll">
+        <table id="champTable">
+          <thead>
+            <tr>
+              <th style="width:14%">Year</th>
+              <th>Percent Winner</th>
+              <th class="num" style="width:14%">Win %</th>
+              <th>Most Wins Winner</th>
+              <th class="num" style="width:12%">Wins</th>
+            </tr>
+          </thead>
+          <tbody id="champBody">
+            <tr><td colspan="5" class="state-msg">Loading past champions...</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </section>
 
   <footer>
-    2026 Spread Pool <span class="dot">•</span> Good luck, and may the chalk be with you
+    2026 Spread Pool <span class="dot">&bull;</span> Good luck, and may the chalk be with you
   </footer>
 
 </div>
 
 <script>
 /* ============================================================
-   CONFIG — edit these in one place if your filenames differ.
-   All links are relative (same GitHub repo, no external URLs).
+   CONFIG -- edit these in one place.
+   Links are all relative (same GitHub repo, no external URLs).
    ============================================================ */
-const TOTAL_WEEKS   = 13;
-const ENTRY_FILE    = w => `2026EntryFormWeek${w}.html`;
-const SUMMARY_FILE  = w => `2026PicksSummaryWeek${w}.html`;
+const ENTRY_FILE   = w => `2026EntryFormWeek${w}.html`;
+const SUMMARY_FILE = w => `2026PicksSummaryWeek${w}.html`;
 
-/* Past-champions Google Sheet (columns: Year | Winner | Record | Percent).
-   In Sheets: File → Share → Publish to web → choose the tab → CSV, then paste
-   that link below. Leave it as "" until you have it. */
+/* Schedule sheet (columns: Week | Begin Date).
+   Publish that tab to the web as CSV and paste the link here.
+   While blank, the page uses the fallback below. */
+const SCHEDULE_CSV_URL = "";
+
+/* Past-champions sheet (columns: Year | Percent Winner | Percent | Most Wins Winner | Most Wins).
+   Publish that tab to the web as CSV and paste the link here.
+   While blank, the page uses the fallback below. */
 const HISTORY_CSV_URL = "";
 
-/* ---------- build the 13-week scoreboard ---------- */
-(function buildWeeks(){
-  const grid = document.getElementById('weeksGrid');
-  let html = "";
-  for(let w = 1; w <= TOTAL_WEEKS; w++){
-    html += `
-      <div class="week" style="animation-delay:${(w-1)*45}ms">
-        <div class="week-top">
-          <span class="week-label">Week</span>
-          <span class="week-num">${w}</span>
-        </div>
-        <div class="week-links">
-          <a class="lk-entry" href="${ENTRY_FILE(w)}">Entry Form</a>
-          <a class="lk-summary" href="${SUMMARY_FILE(w)}">Pick Summary</a>
-        </div>
-      </div>`;
-  }
-  grid.innerHTML = html;
-})();
+/* ---- Fallbacks (snapshots of your sheets; a live CSV URL overrides them) ---- */
+const FALLBACK_SCHEDULE = [
+  {Week:"1",  "Begin Date":"6/7/2026"},
+  {Week:"2",  "Begin Date":"9/17/2026"},
+  {Week:"3",  "Begin Date":"9/24/2026"},
+  {Week:"4",  "Begin Date":"10/1/2026"},
+  {Week:"5",  "Begin Date":"10/8/2026"},
+  {Week:"6",  "Begin Date":"10/15/2026"},
+  {Week:"7",  "Begin Date":"10/22/2026"},
+  {Week:"8",  "Begin Date":"10/29/2026"},
+  {Week:"9",  "Begin Date":"11/5/2026"},
+  {Week:"10", "Begin Date":"11/12/2026"},
+  {Week:"11", "Begin Date":"11/19/2026"},
+  {Week:"12", "Begin Date":"11/26/2026"},
+  {Week:"13", "Begin Date":"12/3/2026"}
+];
+const FALLBACK_HISTORY = [
+  {Year:"2025","Percent Winner":"Whitfield","Percent":"61.90%","Most Wins Winner":"Whitfield","Most Wins":"103"},
+  {Year:"2024","Percent Winner":"Lorah","Percent":"61.80%","Most Wins Winner":"H. Cooper","Most Wins":"99"},
+  {Year:"2023","Percent Winner":"J. Drlik","Percent":"61.30%","Most Wins Winner":"Choma","Most Wins":"89"},
+  {Year:"2022","Percent Winner":"Gray","Percent":"56.70%","Most Wins Winner":"Sivado","Most Wins":"86"},
+  {Year:"2021","Percent Winner":"S. Drlik","Percent":"56.60%","Most Wins Winner":"D. Cooper","Most Wins":"90"},
+  {Year:"2019","Percent Winner":"Mallory","Percent":"58%","Most Wins Winner":"3-Way Tie","Most Wins":"92"},
+  {Year:"2018","Percent Winner":"Belt","Percent":"58.80%","Most Wins Winner":"Bradtmiller","Most Wins":"92"},
+  {Year:"2017","Percent Winner":"Phyllis","Percent":"62.10%","Most Wins Winner":"Phyllis","Most Wins":"104"},
+  {Year:"2016","Percent Winner":"Phyllis","Percent":"56.80%","Most Wins Winner":"Lin","Most Wins":"94"},
+  {Year:"2015","Percent Winner":"Hobbs","Percent":"61.20%","Most Wins Winner":"Hobbs","Most Wins":"103"},
+  {Year:"2014","Percent Winner":"M. Barnes","Percent":"61.60%","Most Wins Winner":"J. Barnes","Most Wins":"102"},
+  {Year:"2013","Percent Winner":"McAnnally","Percent":"59.30%","Most Wins Winner":"B. Michael","Most Wins":"83"},
+  {Year:"2012","Percent Winner":"Cange","Percent":"","Most Wins Winner":"Cange","Most Wins":""},
+  {Year:"2011","Percent Winner":"McCarthy","Percent":"61.10%","Most Wins Winner":"Rychene","Most Wins":"89"},
+  {Year:"2010","Percent Winner":"Helm","Percent":"60%","Most Wins Winner":"Harrison","Most Wins":"81"},
+  {Year:"2009","Percent Winner":"D. Cooper","Percent":"","Most Wins Winner":"Knoop","Most Wins":"89"}
+];
 
-/* ---------- load past champions from the sheet ---------- */
-function setState(msg){
-  document.getElementById('champBody').innerHTML =
-    `<tr><td colspan="4" class="state-msg">${msg}</td></tr>`;
-}
-
+/* ---------- helpers ---------- */
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function bust(u){ return u + (u.includes("?") ? "&" : "?") + "_=" + Date.now(); }
 function pick(row, names){
   for(const n of names){
     for(const key in row){
-      if(key.trim().toLowerCase() === n) return String(row[key] ?? "").trim();
+      if(key.trim().toLowerCase() === n) return String(row[key] == null ? "" : row[key]).trim();
     }
   }
   return "";
 }
-
-function renderChampions(rows){
-  const clean = rows
-    .map(r => ({
-      year:    pick(r, ["year"]),
-      winner:  pick(r, ["winner","champion","name"]),
-      record:  pick(r, ["record","w-l","wl"]),
-      percent: pick(r, ["percent","win %","win%","pct","percentage"])
-    }))
-    .filter(r => r.year || r.winner);
-
-  if(!clean.length){ setState("No champions listed yet — add rows to your sheet."); return; }
-
-  /* newest year on top when the Year column is numeric */
-  clean.sort((a,b) => (parseInt(b.year,10)||0) - (parseInt(a.year,10)||0));
-
-  const body = document.getElementById('champBody');
-  body.innerHTML = clean.map((r,i) => `
-    <tr>
-      <td class="yr-cell" data-label="Year">${r.year || "—"}</td>
-      <td class="win-cell" data-label="Winner">${r.winner || "—"}${i===0 ? '<span class="crown" title="Reigning champ">🏆</span>' : ''}</td>
-      <td class="record-cell" data-label="Record">${r.record || "—"}</td>
-      <td class="pct-cell num" data-label="Win %">${r.percent || "—"}</td>
-    </tr>`).join("");
+function parseMDY(s){
+  const m = String(s).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if(!m) return null;
+  let y = parseInt(m[3],10); if(y < 100) y += 2000;
+  return new Date(y, parseInt(m[1],10)-1, parseInt(m[2],10)); /* local midnight */
 }
+function todayLocal(){ const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate()); }
+function fmtDate(d){ return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`; }
 
-function loadChampions(){
-  if(!HISTORY_CSV_URL){
-    setState('Connect your champions sheet: publish it to the web as CSV and paste the link into <code>HISTORY_CSV_URL</code>.');
-    return;
-  }
-  /* cache-buster — Sheets\u2019 published CSV is heavily CDN-cached */
-  const url = HISTORY_CSV_URL + (HISTORY_CSV_URL.includes("?") ? "&" : "?") + "_=" + Date.now();
-  Papa.parse(url, {
-    download:true,
-    header:true,
-    skipEmptyLines:true,
-    transformHeader:h => h.trim(),
-    complete:res => {
-      try{ renderChampions(res.data || []); }
-      catch(e){ console.error(e); setState("Couldn't read the champions sheet."); }
-    },
-    error:err => { console.error(err); setState("Couldn't reach the champions sheet — check the published link."); }
+/* ---------- current week ---------- */
+/* Current week = the latest week whose Begin Date is on or before today. */
+function computeCurrentWeek(rows){
+  const list = rows
+    .map(r => ({ week: parseInt(pick(r,["week"]),10), date: parseMDY(pick(r,["begin date","begindate","begin","date","start","start date"])) }))
+    .filter(r => r.week && r.date)
+    .sort((a,b) => a.date - b.date);
+  if(!list.length) return null;
+  const today = todayLocal();
+  let idx = 0;
+  for(let i=0;i<list.length;i++){ if(list[i].date <= today) idx = i; }
+  const cur = list[idx];
+  cur.next = list[idx+1] || null;
+  return cur;
+}
+function renderWeek(cur){
+  const card = document.getElementById('weekCard');
+  if(!cur){ card.innerHTML = '<span class="mq-loading">Schedule unavailable.</span>'; return; }
+  const w = cur.week;
+  const opened = cur.date <= todayLocal();
+  const whenTxt = (opened ? "Picks opened " : "Picks open ") + fmtDate(cur.date);
+  const nextTxt = cur.next ? `<div class="next">Next up &middot; <b>Week ${cur.next.week}</b> on ${fmtDate(cur.next.date)}</div>` : "";
+  card.innerHTML = `
+    <div class="mq-num"><span class="wk">Week</span><span class="n">${w}</span></div>
+    <div class="mq-mid">
+      <div class="now">Week ${w} is live</div>
+      <div class="when">${whenTxt}</div>
+      ${nextTxt}
+    </div>
+    <div class="mq-actions">
+      <a class="mq-btn mq-entry" href="${ENTRY_FILE(w)}">Entry Form</a>
+      <a class="mq-btn mq-summary" href="${SUMMARY_FILE(w)}">Pick Summary</a>
+    </div>`;
+  document.getElementById('seasonState').textContent = `Week ${w} of 13`;
+}
+function loadSchedule(){
+  renderWeek(computeCurrentWeek(FALLBACK_SCHEDULE)); /* instant */
+  if(!SCHEDULE_CSV_URL) return;
+  Papa.parse(bust(SCHEDULE_CSV_URL), {
+    download:true, header:true, skipEmptyLines:true, transformHeader:h => h.trim(),
+    complete:res => { const cur = computeCurrentWeek(res.data || []); if(cur) renderWeek(cur); },
+    error:err => console.warn("Schedule CSV unavailable; using fallback.", err)
   });
 }
+
+/* ---------- champions ---------- */
+function setChampState(msg){
+  document.getElementById('champBody').innerHTML =
+    `<tr><td colspan="5" class="state-msg">${msg}</td></tr>`;
+}
+function mapHistory(raw){
+  return raw.map(r => ({
+    year:     pick(r,["year"]),
+    pctName:  pick(r,["percent winner","% winner","percent champion","winner"]),
+    pct:      pick(r,["percent","win %","win%","pct","percentage"]),
+    mwName:   pick(r,["most wins winner","most wins champion","wins winner"]),
+    mw:       pick(r,["most wins","wins","total wins"])
+  }));
+}
+function renderChampions(rows){
+  const clean = rows.filter(r => r.year || r.pctName || r.mwName);
+  if(!clean.length){ setChampState("No champions listed yet -- add rows to your sheet."); return; }
+  clean.sort((a,b) => (parseInt(b.year,10)||0) - (parseInt(a.year,10)||0));
+  document.getElementById('champBody').innerHTML = clean.map((r,i) => `
+    <tr>
+      <td class="yr-cell" data-label="Year">${r.year || "&mdash;"}</td>
+      <td class="name-cell" data-label="Percent Winner">${r.pctName || "&mdash;"}${i===0 ? '<span class="crown" title="Reigning percent champ">&#127942;</span>' : ''}</td>
+      <td class="pct-cell num" data-label="Win %">${r.pct || "&mdash;"}</td>
+      <td class="name-cell" data-label="Most Wins Winner">${r.mwName || "&mdash;"}</td>
+      <td class="wins-cell num" data-label="Wins">${r.mw || "&mdash;"}</td>
+    </tr>`).join("");
+}
+function loadChampions(){
+  renderChampions(mapHistory(FALLBACK_HISTORY)); /* instant preview */
+  if(!HISTORY_CSV_URL) return;
+  Papa.parse(bust(HISTORY_CSV_URL), {
+    download:true, header:true, skipEmptyLines:true, transformHeader:h => h.trim(),
+    complete:res => { try{ renderChampions(mapHistory(res.data || [])); }catch(e){ console.error(e); } },
+    error:err => { console.error(err); console.warn("Champions CSV unavailable; using fallback."); }
+  });
+}
+
+loadSchedule();
 loadChampions();
 </script>
 </body>
