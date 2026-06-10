@@ -11,18 +11,18 @@
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <style>
 :root{
-  --bg:#0a140f; --bg-2:#0d1b14; --field:#10271c; --surface:#122a1e; --surface-2:#16331f;
-  --line:#234534; --chalk:#eef3ea; --chalk-dim:#9bb1a3;
-  --gold:#f4c542; --gold-deep:#d9a516; --turf:#3fae6b;
-  --shadow:0 18px 40px -18px rgba(0,0,0,.75);
+  --bg:#070e1b; --bg-2:#0a1426; --field:#0d1a32; --surface:#102039; --surface-2:#142747;
+  --line:#28406b; --chalk:#eef2f8; --chalk-dim:#93a3bd;
+  --accent:#f4581f; --accent-deep:#c83803; --danger:#ff6b5e;
+  --shadow:0 18px 40px -18px rgba(0,0,0,.8);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
 body{
   font-family:'Archivo',system-ui,sans-serif;color:var(--chalk);background:var(--bg);
   background-image:
-    radial-gradient(1200px 600px at 70% -10%, rgba(63,174,107,.16), transparent 60%),
-    radial-gradient(900px 500px at 0% 100%, rgba(244,197,66,.07), transparent 55%),
+    radial-gradient(1200px 600px at 72% -12%, rgba(244,88,31,.15), transparent 60%),
+    radial-gradient(900px 500px at 0% 100%, rgba(43,86,160,.16), transparent 55%),
     linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
   background-attachment:fixed;min-height:100vh;line-height:1.5;-webkit-font-smoothing:antialiased;
 }
@@ -35,68 +35,77 @@ body::before{
 
 /* MASTHEAD */
 header{padding:64px 0 36px;text-align:center}
-.kicker{font-family:'Oswald',sans-serif;letter-spacing:.42em;text-transform:uppercase;font-size:.78rem;font-weight:600;color:var(--gold);display:inline-flex;align-items:center;gap:14px;margin-bottom:18px}
-.kicker::before,.kicker::after{content:"";height:1px;width:34px;background:linear-gradient(90deg,transparent,var(--gold))}
-.kicker::after{background:linear-gradient(90deg,var(--gold),transparent)}
-h1{font-family:'Anton',sans-serif;font-weight:400;line-height:.9;font-size:clamp(3.4rem,11vw,7.2rem);letter-spacing:.01em;text-transform:uppercase;background:linear-gradient(180deg,#fff 0%,#dfe7df 55%,#9fb6a5 100%);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 2px 0 rgba(0,0,0,.2)}
-h1 .yr{color:transparent;-webkit-text-stroke:2px var(--gold);background:none;display:inline-block}
+.kicker{font-family:'Oswald',sans-serif;letter-spacing:.42em;text-transform:uppercase;font-size:.78rem;font-weight:600;color:var(--accent);display:inline-flex;align-items:center;gap:14px;margin-bottom:18px}
+.kicker::before,.kicker::after{content:"";height:1px;width:34px;background:linear-gradient(90deg,transparent,var(--accent))}
+.kicker::after{background:linear-gradient(90deg,var(--accent),transparent)}
+h1{font-family:'Anton',sans-serif;font-weight:400;line-height:.9;font-size:clamp(3.4rem,11vw,7.2rem);letter-spacing:.01em;text-transform:uppercase;background:linear-gradient(180deg,#fff 0%,#dbe4f1 55%,#93a3bd 100%);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 2px 0 rgba(0,0,0,.25)}
+h1 .yr{color:transparent;-webkit-text-stroke:2px var(--accent);background:none;display:inline-block}
 .tagline{margin-top:14px;color:var(--chalk-dim);font-size:clamp(1rem,2.4vw,1.18rem);max-width:46ch;margin-left:auto;margin-right:auto}
 .cta-row{margin-top:30px;display:flex;justify-content:center;gap:14px;flex-wrap:wrap}
-.btn-register{font-family:'Oswald',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.14em;font-size:1.02rem;display:inline-flex;align-items:center;gap:12px;padding:16px 34px;border-radius:999px;text-decoration:none;color:#0a140f;background:linear-gradient(180deg,var(--gold),var(--gold-deep));box-shadow:0 14px 30px -10px rgba(244,197,66,.55),inset 0 1px 0 rgba(255,255,255,.4);transition:transform .18s ease, box-shadow .18s ease}
-.btn-register:hover{transform:translateY(-3px);box-shadow:0 20px 40px -10px rgba(244,197,66,.7),inset 0 1px 0 rgba(255,255,255,.4)}
+.btn-register{font-family:'Oswald',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.14em;font-size:1.02rem;display:inline-flex;align-items:center;gap:12px;padding:16px 34px;border-radius:999px;text-decoration:none;color:#fff;background:linear-gradient(180deg,var(--accent),var(--accent-deep));box-shadow:0 14px 30px -10px rgba(244,88,31,.55),inset 0 1px 0 rgba(255,255,255,.25);transition:transform .18s ease, box-shadow .18s ease}
+.btn-register:hover{transform:translateY(-3px);box-shadow:0 20px 40px -10px rgba(244,88,31,.7),inset 0 1px 0 rgba(255,255,255,.25)}
 .btn-register svg{width:20px;height:20px}
+.btn-register.is-closed{color:var(--chalk-dim);background:rgba(255,255,255,.05);border:1px solid var(--line);box-shadow:none;cursor:default;pointer-events:none}
+.reg-deadline{margin-top:16px;font-family:'Oswald',sans-serif;font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:var(--chalk-dim)}
+.reg-deadline b{color:var(--accent);font-weight:700}
+.reg-deadline.closed b{color:var(--danger)}
 
 /* SECTION TITLES */
 .section-head{display:flex;align-items:baseline;gap:16px;margin:18px 0 22px}
 .section-head h2{font-family:'Anton',sans-serif;font-weight:400;text-transform:uppercase;font-size:clamp(1.6rem,4vw,2.3rem);letter-spacing:.02em}
 .section-head .rule{flex:1;height:2px;background:linear-gradient(90deg,var(--line),transparent);align-self:center}
-.section-head .count{font-family:'Oswald',sans-serif;color:var(--gold);font-weight:600;font-size:.95rem;letter-spacing:.1em}
+.section-head .count{font-family:'Oswald',sans-serif;color:var(--accent);font-weight:600;font-size:.95rem;letter-spacing:.1em}
 section{padding:26px 0}
 
 /* THIS-WEEK MARQUEE */
 .marquee{position:relative;overflow:hidden;display:flex;align-items:center;gap:30px;flex-wrap:wrap;
-  background:linear-gradient(120deg,var(--surface),var(--field));border:1px solid var(--gold);border-radius:20px;
-  padding:30px 34px;box-shadow:0 22px 50px -20px rgba(0,0,0,.8),0 0 0 4px rgba(244,197,66,.06)}
-.marquee::after{content:"";position:absolute;right:-60px;top:-60px;width:260px;height:260px;background:radial-gradient(circle,rgba(244,197,66,.16),transparent 70%);pointer-events:none}
-.mq-num{position:relative;font-family:'Anton',sans-serif;line-height:.78;color:var(--gold);text-align:center}
+  background:linear-gradient(120deg,var(--surface),var(--field));border:1px solid var(--accent);border-radius:20px;
+  padding:30px 34px;box-shadow:0 22px 50px -20px rgba(0,0,0,.85),0 0 0 4px rgba(244,88,31,.06)}
+.marquee.is-closed{border-color:var(--line);box-shadow:0 22px 50px -20px rgba(0,0,0,.85)}
+.marquee::after{content:"";position:absolute;right:-60px;top:-60px;width:260px;height:260px;background:radial-gradient(circle,rgba(244,88,31,.16),transparent 70%);pointer-events:none}
+.mq-num{position:relative;font-family:'Anton',sans-serif;line-height:.78;color:var(--accent);text-align:center}
 .mq-num .wk{display:block;font-family:'Oswald',sans-serif;font-weight:600;font-size:.8rem;letter-spacing:.34em;color:var(--chalk-dim);margin-bottom:6px}
 .mq-num .n{display:block;font-size:clamp(4.4rem,15vw,7rem)}
 .mq-mid{flex:1;min-width:180px}
+.mq-status{display:inline-block;font-family:'Oswald',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.14em;font-size:.66rem;padding:4px 11px;border-radius:999px;margin-bottom:9px}
+.mq-status.open{color:#0a1426;background:var(--accent)}
+.mq-status.closed{color:var(--chalk-dim);background:rgba(255,255,255,.06);border:1px solid var(--line)}
 .mq-mid .now{font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.16em;font-weight:700;font-size:1.05rem}
 .mq-mid .when{color:var(--chalk-dim);margin-top:4px;font-size:.95rem}
 .mq-mid .next{margin-top:12px;font-family:'Oswald',sans-serif;font-size:.78rem;letter-spacing:.08em;color:var(--chalk-dim);text-transform:uppercase}
-.mq-mid .next b{color:var(--turf);font-weight:600}
+.mq-mid .next b{color:var(--accent);font-weight:600}
 .mq-actions{display:flex;gap:12px;flex-wrap:wrap}
 .mq-btn{font-family:'Oswald',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.1em;font-size:.92rem;text-decoration:none;padding:15px 26px;border-radius:11px;transition:all .17s ease;white-space:nowrap}
-.mq-entry{color:#0a140f;background:var(--turf);box-shadow:0 10px 24px -10px rgba(63,174,107,.7)}
-.mq-entry:hover{background:#56c682;transform:translateY(-2px)}
+.mq-entry{color:#fff;background:var(--accent);box-shadow:0 10px 24px -10px rgba(244,88,31,.6)}
+.mq-entry:hover{background:#ff7036;transform:translateY(-2px)}
 .mq-summary{color:var(--chalk);background:rgba(255,255,255,.05);border:1px solid var(--line)}
-.mq-summary:hover{background:rgba(255,255,255,.1);border-color:var(--gold);transform:translateY(-2px)}
+.mq-summary:hover{background:rgba(255,255,255,.1);border-color:var(--accent);transform:translateY(-2px)}
+.mq-closed{color:var(--chalk-dim);background:rgba(255,255,255,.04);border:1px dashed var(--line);cursor:default}
 .mq-loading{color:var(--chalk-dim);font-family:'Oswald',sans-serif;letter-spacing:.1em;padding:20px}
 
 /* HALL OF CHAMPIONS */
 .champ-card{background:linear-gradient(180deg,var(--surface),var(--bg-2));border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:var(--shadow)}
-.champ-banner{display:flex;align-items:center;gap:14px;padding:18px 22px;background:linear-gradient(90deg,rgba(244,197,66,.12),transparent);border-bottom:1px solid var(--line)}
-.champ-banner svg{width:30px;height:30px;color:var(--gold);flex:none}
+.champ-banner{display:flex;align-items:center;gap:14px;padding:18px 22px;background:linear-gradient(90deg,rgba(244,88,31,.12),transparent);border-bottom:1px solid var(--line)}
+.champ-banner svg{width:30px;height:30px;color:var(--accent);flex:none}
 .champ-banner h3{font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.16em;font-size:1rem;font-weight:700}
 .champ-banner p{color:var(--chalk-dim);font-size:.85rem;margin-top:2px}
 .table-scroll{overflow-x:auto}
 table{width:100%;border-collapse:collapse;min-width:560px}
 thead th{font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.12em;font-size:.7rem;font-weight:600;color:var(--chalk-dim);text-align:left;padding:14px 20px;border-bottom:1px solid var(--line);white-space:nowrap}
 thead th.num,tbody td.num{text-align:right}
-tbody td{padding:14px 20px;border-bottom:1px solid rgba(35,69,52,.55);font-size:.96rem}
+tbody td{padding:14px 20px;border-bottom:1px solid rgba(40,64,107,.5);font-size:.96rem}
 tbody tr{transition:background .15s ease}
-tbody tr:hover{background:rgba(244,197,66,.05)}
+tbody tr:hover{background:rgba(244,88,31,.06)}
 tbody tr:last-child td{border-bottom:none}
-.yr-cell{font-family:'Oswald',sans-serif;font-weight:700;color:var(--gold);letter-spacing:.04em}
+.yr-cell{font-family:'Oswald',sans-serif;font-weight:700;color:var(--accent);letter-spacing:.04em}
 .name-cell{font-weight:600}
 .pct-cell{font-family:'Oswald',sans-serif;font-weight:600}
 .wins-cell{font-family:'Oswald',sans-serif;font-weight:600;color:var(--chalk-dim)}
 .crown{display:inline-block;margin-left:7px}
 .state-msg{padding:34px 22px;text-align:center;color:var(--chalk-dim);font-size:.95rem}
-.state-msg code{background:rgba(255,255,255,.06);padding:2px 7px;border-radius:5px;font-size:.85em;color:var(--gold)}
+.state-msg code{background:rgba(255,255,255,.06);padding:2px 7px;border-radius:5px;font-size:.85em;color:var(--accent)}
 footer{padding:42px 0 56px;text-align:center;color:var(--chalk-dim);font-size:.82rem}
-footer .dot{color:var(--gold);margin:0 8px}
+footer .dot{color:var(--accent);margin:0 8px}
 
 @media (max-width:620px){
   .table-scroll{overflow-x:visible}
@@ -117,12 +126,13 @@ footer .dot{color:var(--gold);margin:0 8px}
     <span class="kicker">Office Pick'em League</span>
     <h1><span class="yr">2026</span><br>Spread Pool</h1>
     <p class="tagline">Pick the spreads. Beat the line. Outlast the office. Thirteen weeks, one champion.</p>
-    <div class="cta-row">
-      <a class="btn-register" href="Registration.html">
+    <div class="cta-row" id="ctaRow">
+      <a class="btn-register" href="2026Registration.html">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
         Register for 2026
       </a>
     </div>
+    <p class="reg-deadline" id="regDeadline"></p>
   </header>
 
   <section id="thisweek">
@@ -182,6 +192,11 @@ footer .dot{color:var(--gold);margin:0 8px}
 const ENTRY_FILE   = w => `2026EntryFormWeek${w}.html`;
 const SUMMARY_FILE = w => `2026PicksSummaryWeek${w}.html`;
 
+/* Registration cutoff: Sep 11, 2026 at 5:00 PM Eastern.
+   September is EDT (UTC-4), so the offset below is correct. */
+const REGISTRATION_CLOSE = new Date("2026-09-11T17:00:00-04:00");
+const REGISTRATION_CLOSE_LABEL = "Sep 11, 2026";
+
 /* Schedule sheet (columns: Week | Begin Date).
    Publish that tab to the web as CSV and paste the link here.
    While blank, the page uses the fallback below. */
@@ -194,7 +209,7 @@ const HISTORY_CSV_URL = "";
 
 /* ---- Fallbacks (snapshots of your sheets; a live CSV URL overrides them) ---- */
 const FALLBACK_SCHEDULE = [
-  {Week:"1",  "Begin Date":"6/7/2026"},
+  {Week:"1",  "Begin Date":"9/10/2026"},
   {Week:"2",  "Begin Date":"9/17/2026"},
   {Week:"3",  "Begin Date":"9/24/2026"},
   {Week:"4",  "Begin Date":"10/1/2026"},
@@ -247,8 +262,22 @@ function parseMDY(s){
 function todayLocal(){ const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate()); }
 function fmtDate(d){ return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`; }
 
+/* ---------- registration window ---------- */
+function setupRegistration(){
+  const note = document.getElementById('regDeadline');
+  if(new Date() < REGISTRATION_CLOSE){
+    note.innerHTML = `Registration closes <b>${REGISTRATION_CLOSE_LABEL}</b> &middot; 5:00 PM Eastern`;
+  } else {
+    document.getElementById('ctaRow').innerHTML =
+      '<span class="btn-register is-closed" aria-disabled="true">Registration closed</span>';
+    note.classList.add('closed');
+    note.innerHTML = `Registration closed <b>${REGISTRATION_CLOSE_LABEL}</b> &middot; 5:00 PM Eastern`;
+  }
+}
+
 /* ---------- current week ---------- */
-/* Current week = the latest week whose Begin Date is on or before today. */
+/* Current week = the latest week whose Begin Date is on or before today;
+   before the season starts, that's Week 1 and it shows as not yet open. */
 function computeCurrentWeek(rows){
   const list = rows
     .map(r => ({ week: parseInt(pick(r,["week"]),10), date: parseMDY(pick(r,["begin date","begindate","begin","date","start","start date"])) }))
@@ -266,20 +295,31 @@ function renderWeek(cur){
   const card = document.getElementById('weekCard');
   if(!cur){ card.innerHTML = '<span class="mq-loading">Schedule unavailable.</span>'; return; }
   const w = cur.week;
-  const opened = cur.date <= todayLocal();
-  const whenTxt = (opened ? "Picks opened " : "Picks open ") + fmtDate(cur.date);
+  const isOpen = cur.date <= todayLocal();
+  card.classList.toggle('is-closed', !isOpen);
+
+  const statusPill = isOpen
+    ? '<span class="mq-status open">Open</span>'
+    : '<span class="mq-status closed">Closed</span>';
+  const headline = isOpen ? `Week ${w} is live` : `Week ${w} opens ${fmtDate(cur.date)}`;
+  const whenTxt  = isOpen
+    ? `Picks opened ${fmtDate(cur.date)}`
+    : `Not open yet &middot; picks open ${fmtDate(cur.date)}`;
   const nextTxt = cur.next ? `<div class="next">Next up &middot; <b>Week ${cur.next.week}</b> on ${fmtDate(cur.next.date)}</div>` : "";
+  const actions = isOpen
+    ? `<a class="mq-btn mq-entry" href="${ENTRY_FILE(w)}">Entry Form</a>
+       <a class="mq-btn mq-summary" href="${SUMMARY_FILE(w)}">Pick Summary</a>`
+    : `<span class="mq-btn mq-closed">Opens ${fmtDate(cur.date)}</span>`;
+
   card.innerHTML = `
     <div class="mq-num"><span class="wk">Week</span><span class="n">${w}</span></div>
     <div class="mq-mid">
-      <div class="now">Week ${w} is live</div>
+      ${statusPill}
+      <div class="now">${headline}</div>
       <div class="when">${whenTxt}</div>
       ${nextTxt}
     </div>
-    <div class="mq-actions">
-      <a class="mq-btn mq-entry" href="${ENTRY_FILE(w)}">Entry Form</a>
-      <a class="mq-btn mq-summary" href="${SUMMARY_FILE(w)}">Pick Summary</a>
-    </div>`;
+    <div class="mq-actions">${actions}</div>`;
   document.getElementById('seasonState').textContent = `Week ${w} of 13`;
 }
 function loadSchedule(){
@@ -329,6 +369,7 @@ function loadChampions(){
   });
 }
 
+setupRegistration();
 loadSchedule();
 loadChampions();
 </script>
