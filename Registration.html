@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026 Spread Pool — Registration</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@400;500;600;700&family=Archivo:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a140f;
+  --bg-2:#0d1b14;
+  --field:#10271c;
+  --surface:#122a1e;
+  --surface-2:#16331f;
+  --line:#234534;
+  --chalk:#eef3ea;
+  --chalk-dim:#9bb1a3;
+  --gold:#f4c542;
+  --gold-deep:#d9a516;
+  --turf:#3fae6b;
+  --danger:#ff7a6b;
+  --shadow:0 18px 40px -18px rgba(0,0,0,.75);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:'Archivo',system-ui,sans-serif;
+  color:var(--chalk);
+  background:var(--bg);
+  background-image:
+    radial-gradient(1200px 600px at 70% -10%, rgba(63,174,107,.16), transparent 60%),
+    radial-gradient(900px 500px at 0% 100%, rgba(244,197,66,.07), transparent 55%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+  background-attachment:fixed;
+  min-height:100vh;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* faint chalk yard-lines running down the page */
+body::before{
+  content:"";
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:repeating-linear-gradient(
+    90deg,
+    transparent 0,
+    transparent 119px,
+    rgba(255,255,255,.035) 119px,
+    rgba(255,255,255,.035) 120px
+  );
+  mask-image:linear-gradient(180deg, transparent, #000 18%, #000 82%, transparent);
+}
+
+.wrap{position:relative;z-index:1;max-width:760px;margin:0 auto;padding:0 22px}
+
+/* ---------- MASTHEAD ---------- */
+.masthead{padding:46px 0 14px;text-align:center}
+.back{
+  display:inline-flex;align-items:center;gap:7px;
+  font-family:'Oswald',sans-serif;font-weight:600;font-size:.78rem;
+  letter-spacing:.12em;text-transform:uppercase;
+  color:var(--chalk-dim);text-decoration:none;margin-bottom:26px;
+  transition:color .18s ease;
+}
+.back:hover{color:var(--gold)}
+.back span{font-size:1.05rem;line-height:1;transform:translateY(-1px)}
+.eyebrow{
+  font-family:'Oswald',sans-serif;font-weight:600;font-size:.8rem;
+  letter-spacing:.32em;text-transform:uppercase;color:var(--gold);
+  margin-bottom:10px;
+}
+h1{
+  font-family:'Anton',sans-serif;font-weight:400;
+  font-size:clamp(2.6rem,8vw,4.4rem);line-height:.92;
+  letter-spacing:.01em;text-transform:uppercase;
+  text-shadow:0 2px 0 rgba(0,0,0,.35);
+}
+h1 .pct{color:var(--gold)}
+.lede{
+  max-width:46ch;margin:16px auto 0;color:var(--chalk-dim);
+  font-size:1.02rem;
+}
+
+/* ---------- FORM PANEL ---------- */
+.panel{
+  position:relative;margin:34px 0 60px;
+  background:linear-gradient(180deg, var(--surface) 0%, var(--field) 100%);
+  border:1px solid var(--line);
+  border-radius:18px;
+  box-shadow:var(--shadow);
+  overflow:hidden;
+}
+.panel::before{
+  content:"";position:absolute;inset:0 0 auto 0;height:4px;
+  background:linear-gradient(90deg, var(--gold-deep), var(--gold), var(--gold-deep));
+}
+.panel-inner{padding:30px clamp(22px,5vw,40px) 34px}
+
+.legend{
+  font-family:'Oswald',sans-serif;font-weight:600;font-size:.78rem;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--gold);
+  display:flex;align-items:center;gap:12px;margin:30px 0 16px;
+}
+.legend:first-child{margin-top:0}
+.legend::after{content:"";flex:1;height:1px;background:var(--line)}
+
+.field{margin-bottom:18px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:560px){.row2{grid-template-columns:1fr}}
+
+label{
+  display:block;font-family:'Oswald',sans-serif;font-weight:500;
+  font-size:.82rem;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--chalk);margin-bottom:7px;
+}
+label .opt{color:var(--chalk-dim);text-transform:none;letter-spacing:0;font-weight:400;font-size:.78rem}
+.req{color:var(--gold);margin-left:3px}
+
+input[type=text],input[type=email],input[type=tel]{
+  width:100%;padding:13px 14px;
+  font-family:'Archivo',sans-serif;font-size:1rem;color:var(--chalk);
+  background:rgba(7,16,11,.6);
+  border:1px solid var(--line);border-radius:10px;
+  transition:border-color .16s ease, box-shadow .16s ease, background .16s ease;
+}
+input::placeholder{color:#5e7568}
+input:focus{
+  outline:none;border-color:var(--gold);
+  background:rgba(7,16,11,.85);
+  box-shadow:0 0 0 3px rgba(244,197,66,.16);
+}
+input.invalid{border-color:var(--danger);box-shadow:0 0 0 3px rgba(255,122,107,.14)}
+
+.hint{margin-top:6px;font-size:.82rem;color:var(--chalk-dim)}
+.err{
+  margin-top:6px;font-size:.82rem;color:var(--danger);
+  font-weight:500;display:none;
+}
+.err.show{display:block}
+
+/* ---------- PAYMENT CARDS ---------- */
+.pay-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:560px){.pay-grid{grid-template-columns:1fr}}
+.pay{
+  position:relative;display:block;cursor:pointer;
+  background:rgba(7,16,11,.5);
+  border:1px solid var(--line);border-radius:12px;
+  padding:15px 15px 15px 46px;
+  transition:border-color .16s ease, background .16s ease, transform .12s ease;
+}
+.pay:hover{border-color:#2f5a44;background:rgba(7,16,11,.7)}
+.pay input{position:absolute;opacity:0;width:0;height:0}
+.pay::before{
+  content:"";position:absolute;left:15px;top:17px;
+  width:18px;height:18px;border-radius:50%;
+  border:2px solid var(--line);background:transparent;
+  transition:border-color .16s ease;
+}
+.pay::after{
+  content:"";position:absolute;left:21px;top:23px;
+  width:6px;height:6px;border-radius:50%;
+  background:var(--gold);transform:scale(0);
+  transition:transform .16s ease;
+}
+.pay:has(input:checked){
+  border-color:var(--gold);background:rgba(244,197,66,.07);
+}
+.pay:has(input:checked)::before{border-color:var(--gold)}
+.pay:has(input:checked)::after{transform:scale(1)}
+.pay:has(input:focus-visible){box-shadow:0 0 0 3px rgba(244,197,66,.18)}
+.pay .method{
+  font-family:'Oswald',sans-serif;font-weight:600;font-size:.98rem;
+  letter-spacing:.02em;color:var(--chalk);
+}
+.pay .handle{font-size:.9rem;color:var(--gold);margin-top:2px;word-break:break-word}
+.pay .sub{font-size:.78rem;color:var(--chalk-dim);margin-top:3px}
+
+/* ---------- SUBMIT ---------- */
+.actions{margin-top:28px}
+.btn{
+  width:100%;cursor:pointer;
+  font-family:'Anton',sans-serif;font-size:1.18rem;letter-spacing:.04em;
+  text-transform:uppercase;color:#1a1206;
+  background:linear-gradient(180deg, var(--gold), var(--gold-deep));
+  border:none;border-radius:12px;padding:16px 20px;
+  box-shadow:0 10px 24px -10px rgba(244,197,66,.55);
+  transition:transform .12s ease, box-shadow .16s ease, filter .16s ease;
+}
+.btn:hover{transform:translateY(-1px);filter:brightness(1.04)}
+.btn:active{transform:translateY(0)}
+.btn:disabled{cursor:default;filter:saturate(.5) brightness(.85);transform:none;box-shadow:none}
+.config-warn{
+  margin-top:14px;font-size:.84rem;color:var(--gold);
+  background:rgba(244,197,66,.08);border:1px dashed var(--gold-deep);
+  border-radius:10px;padding:10px 12px;display:none;
+}
+.config-warn.show{display:block}
+
+/* ---------- OVERLAY + MODALS ---------- */
+.overlay{
+  position:fixed;inset:0;z-index:50;
+  display:none;align-items:center;justify-content:center;
+  padding:24px;
+  background:rgba(5,11,8,.78);backdrop-filter:blur(3px);
+}
+.overlay.show{display:flex}
+.spinner-wrap{text-align:center}
+.spinner{
+  width:62px;height:62px;margin:0 auto 18px;
+  border-radius:50%;
+  border:5px solid rgba(244,197,66,.18);
+  border-top-color:var(--gold);
+  animation:spin .8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner-text{
+  font-family:'Oswald',sans-serif;font-weight:500;font-size:1rem;
+  letter-spacing:.06em;color:var(--chalk);
+}
+
+.modal{
+  width:100%;max-width:430px;
+  background:linear-gradient(180deg, var(--surface-2) 0%, var(--field) 100%);
+  border:1px solid var(--line);border-radius:18px;
+  box-shadow:var(--shadow);overflow:hidden;
+  animation:pop .26s cubic-bezier(.2,.8,.3,1.2);
+}
+@keyframes pop{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
+.modal-top{height:4px;background:linear-gradient(90deg,var(--gold-deep),var(--gold),var(--gold-deep))}
+.modal-top.bad{background:linear-gradient(90deg,#b3463a,var(--danger),#b3463a)}
+.modal-body{padding:30px 26px 26px;text-align:center}
+.badge{
+  width:64px;height:64px;margin:0 auto 16px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:2rem;
+  background:rgba(63,174,107,.14);border:2px solid var(--turf);color:var(--turf);
+}
+.badge.bad{background:rgba(255,122,107,.12);border-color:var(--danger);color:var(--danger)}
+.modal h2{
+  font-family:'Anton',sans-serif;font-weight:400;font-size:1.9rem;
+  text-transform:uppercase;letter-spacing:.01em;margin-bottom:8px;
+}
+.modal p{color:var(--chalk-dim);font-size:.98rem}
+.pay-reminder{
+  margin:18px 0 4px;padding:14px;text-align:left;
+  background:rgba(7,16,11,.55);border:1px solid var(--line);border-radius:12px;
+}
+.pay-reminder .pr-label{
+  font-family:'Oswald',sans-serif;font-size:.72rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--chalk-dim);margin-bottom:5px;
+}
+.pay-reminder .pr-method{font-family:'Oswald',sans-serif;font-weight:600;color:var(--chalk)}
+.pay-reminder .pr-handle{color:var(--gold);margin-top:2px}
+.modal-actions{margin-top:22px;display:flex;gap:10px;flex-wrap:wrap}
+.modal-actions .btn{flex:1;font-size:1rem;padding:13px 16px}
+.btn.ghost{
+  background:transparent;color:var(--chalk);
+  border:1px solid var(--line);box-shadow:none;
+}
+.btn.ghost:hover{border-color:var(--gold);filter:none}
+
+@media(prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important;scroll-behavior:auto}
+  .spinner{border-top-color:var(--gold)}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <a class="back" href="2026SpreadPool.html"><span>&larr;</span> Back to the pool</a>
+    <div class="eyebrow">2026 Season</div>
+    <h1>Player <span class="pct">Registration</span></h1>
+    <p class="lede">Get on the board. Fill this out once and you're locked in for the season.</p>
+  </header>
+
+  <main class="panel">
+    <div class="panel-inner">
+      <!-- Using event handlers, no native form submit, to keep full control of the flow -->
+      <div id="reg">
+
+        <div class="legend">Your info</div>
+
+        <div class="row2">
+          <div class="field">
+            <label for="firstName">First name<span class="req">*</span></label>
+            <input type="text" id="firstName" autocomplete="given-name" placeholder="Jordan">
+            <div class="err" id="err-firstName"></div>
+          </div>
+          <div class="field">
+            <label for="lastName">Last name<span class="req">*</span></label>
+            <input type="text" id="lastName" autocomplete="family-name" placeholder="Rivera">
+            <div class="err" id="err-lastName"></div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="email">Email<span class="req">*</span></label>
+          <input type="email" id="email" autocomplete="email" placeholder="you@example.com">
+          <div class="err" id="err-email"></div>
+        </div>
+
+        <div class="field">
+          <label for="emailConfirm">Confirm email<span class="req">*</span></label>
+          <input type="email" id="emailConfirm" autocomplete="off" placeholder="Type it again">
+          <div class="err" id="err-emailConfirm"></div>
+        </div>
+
+        <div class="legend">Text reminders <span style="color:var(--chalk-dim);text-transform:none;letter-spacing:0;font-weight:400;">— optional</span></div>
+
+        <div class="row2">
+          <div class="field">
+            <label for="phone">Phone <span class="opt">(optional)</span></label>
+            <input type="tel" id="phone" autocomplete="tel" placeholder="(708) 555-0142">
+            <div class="hint">For weekly deadline texts. Leave blank to skip.</div>
+            <div class="err" id="err-phone"></div>
+          </div>
+          <div class="field">
+            <label for="phoneConfirm">Confirm phone <span class="opt">(optional)</span></label>
+            <input type="tel" id="phoneConfirm" autocomplete="off" placeholder="Type it again">
+            <div class="err" id="err-phoneConfirm"></div>
+          </div>
+        </div>
+
+        <div class="legend">Payment method<span class="req">*</span></div>
+        <div class="hint" style="margin:-8px 0 14px">All options go to the same person — pick whichever is easiest for you.</div>
+
+        <div class="pay-grid" id="payGrid">
+          <label class="pay">
+            <input type="radio" name="payment" value="Apple Pay">
+            <div class="method">Apple Pay</div>
+            <div class="handle">(708) 542-5972</div>
+          </label>
+          <label class="pay">
+            <input type="radio" name="payment" value="Venmo">
+            <div class="method">Venmo</div>
+            <div class="handle">@Foxy-Lady85</div>
+            <div class="sub">If asked, last 4 of phone: 5972</div>
+          </label>
+          <label class="pay">
+            <input type="radio" name="payment" value="PayPal">
+            <div class="method">PayPal</div>
+            <div class="handle">@FoxyLady85</div>
+          </label>
+          <label class="pay">
+            <input type="radio" name="payment" value="Zelle">
+            <div class="method">Zelle</div>
+            <div class="handle">(708) 542-5972</div>
+          </label>
+        </div>
+        <div class="err" id="err-payment" style="margin-top:10px"></div>
+
+        <div class="actions">
+          <button type="button" class="btn" id="submitBtn">Register</button>
+          <div class="config-warn" id="configWarn">
+            Heads up: the submit link hasn't been set yet. Paste your Apps Script web-app URL into
+            <code>WEB_APP_URL</code> at the top of this file's script, then re-upload.
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<!-- thinking overlay -->
+<div class="overlay" id="loadingOverlay" aria-hidden="true">
+  <div class="spinner-wrap" role="status" aria-live="polite">
+    <div class="spinner"></div>
+    <div class="spinner-text">Locking in your spot&hellip;</div>
+  </div>
+</div>
+
+<!-- success / error modal -->
+<div class="overlay" id="resultOverlay" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
+    <div class="modal-top" id="modalTop"></div>
+    <div class="modal-body">
+      <div class="badge" id="resultBadge">&#10003;</div>
+      <h2 id="resultTitle">You're in!</h2>
+      <p id="resultMsg">Your registration has been recorded.</p>
+      <div class="pay-reminder" id="payReminder" style="display:none">
+        <div class="pr-label">Send your entry fee via</div>
+        <div class="pr-method" id="prMethod"></div>
+        <div class="pr-handle" id="prHandle"></div>
+      </div>
+      <div class="modal-actions" id="modalActions"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   CONFIG  —  paste your deployed Apps Script web-app URL here.
+   (Deploy > New deployment > Web app > Execute as: Me,
+    Who has access: Anyone. Copy the /exec URL.)
+   ============================================================ */
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxj9U55ZfXS57yQIDx6X2UDca-X0H1KDJOLOWfUsxTC7Zh3BmlFHJ-pcJ87KPDjMQVZ/exec";
+
+/* payment handles for the confirmation reminder */
+const PAY_HANDLES = {
+  "Apple Pay": "(708) 542-5972",
+  "Venmo":     "@Foxy-Lady85  (last 4 of phone: 5972)",
+  "PayPal":    "@FoxyLady85",
+  "Zelle":     "(708) 542-5972"
+};
+
+const $ = id => document.getElementById(id);
+const submitBtn = $("submitBtn");
+
+function showErr(field, msg){
+  const box = $("err-" + field);
+  if(box){ box.textContent = msg; box.classList.add("show"); }
+  const inp = $(field);
+  if(inp) inp.classList.add("invalid");
+}
+function clearErr(field){
+  const box = $("err-" + field);
+  if(box){ box.textContent = ""; box.classList.remove("show"); }
+  const inp = $(field);
+  if(inp) inp.classList.remove("invalid");
+}
+function clearAll(){
+  ["firstName","lastName","email","emailConfirm","phone","phoneConfirm","payment"].forEach(clearErr);
+}
+
+/* clear a field's error as the user fixes it */
+["firstName","lastName","email","emailConfirm","phone","phoneConfirm"].forEach(f => {
+  const el = $(f);
+  if(el) el.addEventListener("input", () => clearErr(f));
+});
+document.querySelectorAll('input[name="payment"]').forEach(r =>
+  r.addEventListener("change", () => clearErr("payment"))
+);
+
+const digits = s => (s || "").replace(/\D/g, "");
+const validEmail = s => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+
+function getSelectedPayment(){
+  const r = document.querySelector('input[name="payment"]:checked');
+  return r ? r.value : "";
+}
+
+function validate(){
+  clearAll();
+  let firstBad = null;
+
+  const firstName = $("firstName").value.trim();
+  const lastName  = $("lastName").value.trim();
+  const email     = $("email").value.trim();
+  const emailC    = $("emailConfirm").value.trim();
+  const phone     = $("phone").value.trim();
+  const phoneC    = $("phoneConfirm").value.trim();
+  const payment   = getSelectedPayment();
+
+  if(!firstName){ showErr("firstName","Enter your first name."); firstBad ||= "firstName"; }
+  if(!lastName){ showErr("lastName","Enter your last name."); firstBad ||= "lastName"; }
+
+  if(!email){ showErr("email","Enter your email."); firstBad ||= "email"; }
+  else if(!validEmail(email)){ showErr("email","That doesn't look like a valid email."); firstBad ||= "email"; }
+
+  if(!emailC){ showErr("emailConfirm","Confirm your email."); firstBad ||= "emailConfirm"; }
+  else if(email && email.toLowerCase() !== emailC.toLowerCase()){
+    showErr("emailConfirm","Emails don't match."); firstBad ||= "emailConfirm";
+  }
+
+  /* phone is optional, but if either box has anything, both must match */
+  if(phone || phoneC){
+    if(!phone){ showErr("phone","Enter your phone or clear the confirm box."); firstBad ||= "phone"; }
+    if(!phoneC){ showErr("phoneConfirm","Confirm your phone number."); firstBad ||= "phoneConfirm"; }
+    if(phone && phoneC && digits(phone) !== digits(phoneC)){
+      showErr("phoneConfirm","Phone numbers don't match."); firstBad ||= "phoneConfirm";
+    }
+  }
+
+  if(!payment){ showErr("payment","Pick a payment method."); firstBad ||= "payment"; }
+
+  if(firstBad){
+    const el = $(firstBad);
+    if(el && el.focus) el.focus();
+    return null;
+  }
+
+  return { firstName, lastName, email, phone, payment };
+}
+
+function showLoading(on){
+  const o = $("loadingOverlay");
+  o.classList.toggle("show", on);
+  o.setAttribute("aria-hidden", on ? "false" : "true");
+}
+
+function showResult(ok, payment){
+  const o = $("resultOverlay");
+  const top = $("modalTop");
+  const badge = $("resultBadge");
+  const title = $("resultTitle");
+  const msg = $("resultMsg");
+  const reminder = $("payReminder");
+  const actions = $("modalActions");
+
+  if(ok){
+    top.classList.remove("bad");
+    badge.classList.remove("bad");
+    badge.innerHTML = "&#10003;";
+    title.textContent = "You're in!";
+    msg.textContent = "Your registration has been recorded. See you on the board.";
+    if(payment && PAY_HANDLES[payment]){
+      $("prMethod").textContent = payment;
+      $("prHandle").textContent = PAY_HANDLES[payment];
+      reminder.style.display = "block";
+    } else {
+      reminder.style.display = "none";
+    }
+    actions.innerHTML =
+      '<a class="btn" href="2026SpreadPool.html" style="text-decoration:none;display:flex;align-items:center;justify-content:center">Back to the pool</a>';
+  } else {
+    top.classList.add("bad");
+    badge.classList.add("bad");
+    badge.innerHTML = "&#33;";
+    title.textContent = "That didn't go through";
+    msg.textContent = "Your registration wasn't saved. Check your connection and try again.";
+    reminder.style.display = "none";
+    actions.innerHTML = '<button type="button" class="btn ghost" id="retryBtn">Try again</button>';
+    setTimeout(() => {
+      const rb = $("retryBtn");
+      if(rb) rb.addEventListener("click", () => {
+        o.classList.remove("show");
+        o.setAttribute("aria-hidden","true");
+        submitBtn.disabled = false;
+      });
+    }, 0);
+  }
+
+  o.classList.add("show");
+  o.setAttribute("aria-hidden","false");
+}
+
+async function submitRegistration(){
+  const data = validate();
+  if(!data) return;
+
+  if(!WEB_APP_URL || WEB_APP_URL.indexOf("PASTE_YOUR") === 0){
+    $("configWarn").classList.add("show");
+    return;
+  }
+
+  submitBtn.disabled = true;
+  showLoading(true);
+
+  try{
+    /* text/plain keeps this a "simple" request so the browser skips the
+       CORS preflight that Apps Script can't answer — and we can still read
+       the JSON the script returns. */
+    const res = await fetch(WEB_APP_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(data),
+      redirect: "follow"
+    });
+    const out = await res.json();
+    showLoading(false);
+    if(out && out.ok){
+      showResult(true, data.payment);
+    } else {
+      console.error("Submit rejected:", out);
+      showResult(false);
+    }
+  } catch(err){
+    console.error("Submit failed:", err);
+    showLoading(false);
+    showResult(false);
+  }
+}
+
+submitBtn.addEventListener("click", submitRegistration);
+</script>
+</body>
+</html>
