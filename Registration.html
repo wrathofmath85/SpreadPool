@@ -9,19 +9,19 @@
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@400;500;600;700&family=Archivo:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#0a140f;
-  --bg-2:#0d1b14;
-  --field:#10271c;
-  --surface:#122a1e;
-  --surface-2:#16331f;
-  --line:#234534;
-  --chalk:#eef3ea;
-  --chalk-dim:#9bb1a3;
-  --gold:#f4c542;
-  --gold-deep:#d9a516;
-  --turf:#3fae6b;
-  --danger:#ff7a6b;
-  --shadow:0 18px 40px -18px rgba(0,0,0,.75);
+  --bg:#070e1b;
+  --bg-2:#0a1426;
+  --field:#0d1a32;
+  --surface:#102039;
+  --surface-2:#142747;
+  --line:#28406b;
+  --chalk:#eef2f8;
+  --chalk-dim:#93a3bd;
+  --accent:#f4581f;        /* Bears orange */
+  --accent-deep:#c83803;   /* deep Bears orange */
+  --success:#f4581f;       /* confirm accent */
+  --danger:#ff6b5e;
+  --shadow:0 18px 40px -18px rgba(0,0,0,.8);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
@@ -30,8 +30,8 @@ body{
   color:var(--chalk);
   background:var(--bg);
   background-image:
-    radial-gradient(1200px 600px at 70% -10%, rgba(63,174,107,.16), transparent 60%),
-    radial-gradient(900px 500px at 0% 100%, rgba(244,197,66,.07), transparent 55%),
+    radial-gradient(1200px 600px at 72% -12%, rgba(244,88,31,.15), transparent 60%),
+    radial-gradient(900px 500px at 0% 100%, rgba(43,86,160,.16), transparent 55%),
     linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
   background-attachment:fixed;
   min-height:100vh;
@@ -64,20 +64,20 @@ body::before{
   color:var(--chalk-dim);text-decoration:none;margin-bottom:26px;
   transition:color .18s ease;
 }
-.back:hover{color:var(--gold)}
+.back:hover{color:var(--accent)}
 .back span{font-size:1.05rem;line-height:1;transform:translateY(-1px)}
 .eyebrow{
   font-family:'Oswald',sans-serif;font-weight:600;font-size:.8rem;
-  letter-spacing:.32em;text-transform:uppercase;color:var(--gold);
+  letter-spacing:.32em;text-transform:uppercase;color:var(--accent);
   margin-bottom:10px;
 }
 h1{
   font-family:'Anton',sans-serif;font-weight:400;
   font-size:clamp(2.6rem,8vw,4.4rem);line-height:.92;
   letter-spacing:.01em;text-transform:uppercase;
-  text-shadow:0 2px 0 rgba(0,0,0,.35);
+  text-shadow:0 2px 0 rgba(0,0,0,.4);
 }
-h1 .pct{color:var(--gold)}
+h1 .pct{color:var(--accent)}
 .lede{
   max-width:46ch;margin:16px auto 0;color:var(--chalk-dim);
   font-size:1.02rem;
@@ -94,13 +94,13 @@ h1 .pct{color:var(--gold)}
 }
 .panel::before{
   content:"";position:absolute;inset:0 0 auto 0;height:4px;
-  background:linear-gradient(90deg, var(--gold-deep), var(--gold), var(--gold-deep));
+  background:linear-gradient(90deg, var(--accent-deep), var(--accent), var(--accent-deep));
 }
 .panel-inner{padding:30px clamp(22px,5vw,40px) 34px}
 
 .legend{
   font-family:'Oswald',sans-serif;font-weight:600;font-size:.78rem;
-  letter-spacing:.18em;text-transform:uppercase;color:var(--gold);
+  letter-spacing:.18em;text-transform:uppercase;color:var(--accent);
   display:flex;align-items:center;gap:12px;margin:30px 0 16px;
 }
 .legend:first-child{margin-top:0}
@@ -116,22 +116,22 @@ label{
   color:var(--chalk);margin-bottom:7px;
 }
 label .opt{color:var(--chalk-dim);text-transform:none;letter-spacing:0;font-weight:400;font-size:.78rem}
-.req{color:var(--gold);margin-left:3px}
+.req{color:var(--accent);margin-left:3px}
 
 input[type=text],input[type=email],input[type=tel]{
   width:100%;padding:13px 14px;
   font-family:'Archivo',sans-serif;font-size:1rem;color:var(--chalk);
-  background:rgba(7,16,11,.6);
+  background:rgba(5,11,22,.6);
   border:1px solid var(--line);border-radius:10px;
   transition:border-color .16s ease, box-shadow .16s ease, background .16s ease;
 }
-input::placeholder{color:#5e7568}
+input::placeholder{color:#586a86}
 input:focus{
-  outline:none;border-color:var(--gold);
-  background:rgba(7,16,11,.85);
-  box-shadow:0 0 0 3px rgba(244,197,66,.16);
+  outline:none;border-color:var(--accent);
+  background:rgba(5,11,22,.85);
+  box-shadow:0 0 0 3px rgba(244,88,31,.16);
 }
-input.invalid{border-color:var(--danger);box-shadow:0 0 0 3px rgba(255,122,107,.14)}
+input.invalid{border-color:var(--danger);box-shadow:0 0 0 3px rgba(255,107,94,.14)}
 
 .hint{margin-top:6px;font-size:.82rem;color:var(--chalk-dim)}
 .err{
@@ -145,12 +145,12 @@ input.invalid{border-color:var(--danger);box-shadow:0 0 0 3px rgba(255,122,107,.
 @media(max-width:560px){.pay-grid{grid-template-columns:1fr}}
 .pay{
   position:relative;display:block;cursor:pointer;
-  background:rgba(7,16,11,.5);
+  background:rgba(5,11,22,.5);
   border:1px solid var(--line);border-radius:12px;
   padding:15px 15px 15px 46px;
   transition:border-color .16s ease, background .16s ease, transform .12s ease;
 }
-.pay:hover{border-color:#2f5a44;background:rgba(7,16,11,.7)}
+.pay:hover{border-color:#3a527d;background:rgba(5,11,22,.7)}
 .pay input{position:absolute;opacity:0;width:0;height:0}
 .pay::before{
   content:"";position:absolute;left:15px;top:17px;
@@ -161,20 +161,20 @@ input.invalid{border-color:var(--danger);box-shadow:0 0 0 3px rgba(255,122,107,.
 .pay::after{
   content:"";position:absolute;left:21px;top:23px;
   width:6px;height:6px;border-radius:50%;
-  background:var(--gold);transform:scale(0);
+  background:var(--accent);transform:scale(0);
   transition:transform .16s ease;
 }
 .pay:has(input:checked){
-  border-color:var(--gold);background:rgba(244,197,66,.07);
+  border-color:var(--accent);background:rgba(244,88,31,.08);
 }
-.pay:has(input:checked)::before{border-color:var(--gold)}
+.pay:has(input:checked)::before{border-color:var(--accent)}
 .pay:has(input:checked)::after{transform:scale(1)}
-.pay:has(input:focus-visible){box-shadow:0 0 0 3px rgba(244,197,66,.18)}
+.pay:has(input:focus-visible){box-shadow:0 0 0 3px rgba(244,88,31,.2)}
 .pay .method{
   font-family:'Oswald',sans-serif;font-weight:600;font-size:.98rem;
   letter-spacing:.02em;color:var(--chalk);
 }
-.pay .handle{font-size:.9rem;color:var(--gold);margin-top:2px;word-break:break-word}
+.pay .handle{font-size:.9rem;color:var(--accent);margin-top:2px;word-break:break-word}
 .pay .sub{font-size:.78rem;color:var(--chalk-dim);margin-top:3px}
 
 /* ---------- SUBMIT ---------- */
@@ -182,18 +182,18 @@ input.invalid{border-color:var(--danger);box-shadow:0 0 0 3px rgba(255,122,107,.
 .btn{
   width:100%;cursor:pointer;
   font-family:'Anton',sans-serif;font-size:1.18rem;letter-spacing:.04em;
-  text-transform:uppercase;color:#1a1206;
-  background:linear-gradient(180deg, var(--gold), var(--gold-deep));
+  text-transform:uppercase;color:#fff;
+  background:linear-gradient(180deg, var(--accent), var(--accent-deep));
   border:none;border-radius:12px;padding:16px 20px;
-  box-shadow:0 10px 24px -10px rgba(244,197,66,.55);
+  box-shadow:0 10px 24px -10px rgba(244,88,31,.6);
   transition:transform .12s ease, box-shadow .16s ease, filter .16s ease;
 }
-.btn:hover{transform:translateY(-1px);filter:brightness(1.04)}
+.btn:hover{transform:translateY(-1px);filter:brightness(1.06)}
 .btn:active{transform:translateY(0)}
-.btn:disabled{cursor:default;filter:saturate(.5) brightness(.85);transform:none;box-shadow:none}
+.btn:disabled{cursor:default;filter:saturate(.5) brightness(.8);transform:none;box-shadow:none}
 .config-warn{
-  margin-top:14px;font-size:.84rem;color:var(--gold);
-  background:rgba(244,197,66,.08);border:1px dashed var(--gold-deep);
+  margin-top:14px;font-size:.84rem;color:var(--accent);
+  background:rgba(244,88,31,.08);border:1px dashed var(--accent-deep);
   border-radius:10px;padding:10px 12px;display:none;
 }
 .config-warn.show{display:block}
@@ -203,15 +203,15 @@ input.invalid{border-color:var(--danger);box-shadow:0 0 0 3px rgba(255,122,107,.
   position:fixed;inset:0;z-index:50;
   display:none;align-items:center;justify-content:center;
   padding:24px;
-  background:rgba(5,11,8,.78);backdrop-filter:blur(3px);
+  background:rgba(4,8,16,.8);backdrop-filter:blur(3px);
 }
 .overlay.show{display:flex}
 .spinner-wrap{text-align:center}
 .spinner{
   width:62px;height:62px;margin:0 auto 18px;
   border-radius:50%;
-  border:5px solid rgba(244,197,66,.18);
-  border-top-color:var(--gold);
+  border:5px solid rgba(244,88,31,.18);
+  border-top-color:var(--accent);
   animation:spin .8s linear infinite;
 }
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -228,16 +228,16 @@ input.invalid{border-color:var(--danger);box-shadow:0 0 0 3px rgba(255,122,107,.
   animation:pop .26s cubic-bezier(.2,.8,.3,1.2);
 }
 @keyframes pop{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
-.modal-top{height:4px;background:linear-gradient(90deg,var(--gold-deep),var(--gold),var(--gold-deep))}
+.modal-top{height:4px;background:linear-gradient(90deg,var(--accent-deep),var(--accent),var(--accent-deep))}
 .modal-top.bad{background:linear-gradient(90deg,#b3463a,var(--danger),#b3463a)}
 .modal-body{padding:30px 26px 26px;text-align:center}
 .badge{
   width:64px;height:64px;margin:0 auto 16px;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
   font-size:2rem;
-  background:rgba(63,174,107,.14);border:2px solid var(--turf);color:var(--turf);
+  background:rgba(244,88,31,.14);border:2px solid var(--success);color:var(--success);
 }
-.badge.bad{background:rgba(255,122,107,.12);border-color:var(--danger);color:var(--danger)}
+.badge.bad{background:rgba(255,107,94,.12);border-color:var(--danger);color:var(--danger)}
 .modal h2{
   font-family:'Anton',sans-serif;font-weight:400;font-size:1.9rem;
   text-transform:uppercase;letter-spacing:.01em;margin-bottom:8px;
@@ -245,25 +245,25 @@ input.invalid{border-color:var(--danger);box-shadow:0 0 0 3px rgba(255,122,107,.
 .modal p{color:var(--chalk-dim);font-size:.98rem}
 .pay-reminder{
   margin:18px 0 4px;padding:14px;text-align:left;
-  background:rgba(7,16,11,.55);border:1px solid var(--line);border-radius:12px;
+  background:rgba(5,11,22,.55);border:1px solid var(--line);border-radius:12px;
 }
 .pay-reminder .pr-label{
   font-family:'Oswald',sans-serif;font-size:.72rem;letter-spacing:.14em;
   text-transform:uppercase;color:var(--chalk-dim);margin-bottom:5px;
 }
 .pay-reminder .pr-method{font-family:'Oswald',sans-serif;font-weight:600;color:var(--chalk)}
-.pay-reminder .pr-handle{color:var(--gold);margin-top:2px}
+.pay-reminder .pr-handle{color:var(--accent);margin-top:2px}
 .modal-actions{margin-top:22px;display:flex;gap:10px;flex-wrap:wrap}
 .modal-actions .btn{flex:1;font-size:1rem;padding:13px 16px}
 .btn.ghost{
   background:transparent;color:var(--chalk);
   border:1px solid var(--line);box-shadow:none;
 }
-.btn.ghost:hover{border-color:var(--gold);filter:none}
+.btn.ghost:hover{border-color:var(--accent);filter:none}
 
 @media(prefers-reduced-motion:reduce){
   *{animation:none!important;transition:none!important;scroll-behavior:auto}
-  .spinner{border-top-color:var(--gold)}
+  .spinner{border-top-color:var(--accent)}
 }
 </style>
 </head>
@@ -314,13 +314,13 @@ input.invalid{border-color:var(--danger);box-shadow:0 0 0 3px rgba(255,122,107,.
         <div class="row2">
           <div class="field">
             <label for="phone">Phone <span class="opt">(optional)</span></label>
-            <input type="tel" id="phone" autocomplete="tel" placeholder="(708) 555-0142">
-            <div class="hint">For weekly deadline texts. Leave blank to skip.</div>
+            <input type="tel" id="phone" autocomplete="tel" inputmode="numeric" maxlength="13" placeholder="(708)555-0142">
+            <div class="hint">For weekly deadline texts. Just type the digits.</div>
             <div class="err" id="err-phone"></div>
           </div>
           <div class="field">
             <label for="phoneConfirm">Confirm phone <span class="opt">(optional)</span></label>
-            <input type="tel" id="phoneConfirm" autocomplete="off" placeholder="Type it again">
+            <input type="tel" id="phoneConfirm" autocomplete="off" inputmode="numeric" maxlength="13" placeholder="Type it again">
             <div class="err" id="err-phoneConfirm"></div>
           </div>
         </div>
@@ -440,6 +440,20 @@ document.querySelectorAll('input[name="payment"]').forEach(r =>
 const digits = s => (s || "").replace(/\D/g, "");
 const validEmail = s => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
 
+/* live phone mask -> (###)###-#### : users type only digits, the
+   parentheses and dash appear automatically as they go. */
+function formatPhone(value){
+  const d = digits(value).slice(0, 10);
+  if(d.length === 0) return "";
+  if(d.length < 4)   return "(" + d;
+  if(d.length < 7)   return "(" + d.slice(0,3) + ")" + d.slice(3);
+  return "(" + d.slice(0,3) + ")" + d.slice(3,6) + "-" + d.slice(6);
+}
+["phone","phoneConfirm"].forEach(f => {
+  const el = $(f);
+  if(el) el.addEventListener("input", () => { el.value = formatPhone(el.value); });
+});
+
 function getSelectedPayment(){
   const r = document.querySelector('input[name="payment"]:checked');
   return r ? r.value : "";
@@ -468,12 +482,15 @@ function validate(){
     showErr("emailConfirm","Emails don't match."); firstBad ||= "emailConfirm";
   }
 
-  /* phone is optional, but if either box has anything, both must match */
+  /* phone is optional, but if either box has anything, both must match.
+     comparison is on digits only, so formatting never trips it up. */
   if(phone || phoneC){
     if(!phone){ showErr("phone","Enter your phone or clear the confirm box."); firstBad ||= "phone"; }
     if(!phoneC){ showErr("phoneConfirm","Confirm your phone number."); firstBad ||= "phoneConfirm"; }
     if(phone && phoneC && digits(phone) !== digits(phoneC)){
       showErr("phoneConfirm","Phone numbers don't match."); firstBad ||= "phoneConfirm";
+    } else if(phone && digits(phone).length !== 10){
+      showErr("phone","Enter a 10-digit phone number."); firstBad ||= "phone";
     }
   }
 
