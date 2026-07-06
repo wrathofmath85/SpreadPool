@@ -403,7 +403,7 @@ function showSuccess(res, payload){
     payload.picks.length + ' picks saved for ' + escHtml(payload.name) +
     ' at ' + escHtml(etDateTime(res.timestamp)) + '. Confirmation #' + escHtml(String(res.submissionId).slice(0, 8)) +
     '. You can change anything by resubmitting before the deadline &mdash; ' +
-    '<a href="summary.html?week=' + S.week + '" style="color:var(--accent)">see the board</a>.</div>';
+    '<a href="Summary.html?week=' + S.week + '" style="color:var(--accent)">see the board</a>.</div>';
   v.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
