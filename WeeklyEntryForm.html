@@ -142,6 +142,12 @@ async function init(){
   refreshTicket();
 }
 
+/* LineValue may arrive negative or wrapped in parens; the magnitude is what matters */
+function parseLineVal(v){
+  const n = parseFloat(String(v == null ? "" : v).replace(/[()\s]/g, ""));
+  return isNaN(n) ? NaN : Math.abs(n);
+}
+
 function normalizeLines(rows){
   return (rows || []).map(r => ({
     qid: String(r.qid || ""), league: String(r.league || "").toUpperCase(),
@@ -149,7 +155,7 @@ function normalizeLines(rows){
     kickoffISO: String(r.kickoffiso || ""), tv: String(r.tv || ""), loc: String(r.location || ""),
     spreadText: String(r.spreadtext || ""),
     favSide: String(r.favoredside || "").toLowerCase(),
-    line: parseFloat(r.linevalue),
+    line: parseLineVal(r.linevalue),
     required: /^y/i.test(String(r.required || "")),
     locked: !!r.kickoffiso && Date.parse(r.kickoffiso) <= Date.now()
   })).filter(r => r.qid && r.away && r.home);
@@ -171,10 +177,24 @@ function renderStatus(){
 
 function renderBoard(){
   const board = $("board");
-  const sections = [["NFL", "NFL — Sunday Board"], ["CFB", "College Board"]];
   let html = "";
+
+  // Required games pinned to the top, ahead of both league sections
+  const reqGames = S.lines.filter(g => g.required);
+  if (reqGames.length){
+    html += '<div class="section-head"><h2>Required Games</h2><span class="rule"></span>' +
+            '<span class="count">everyone picks these</span></div>';
+    let lastReqDay = "";
+    for (const g of reqGames){
+      const day = etDayKey(g.kickoffISO);
+      if (day && day !== lastReqDay){ html += '<div class="day-head">' + escHtml(etDayLabel(g.kickoffISO)) + '</div>'; lastReqDay = day; }
+      html += gameHtml(g);
+    }
+  }
+
+  const sections = [["NFL", "NFL — Sunday Board"], ["CFB", "College Board"]];
   for (const [lg, title] of sections){
-    const games = S.lines.filter(g => g.league === lg);
+    const games = S.lines.filter(g => g.league === lg && !g.required);
     if (!games.length) continue;
     html += '<div class="section-head"><h2>' + title + '</h2><span class="rule"></span><span class="count">' + games.length + ' games</span></div>';
     let lastDay = "";
