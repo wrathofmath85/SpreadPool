@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Entry Form — 2026 Spread Pool</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@400;500;600;700&family=Archivo:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="pool.css">
+</head>
+<body class="has-ticket">
+
+<header class="mast wrap">
+  <div class="kicker"><a href="index.html">2026 Spread Pool</a></div>
+  <h1 class="mast-title">Week <span class="yr" id="wkNum">–</span> Entry</h1>
+  <p class="mast-sub" id="mastSub">Loading this week's board…</p>
+</header>
+
+<main class="wrap" id="main">
+
+  <!-- identity -->
+  <section class="card card-pad" id="whoCard">
+    <div class="field-row">
+      <div>
+        <label class="lbl" for="nameIn">Your name</label>
+        <input type="text" id="nameIn" list="rosterList" placeholder="Start typing your name…" autocomplete="off">
+        <datalist id="rosterList"></datalist>
+      </div>
+      <div>
+        <label class="lbl" for="emailIn">Email for confirmation</label>
+        <input type="email" id="emailIn" placeholder="you@example.com" autocomplete="email">
+      </div>
+    </div>
+    <div id="loadedBanner"></div>
+  </section>
+
+  <div id="statusBanner"></div>
+
+  <!-- games render here -->
+  <div id="board"><div class="state-msg"><span class="spin"></span>&nbsp; Loading games…</div></div>
+
+  <!-- declaration -->
+  <section class="card card-pad" id="declCard" style="display:none;margin-top:26px">
+    <div class="section-head" style="margin:0 0 14px"><h2>Your commitment</h2><span class="rule"></span></div>
+    <div class="field-row">
+      <div>
+        <label class="lbl" for="numPicksIn">Total picks you're committing to this week</label>
+        <input type="number" id="numPicksIn" min="7" step="1">
+        <p style="color:var(--chalk-dim);font-size:.82rem;margin-top:6px">Minimum 7. You can resubmit to add picks later; each committed pick you never make counts as a loss.</p>
+      </div>
+      <div>
+        <label class="lbl">Double</label>
+        <label class="switch" style="margin-top:8px">
+          <input type="checkbox" id="willDoubleIn">
+          <span class="track"></span>
+          <span class="sw-lbl" id="willDoubleLbl">I will play a double this week</span>
+        </label>
+        <p style="color:var(--chalk-dim);font-size:.82rem;margin-top:8px">Tap the ★ on a picked game to place it. A promised double never placed counts as a loss.</p>
+      </div>
+    </div>
+  </section>
+
+  <div id="successView" style="display:none"></div>
+</main>
+
+<!-- sticky ticket -->
+<div class="ticket" id="ticket" style="display:none">
+  <div class="ticket-in">
+    <div class="stat">Picks<b id="tPicks">0</b></div>
+    <div class="stat">Double<b id="tDouble">—</b></div>
+    <div class="stat">Deadline<b id="tClock" class="hot">—</b></div>
+    <div class="spacer"></div>
+    <button class="btn primary" id="reviewBtn">Review &amp; submit</button>
+  </div>
+</div>
+
+<!-- review modal -->
+<div class="modal-back" id="modalBack">
+  <div class="modal">
+    <h3>Lock it in?</h3>
+    <p class="sub" id="modalSub"></p>
+    <div id="modalWarnings"></div>
+    <div id="modalList" style="max-height:44vh;overflow-y:auto"></div>
+    <div class="actions">
+      <button class="btn ghost" id="modalCancel">Keep editing</button>
+      <button class="btn primary" id="modalConfirm">Submit picks</button>
+    </div>
+  </div>
+</div>
+
+<footer class="site">2026 Spread Pool<span class="dot">&bull;</span><a href="index.html" style="color:var(--chalk-dim)">Home</a></footer>
+
+<script src="pool.js"></script>
+<script>
+/* Optional EmailJS confirmation — fill these to re-enable, leave blank to skip.
+   Template receives: to_email, player, week, pick_list, commitment */
+const EMAILJS = { publicKey: "", serviceId: "", templateId: "" };
+
+const MIN_PICKS = 7;
+
+const S = {
+  week: null, cfgRow: null, open: false,
+  lines: [], roster: [],
+  picks: new Map(),          // qid -> {side, isDouble}
+  lockedSaved: new Map(),    // saved picks on games already kicked off (always resubmitted)
+  savedAt: "", submitting: false
+};
+
+const $ = id => document.getElementById(id);
+
+init().catch(e => { $("board").innerHTML = '<div class="banner bad">Could not load this week: ' + escHtml(e.message) + '</div>'; });
+
+async function init(){
+  if (POOL_API.indexOf("http") !== 0) throw new Error("POOL_API is not set in pool.js yet.");
+  const cfg = await apiGet({ fn: "config" });
+  const resolved = resolveWeek(cfg.config);
+  if (!resolved) throw new Error("No weeks found in Config.");
+  S.week = resolved.week;
+  S.cfgRow = resolved.row;
+  S.open = weekIsOpenClient(S.cfgRow);
+  $("wkNum").textContent = S.week;
+  document.title = "Week " + S.week + " Entry — 2026 Spread Pool";
+
+  const [linesRes, rosterRes] = await Promise.all([
+    apiGet({ fn: "lines", week: S.week }),
+    apiGet({ fn: "roster" })
+  ]);
+  S.lines = normalizeLines(linesRes.lines);
+  S.roster = rosterRes.roster || [];
+
+  $("rosterList").innerHTML = S.roster.map(r => '<option value="' + escHtml(r.name) + '">').join("");
+  $("nameIn").addEventListener("change", onNameChosen);
+  $("nameIn").addEventListener("blur", onNameChosen);
+
+  renderStatus();
+  renderBoard();
+  wireDeclaration();
+  wireModal();
+  if (S.open) { $("ticket").style.display = ""; $("declCard").style.display = ""; tickClock(); setInterval(tickClock, 1000); }
+  else document.body.classList.remove("has-ticket");
+  refreshTicket();
+}
+
+function normalizeLines(rows){
+  return (rows || []).map(r => ({
+    qid: String(r.qid || ""), league: String(r.league || "").toUpperCase(),
+    away: String(r.awayteam || ""), home: String(r.hometeam || ""),
+    kickoffISO: String(r.kickoffiso || ""), tv: String(r.tv || ""), loc: String(r.location || ""),
+    spreadText: String(r.spreadtext || ""),
+    favSide: String(r.favoredside || "").toLowerCase(),
+    line: parseFloat(r.linevalue),
+    required: /^y/i.test(String(r.required || "")),
+    locked: !!r.kickoffiso && Date.parse(r.kickoffiso) <= Date.now()
+  })).filter(r => r.qid && r.away && r.home);
+}
+
+function renderStatus(){
+  const el = $("statusBanner");
+  if (S.open) {
+    const dl = S.cfgRow.deadlineISO ? " Picks lock <b>" + escHtml(etDateTime(S.cfgRow.deadlineISO)) + "</b>." : "";
+    $("mastSub").innerHTML = "Pick against the spread. Minimum " + MIN_PICKS + " games, one optional double." + dl;
+  } else {
+    $("mastSub").textContent = "This week is not accepting picks.";
+    el.innerHTML = '<div class="banner warn"><b>Week ' + S.week + ' is closed.</b> The board below is read-only. ' +
+      'Check the <a href="summary.html?week=' + S.week + '" style="color:var(--accent)">pick summary</a> for results.</div>';
+  }
+}
+
+/* ---------------- board ---------------- */
+
+function renderBoard(){
+  const board = $("board");
+  const sections = [["NFL", "NFL — Sunday Board"], ["CFB", "College Board"]];
+  let html = "";
+  for (const [lg, title] of sections){
+    const games = S.lines.filter(g => g.league === lg);
+    if (!games.length) continue;
+    html += '<div class="section-head"><h2>' + title + '</h2><span class="rule"></span><span class="count">' + games.length + ' games</span></div>';
+    let lastDay = "";
+    for (const g of games){
+      const day = etDayKey(g.kickoffISO);
+      if (day && day !== lastDay){ html += '<div class="day-head">' + escHtml(etDayLabel(g.kickoffISO)) + '</div>'; lastDay = day; }
+      html += gameHtml(g);
+    }
+  }
+  board.innerHTML = html || '<div class="state-msg">No games posted for week ' + S.week + ' yet.</div>';
+  board.addEventListener("click", onBoardClick);
+}
+
+function tagFor(g, side){
+  if (g.favSide === side && !isNaN(g.line) && g.line > 0) return "-" + (g.line % 1 === 0 ? g.line.toFixed(0) : g.line);
+  if (g.favSide === "pk" || g.spreadText.toUpperCase() === "PK") return "PK";
+  return "";
+}
+
+function gameHtml(g){
+  const p = S.picks.get(g.qid);
+  const dis = (!S.open || g.locked) ? "disabled" : "";
+  const btn = side => {
+    const nm = side === "away" ? g.away : g.home;
+    const sel = p && p.side === side ? " selected" : "";
+    return '<button class="teambtn' + sel + '" data-qid="' + g.qid + '" data-side="' + side + '" ' + dis + '>' +
+      '<span>' + escHtml(nm) + '</span><span class="tag">' + tagFor(g, side) + '</span></button>';
+  };
+  const star = p
+    ? '<button class="starbtn side-extra' + (p.isDouble ? " on" : "") + '" data-star="' + g.qid + '" title="Double this game" ' + dis + '>★</button>'
+    : '<span class="side-extra" style="width:44px"></span>';
+  return '<div class="game' + (p ? " picked" : "") + (g.locked ? " locked" : "") + '" id="game-' + g.qid + '">' +
+    '<div class="game-meta">' +
+      '<span class="qid">' + g.qid + '</span>' +
+      (g.kickoffISO ? '<span>' + escHtml(etTime(g.kickoffISO)) + '</span>' : '') +
+      (g.tv ? '<span>' + escHtml(g.tv) + '</span>' : '') +
+      (g.loc ? '<span>' + escHtml(g.loc) + '</span>' : '') +
+      (g.required ? '<span class="pill req">Required</span>' : '') +
+      (g.locked ? '<span class="pill locked">Locked — kicked off</span>' : '') +
+    '</div>' +
+    '<div class="game-row">' + btn("away") + '<span class="at">at</span>' + btn("home") + star + '</div>' +
+  '</div>';
+}
+
+function onBoardClick(e){
+  const tb = e.target.closest(".teambtn");
+  if (tb && !tb.disabled){
+    const qid = tb.dataset.qid, side = tb.dataset.side;
+    const cur = S.picks.get(qid);
+    if (cur && cur.side === side) S.picks.delete(qid);              // tap again to clear
+    else S.picks.set(qid, { side: side, isDouble: cur ? cur.isDouble : false });
+    repaintGame(qid); refreshTicket(); return;
+  }
+  const st = e.target.closest(".starbtn");
+  if (st && !st.disabled){
+    const qid = st.dataset.star;
+    const cur = S.picks.get(qid);
+    if (!cur) return;
+    const turningOn = !cur.isDouble;
+    for (const [q, pk] of S.picks) if (pk.isDouble){ pk.isDouble = false; repaintGame(q); }  // only one ★
+    cur.isDouble = turningOn;
+    if (turningOn) $("willDoubleIn").checked = true;
+    repaintGame(qid); refreshTicket();
+  }
+}
+
+function repaintGame(qid){
+  const g = S.lines.find(x => x.qid === qid);
+  const node = $("game-" + qid);
+  if (g && node) node.outerHTML = gameHtml(g);
+}
+
+/* ---------------- identity / prefill ---------------- */
+
+let lastLoadedFor = "";
+async function onNameChosen(){
+  const name = $("nameIn").value.trim();
+  if (!name || nameKey(name) === nameKey(lastLoadedFor)) return;
+  const person = S.roster.find(r => nameKey(r.name) === nameKey(name));
+  if (person && person.email && !$("emailIn").value) $("emailIn").value = person.email;
+  if (!person) return;
+  lastLoadedFor = name;
+  try {
+    const res = await apiGet({ fn: "mypicks", week: S.week, name: name });
+    if (!res.picks || !res.picks.length){ $("loadedBanner").innerHTML = ""; return; }
+    S.picks.clear();
+    let latest = "";
+    for (const p of res.picks){
+      S.picks.set(String(p.qid), { side: String(p.side || "").toLowerCase(), isDouble: String(p.isdouble).toUpperCase() === "TRUE" });
+      if (String(p.updatedat || "") > latest) latest = String(p.updatedat || "");
+    }
+    const d = res.declaration;
+    if (d){
+      if (d.numpicks) $("numPicksIn").value = parseInt(d.numpicks, 10) || "";
+      $("willDoubleIn").checked = String(d.willdouble).toUpperCase() === "TRUE";
+    }
+    S.savedAt = latest;
+    renderBoard(); refreshTicket();
+    $("loadedBanner").innerHTML = '<div class="banner good">Loaded your <b>' + res.picks.length +
+      '</b> saved picks' + (latest ? ' from ' + escHtml(etDateTime(latest)) : '') +
+      '. Resubmitting replaces them.</div>';
+  } catch(e){ console.warn("prefill failed", e); }
+}
+
+/* ---------------- ticket / declaration ---------------- */
+
+function wireDeclaration(){
+  $("numPicksIn").addEventListener("input", refreshTicket);
+  $("willDoubleIn").addEventListener("change", () => {
+    if (!$("willDoubleIn").checked)
+      for (const [q, pk] of S.picks) if (pk.isDouble){ pk.isDouble = false; repaintGame(q); }
+    refreshTicket();
+  });
+}
+
+function doubledPick(){ for (const [q, p] of S.picks) if (p.isDouble) return q; return null; }
+
+function refreshTicket(){
+  $("tPicks").textContent = S.picks.size;
+  const dq = doubledPick();
+  $("tDouble").textContent = dq ? "★ " + dq : ($("willDoubleIn").checked ? "Promised" : "None");
+  const n = $("numPicksIn");
+  if (!n.value || parseInt(n.value, 10) < S.picks.size) n.value = Math.max(MIN_PICKS, S.picks.size);
+}
+
+function tickClock(){
+  const dl = S.cfgRow && S.cfgRow.deadlineISO;
+  $("tClock").textContent = dl ? countdownText(dl) : "open";
+  if (dl && Date.parse(dl) <= Date.now()){ S.open = false; renderStatus(); $("ticket").style.display = "none"; }
+}
+
+/* ---------------- review + submit ---------------- */
+
+function wireModal(){
+  $("reviewBtn").addEventListener("click", openReview);
+  $("modalCancel").addEventListener("click", () => $("modalBack").classList.remove("show"));
+  $("modalConfirm").addEventListener("click", submitPicks);
+}
+
+function validate(){
+  const errs = [], warns = [];
+  const name = $("nameIn").value.trim();
+  if (!name) errs.push("Enter your name.");
+  else if (!S.roster.some(r => nameKey(r.name) === nameKey(name)))
+    warns.push('"' + escHtml(name) + '" isn\'t on the roster — double-check the spelling.');
+  if (!S.picks.size) errs.push("You haven't picked any games.");
+  const missingReq = S.lines.filter(g => g.required && !g.locked && !S.picks.has(g.qid));
+  if (missingReq.length) errs.push("Required game" + (missingReq.length > 1 ? "s" : "") + " not picked: " +
+    missingReq.map(g => g.qid + " (" + escHtml(g.away) + " at " + escHtml(g.home) + ")").join(", "));
+  const declared = parseInt($("numPicksIn").value, 10) || 0;
+  if (declared < MIN_PICKS) errs.push("Commit to at least " + MIN_PICKS + " picks.");
+  if (S.picks.size < MIN_PICKS) warns.push("Only " + S.picks.size + " picks so far — you're committing to " + declared +
+    "; each one you never make counts as a loss.");
+  else if (declared > S.picks.size) warns.push("You're committing to " + declared + " picks but have made " + S.picks.size +
+    " — the shortfall counts as losses unless you resubmit with more.");
+  if ($("willDoubleIn").checked && !doubledPick())
+    warns.push("You promised a double but haven't starred a game — an unplaced double at week's end counts as a loss.");
+  return { errs, warns };
+}
+
+function openReview(){
+  const { errs, warns } = validate();
+  $("modalWarnings").innerHTML =
+    errs.map(e => '<div class="err">' + e + '</div>').join("") +
+    warns.map(w => '<div class="warn">' + w + '</div>').join("");
+  const declared = parseInt($("numPicksIn").value, 10) || 0;
+  $("modalSub").innerHTML = "Week " + S.week + " &middot; <b>" + S.picks.size + "</b> picks &middot; committing to <b>" +
+    declared + "</b> &middot; double: <b>" + (doubledPick() || ($("willDoubleIn").checked ? "promised" : "none")) + "</b>";
+  const items = [];
+  for (const g of S.lines){
+    const p = S.picks.get(g.qid);
+    if (!p) continue;
+    items.push('<div style="display:flex;justify-content:space-between;gap:12px;padding:7px 2px;border-bottom:1px solid rgba(40,64,107,.4);font-size:.92rem">' +
+      '<span><span style="color:var(--accent);font-family:Oswald">' + g.qid + '</span> &nbsp;' + escHtml(choiceText(g, p.side)) +
+      (p.isDouble ? ' <span class="pill req">★ Double</span>' : '') + (g.locked ? ' <span class="pill locked">locked</span>' : '') +
+      '</span><span style="color:var(--chalk-dim)">over ' + escHtml(p.side === "away" ? g.home : g.away) + '</span></div>');
+  }
+  $("modalList").innerHTML = items.join("");
+  $("modalConfirm").disabled = errs.length > 0;
+  $("modalBack").classList.add("show");
+}
+
+function choiceText(g, side){
+  const nm = side === "away" ? g.away : g.home;
+  const t = tagFor(g, side);
+  return t && t !== "PK" ? nm + " (" + t + ")" : nm;
+}
+
+async function submitPicks(){
+  if (S.submitting) return;
+  S.submitting = true;
+  $("modalConfirm").disabled = true;
+  $("modalConfirm").innerHTML = '<span class="spin"></span>&nbsp;Submitting';
+  const name = $("nameIn").value.trim(), email = $("emailIn").value.trim();
+  const picks = [];
+  for (const g of S.lines){
+    const p = S.picks.get(g.qid);
+    if (p) picks.push({ qid: g.qid, side: p.side, choiceText: choiceText(g, p.side), isDouble: p.isDouble });
+  }
+  const payload = {
+    action: "submitPicks",
+    submissionId: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()),
+    week: S.week, name: name, email: email, picks: picks,
+    numPicks: parseInt($("numPicksIn").value, 10) || picks.length,
+    willDouble: $("willDoubleIn").checked || !!doubledPick(),
+    doubleQid: doubledPick() || ""
+  };
+  try {
+    const res = await apiPost(payload);
+    $("modalBack").classList.remove("show");
+    showSuccess(res, payload);
+    sendEmail(payload).catch(() => {});
+  } catch(e){
+    $("modalWarnings").innerHTML = '<div class="err">Submission failed: ' + escHtml(e.message) + '</div>' + $("modalWarnings").innerHTML;
+  } finally {
+    S.submitting = false;
+    $("modalConfirm").disabled = false;
+    $("modalConfirm").textContent = "Submit picks";
+  }
+}
+
+function showSuccess(res, payload){
+  const v = $("successView");
+  v.style.display = "";
+  v.innerHTML = '<div class="banner good" style="margin-top:26px"><b>Picks locked.</b> ' +
+    payload.picks.length + ' picks saved for ' + escHtml(payload.name) +
+    ' at ' + escHtml(etDateTime(res.timestamp)) + '. Confirmation #' + escHtml(String(res.submissionId).slice(0, 8)) +
+    '. You can change anything by resubmitting before the deadline &mdash; ' +
+    '<a href="summary.html?week=' + S.week + '" style="color:var(--accent)">see the board</a>.</div>';
+  v.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+async function sendEmail(payload){
+  if (!EMAILJS.publicKey || !payload.email) return;
+  if (!window.emailjs){
+    await new Promise((ok, no) => { const s = document.createElement("script");
+      s.src = "https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js";
+      s.onload = ok; s.onerror = no; document.head.appendChild(s); });
+    window.emailjs.init({ publicKey: EMAILJS.publicKey });
+  }
+  const list = payload.picks.map(p => p.qid + ": " + p.choiceText + (p.isDouble ? " (DOUBLE)" : "")).join("\n");
+  await window.emailjs.send(EMAILJS.serviceId, EMAILJS.templateId, {
+    to_email: payload.email, player: payload.name, week: String(payload.week),
+    pick_list: list, commitment: payload.numPicks + " picks, double: " + (payload.doubleQid || (payload.willDouble ? "promised" : "none"))
+  });
+}
+</script>
+</body>
+</html>

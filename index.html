@@ -184,28 +184,24 @@ footer .dot{color:var(--accent);margin:0 8px}
 
 </div>
 
+<script src="pool.js"></script>
 <script>
 /* ============================================================
    CONFIG -- edit these in one place.
    Links are all relative (same GitHub repo, no external URLs).
    ============================================================ */
-const ENTRY_FILE   = w => `2026EntryFormWeek${w}.html`;
-const SUMMARY_FILE = w => `2026PicksSummaryWeek${w}.html`;
+const ENTRY_FILE   = w => `entry.html?week=${w}`;
+const SUMMARY_FILE = w => `summary.html?week=${w}`;
 
 /* Registration cutoff: Sep 11, 2026 at 5:00 PM Eastern.
    September is EDT (UTC-4), so the offset below is correct. */
 const REGISTRATION_CLOSE = new Date("2026-09-11T17:00:00-04:00");
 const REGISTRATION_CLOSE_LABEL = "Sep 11, 2026";
 
-/* Schedule sheet (columns: Week | Begin Date).
-   Publish that tab to the web as CSV and paste the link here.
-   While blank, the page uses the fallback below. */
-const SCHEDULE_CSV_URL = "";
+/* Live data now comes from the Apps Script API configured in pool.js
+   (POOL_API). The fallbacks below render instantly and are replaced
+   the moment the API responds. */
 
-/* Past-champions sheet (columns: Year | Percent Winner | Percent | Most Wins Winner | Most Wins).
-   Publish that tab to the web as CSV and paste the link here.
-   While blank, the page uses the fallback below. */
-const HISTORY_CSV_URL = "";
 
 /* ---- Fallbacks (snapshots of your sheets; a live CSV URL overrides them) ---- */
 const FALLBACK_SCHEDULE = [
@@ -280,13 +276,19 @@ function setupRegistration(){
    before the season starts, that's Week 1 and it shows as not yet open. */
 function computeCurrentWeek(rows){
   const list = rows
-    .map(r => ({ week: parseInt(pick(r,["week"]),10), date: parseMDY(pick(r,["begin date","begindate","begin","date","start","start date"])) }))
+    .map(r => {
+      const raw = pick(r,["begin date","begindate","begin","date","start","start date"]);
+      let d = parseMDY(raw);
+      if(!d){ const ms = Date.parse(raw); if(!isNaN(ms)){ const t = new Date(ms); d = new Date(t.getFullYear(), t.getMonth(), t.getDate()); } }
+      return { week: parseInt(pick(r,["week"]),10), date: d, status: pick(r,["status"]).toLowerCase() };
+    })
     .filter(r => r.week && r.date)
     .sort((a,b) => a.date - b.date);
   if(!list.length) return null;
   const today = todayLocal();
-  let idx = 0;
-  for(let i=0;i<list.length;i++){ if(list[i].date <= today) idx = i; }
+  let idx = -1;
+  for(let i=0;i<list.length;i++){ if(list[i].status === "open") idx = i; }  /* Config Status is authoritative */
+  if(idx === -1){ idx = 0; for(let i=0;i<list.length;i++){ if(list[i].date <= today) idx = i; } }
   const cur = list[idx];
   cur.next = list[idx+1] || null;
   return cur;
@@ -295,7 +297,7 @@ function renderWeek(cur){
   const card = document.getElementById('weekCard');
   if(!cur){ card.innerHTML = '<span class="mq-loading">Schedule unavailable.</span>'; return; }
   const w = cur.week;
-  const isOpen = cur.date <= todayLocal();
+  const isOpen = cur.status ? cur.status === "open" : cur.date <= todayLocal();
   card.classList.toggle('is-closed', !isOpen);
 
   const statusPill = isOpen
@@ -324,12 +326,13 @@ function renderWeek(cur){
 }
 function loadSchedule(){
   renderWeek(computeCurrentWeek(FALLBACK_SCHEDULE)); /* instant */
-  if(!SCHEDULE_CSV_URL) return;
-  Papa.parse(bust(SCHEDULE_CSV_URL), {
-    download:true, header:true, skipEmptyLines:true, transformHeader:h => h.trim(),
-    complete:res => { const cur = computeCurrentWeek(res.data || []); if(cur) renderWeek(cur); },
-    error:err => console.warn("Schedule CSV unavailable; using fallback.", err)
-  });
+  if(typeof POOL_API !== "string" || POOL_API.indexOf("http") !== 0) return;
+  apiGet({ fn:"config" }).then(res => {
+    const rows = (res.config || []).map(r => ({
+      Week: String(r.week ?? ""), "Begin Date": String(r.begindate ?? ""), Status: String(r.status ?? "")
+    }));
+    const cur = computeCurrentWeek(rows); if(cur) renderWeek(cur);
+  }).catch(err => console.warn("Config API unavailable; using fallback.", err));
 }
 
 /* ---------- champions ---------- */
@@ -361,12 +364,14 @@ function renderChampions(rows){
 }
 function loadChampions(){
   renderChampions(mapHistory(FALLBACK_HISTORY)); /* instant preview */
-  if(!HISTORY_CSV_URL) return;
-  Papa.parse(bust(HISTORY_CSV_URL), {
-    download:true, header:true, skipEmptyLines:true, transformHeader:h => h.trim(),
-    complete:res => { try{ renderChampions(mapHistory(res.data || [])); }catch(e){ console.error(e); } },
-    error:err => { console.error(err); console.warn("Champions CSV unavailable; using fallback."); }
-  });
+  if(typeof POOL_API !== "string" || POOL_API.indexOf("http") !== 0) return;
+  apiGet({ fn:"history" }).then(res => {
+    const rows = (res.history || []).map(r => ({
+      Year: r.year ?? "", "Percent Winner": r.percentwinner ?? "", Percent: r.percent ?? "",
+      "Most Wins Winner": r.mostwinswinner ?? "", "Most Wins": r.mostwins ?? ""
+    }));
+    try{ renderChampions(mapHistory(rows)); }catch(e){ console.error(e); }
+  }).catch(err => console.warn("History API unavailable; using fallback.", err));
 }
 
 setupRegistration();
