@@ -46,8 +46,9 @@
     <div class="field-row">
       <div>
         <label class="lbl" for="numPicksIn">Total picks you're committing to this week</label>
-        <input type="number" id="numPicksIn" min="7" step="1">
-        <p style="color:var(--chalk-dim);font-size:.82rem;margin-top:6px">Minimum 7. You can resubmit to add picks later; each committed pick you never make counts as a loss.</p>
+        <input type="number" id="numPicksIn" min="7" max="12" step="1">
+        <p id="commitNote" style="display:none;color:var(--push);font-size:.82rem;margin-top:6px">Locked from your first submission — this is also your maximum number of picks.</p>
+        <p style="color:var(--chalk-dim);font-size:.82rem;margin-top:6px">7 to 12. This is both a promise and a cap: you can resubmit to add picks up to this number, and every committed pick you never make counts as a loss. It locks after your first submission.</p>
       </div>
       <div>
         <label class="lbl">Double</label>
@@ -97,14 +98,14 @@
    Template receives: to_email, player, week, pick_list, commitment */
 const EMAILJS = { publicKey: "", serviceId: "", templateId: "" };
 
-const MIN_PICKS = 7;
+const MIN_PICKS = 7, MAX_PICKS = 12, MIN_LEAGUE = 3;
 
 const S = {
   week: null, cfgRow: null, open: false,
   lines: [], roster: [],
   picks: new Map(),          // qid -> {side, isDouble}
   lockedSaved: new Map(),    // saved picks on games already kicked off (always resubmitted)
-  savedAt: "", submitting: false
+  savedAt: "", submitting: false, commitLocked: false
 };
 
 const $ = id => document.getElementById(id);
@@ -165,7 +166,7 @@ function renderStatus(){
   const el = $("statusBanner");
   if (S.open) {
     const dl = S.cfgRow.deadlineISO ? " Picks lock <b>" + escHtml(etDateTime(S.cfgRow.deadlineISO)) + "</b>." : "";
-    $("mastSub").innerHTML = "Pick against the spread. Minimum " + MIN_PICKS + " games, one optional double." + dl;
+    $("mastSub").innerHTML = "Pick against the spread. " + MIN_PICKS + "&ndash;" + MAX_PICKS + " games (3+ NFL, 3+ college), one optional double." + dl;
   } else {
     $("mastSub").textContent = "This week is not accepting picks.";
     el.innerHTML = '<div class="banner warn"><b>Week ' + S.week + ' is closed.</b> The board below is read-only. ' +
@@ -245,7 +246,24 @@ function onBoardClick(e){
     const qid = tb.dataset.qid, side = tb.dataset.side;
     const cur = S.picks.get(qid);
     if (cur && cur.side === side) S.picks.delete(qid);              // tap again to clear
-    else S.picks.set(qid, { side: side, isDouble: cur ? cur.isDouble : false });
+    else {
+      if (!cur && S.picks.size >= effCap()){
+        toast(S.commitLocked && effCap() < MAX_PICKS
+          ? "You committed to " + effCap() + " picks — that's your cap for this week."
+          : "Maximum " + MAX_PICKS + " picks — clear one to add another.");
+        return;
+      }
+      if (!cur){
+        const lg = leagueOf(qid);
+        if (lg && leagueCount(lg) >= leagueCap(lg)){
+          const other = lg === "NFL" ? "college" : "NFL";
+          toast("Max " + leagueCap(lg) + " " + (lg === "NFL" ? "NFL" : "college") +
+            " games with a total of " + effCap() + " — you need room for " + MIN_LEAGUE + " " + other + " picks.");
+          return;
+        }
+      }
+      S.picks.set(qid, { side: side, isDouble: cur ? cur.isDouble : false });
+    }
     repaintGame(qid); refreshTicket(); return;
   }
   const st = e.target.closest(".starbtn");
@@ -259,6 +277,20 @@ function onBoardClick(e){
     if (turningOn) $("willDoubleIn").checked = true;
     repaintGame(qid); refreshTicket();
   }
+}
+
+let toastTimer = null;
+function toast(msg){
+  let t = $("toastBox");
+  if (!t){
+    t = document.createElement("div"); t.id = "toastBox";
+    t.style.cssText = "position:fixed;left:50%;transform:translateX(-50%);bottom:110px;z-index:60;" +
+      "background:var(--surface-2);border:1px solid var(--push);color:var(--chalk);border-radius:11px;" +
+      "padding:10px 18px;font-size:.9rem;box-shadow:var(--shadow);max-width:90vw;text-align:center";
+    document.body.appendChild(t);
+  }
+  t.textContent = msg; t.style.display = "";
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.style.display = "none"; }, 2600);
 }
 
 function repaintGame(qid){
@@ -290,7 +322,8 @@ async function onNameChosen(){
     if (d){
       if (d.numpicks) $("numPicksIn").value = parseInt(d.numpicks, 10) || "";
       $("willDoubleIn").checked = String(d.willdouble).toUpperCase() === "TRUE";
-    }
+      if (d.numpicks) lockCommitment();
+    } else unlockCommitment();
     S.savedAt = latest;
     renderBoard(); refreshTicket();
     $("loadedBanner").innerHTML = '<div class="banner good">Loaded your <b>' + res.picks.length +
@@ -301,6 +334,18 @@ async function onNameChosen(){
 
 /* ---------------- ticket / declaration ---------------- */
 
+function lockCommitment(){
+  S.commitLocked = true;
+  const n = $("numPicksIn");
+  n.disabled = true;
+  $("commitNote").style.display = "";
+}
+function unlockCommitment(){
+  S.commitLocked = false;
+  $("numPicksIn").disabled = false;
+  $("commitNote").style.display = "none";
+}
+
 function wireDeclaration(){
   $("numPicksIn").addEventListener("input", refreshTicket);
   $("willDoubleIn").addEventListener("change", () => {
@@ -310,14 +355,38 @@ function wireDeclaration(){
   });
 }
 
+function effCap(){
+  if (S.commitLocked){
+    const c = parseInt($("numPicksIn").value, 10);
+    if (!isNaN(c) && c >= 1) return Math.min(MAX_PICKS, c);
+  }
+  return MAX_PICKS;
+}
+
+function leagueOf(qid){ const g = S.lines.find(x => x.qid === qid); return g ? g.league : ""; }
+function leagueCount(lg){ let n = 0; for (const q of S.picks.keys()) if (leagueOf(q) === lg) n++; return n; }
+/* Max picks in one league = total cap minus the 3-game reserve for the other
+   league (no reserve if the other league doesn't have 3 games this week). */
+function leagueCap(lg){
+  const other = lg === "NFL" ? "CFB" : "NFL";
+  const otherAvail = S.lines.filter(g => g.league === other).length;
+  return effCap() - (otherAvail >= MIN_LEAGUE ? MIN_LEAGUE : 0);
+}
+
 function doubledPick(){ for (const [q, p] of S.picks) if (p.isDouble) return q; return null; }
+function doubledTeamName(qid){
+  const g = S.lines.find(x => x.qid === qid), p = S.picks.get(qid);
+  if (!g || !p) return qid;
+  return p.side === "away" ? g.away : g.home;
+}
 
 function refreshTicket(){
-  $("tPicks").textContent = S.picks.size;
+  $("tPicks").textContent = S.commitLocked ? S.picks.size + " / " + effCap() : S.picks.size;
   const dq = doubledPick();
-  $("tDouble").textContent = dq ? "★ " + dq : ($("willDoubleIn").checked ? "Promised" : "None");
+  $("tDouble").textContent = dq ? "★ " + doubledTeamName(dq) : ($("willDoubleIn").checked ? "Promised" : "None");
   const n = $("numPicksIn");
-  if (!n.value || parseInt(n.value, 10) < S.picks.size) n.value = Math.max(MIN_PICKS, S.picks.size);
+  if (!S.commitLocked && (!n.value || parseInt(n.value, 10) < S.picks.size))
+    n.value = Math.min(MAX_PICKS, Math.max(MIN_PICKS, S.picks.size));
 }
 
 function tickClock(){
@@ -341,15 +410,35 @@ function validate(){
   else if (!S.roster.some(r => nameKey(r.name) === nameKey(name)))
     warns.push('"' + escHtml(name) + '" isn\'t on the roster — double-check the spelling.');
   if (!S.picks.size) errs.push("You haven't picked any games.");
+  const declared = parseInt($("numPicksIn").value, 10) || 0;
+  if (declared < MIN_PICKS) errs.push("Commit to at least " + MIN_PICKS + " picks.");
+  if (declared > MAX_PICKS) errs.push("Commitment can't exceed " + MAX_PICKS + " picks.");
+  if (S.picks.size > declared && declared) errs.push("You have " + S.picks.size + " picks but " +
+    (S.commitLocked ? "committed to only " : "a commitment of only ") + declared + " — remove " + (S.picks.size - declared) + ".");
+  if (S.picks.size > MAX_PICKS) errs.push("Maximum " + MAX_PICKS + " picks — remove " + (S.picks.size - MAX_PICKS) + ".");
+
+  // league minimums: hard once the card is complete-sized, advisory while partial.
+  // league maximums: commitment minus the 3-game reserve for the other league.
+  for (const [lg, label, otherLabel] of [["NFL", "NFL", "college"], ["CFB", "college", "NFL"]]){
+    const avail = S.lines.filter(g => g.league === lg).length;
+    const otherAvail = S.lines.filter(g => g.league === (lg === "NFL" ? "CFB" : "NFL")).length;
+    const made = [...S.picks.keys()].filter(q => leagueOf(q) === lg).length;
+    if (avail >= MIN_LEAGUE && made < MIN_LEAGUE){
+      const msg = "At least " + MIN_LEAGUE + " " + label + " games are required (you have " + made + ").";
+      if (S.picks.size >= MIN_PICKS) errs.push(msg);
+      else warns.push(msg + " Make sure your final card includes them.");
+    }
+    if (otherAvail >= MIN_LEAGUE && declared && made > declared - MIN_LEAGUE){
+      errs.push("With a commitment of " + declared + ", max " + (declared - MIN_LEAGUE) + " " + label +
+        " games (you have " + made + ") — you must leave room for " + MIN_LEAGUE + " " + otherLabel + " picks.");
+    }
+  }
+
   const missingReq = S.lines.filter(g => g.required && !g.locked && !S.picks.has(g.qid));
   if (missingReq.length) errs.push("Required game" + (missingReq.length > 1 ? "s" : "") + " not picked: " +
     missingReq.map(g => g.qid + " (" + escHtml(g.away) + " at " + escHtml(g.home) + ")").join(", "));
-  const declared = parseInt($("numPicksIn").value, 10) || 0;
-  if (declared < MIN_PICKS) errs.push("Commit to at least " + MIN_PICKS + " picks.");
-  if (S.picks.size < MIN_PICKS) warns.push("Only " + S.picks.size + " picks so far — you're committing to " + declared +
-    "; each one you never make counts as a loss.");
-  else if (declared > S.picks.size) warns.push("You're committing to " + declared + " picks but have made " + S.picks.size +
-    " — the shortfall counts as losses unless you resubmit with more.");
+  if (declared > S.picks.size) warns.push("You're committing to " + declared + " picks but have made " + S.picks.size +
+    " — the shortfall counts as losses unless you come back and make the rest.");
   if ($("willDoubleIn").checked && !doubledPick())
     warns.push("You promised a double but haven't starred a game — an unplaced double at week's end counts as a loss.");
   return { errs, warns };
@@ -405,6 +494,7 @@ async function submitPicks(){
   try {
     const res = await apiPost(payload);
     $("modalBack").classList.remove("show");
+    lockCommitment();
     showSuccess(res, payload);
     sendEmail(payload).catch(() => {});
   } catch(e){
