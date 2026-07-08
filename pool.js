@@ -4,7 +4,7 @@
    Every page (index, entry, summary) reads it from here.
    ============================================================ */
 
-const POOL_API = "https://script.google.com/macros/s/AKfycby8eze8GWpYq0Yssp1586tzf_st3W01t9gsdOI1v2YPhzkDUjXcQ0xyXyhZhReoRPM/exec";
+const POOL_API = "https://script.google.com/macros/s/AKfycbxH8EeSEDKfQV7yFv4bW3UaiR79WwwpRiUWG8TRN7dwynmsBgx1YhzGAISKekUTkSle/exec";
 
 const POOL_YEAR = 2026;
 
