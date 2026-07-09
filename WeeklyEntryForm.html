@@ -506,7 +506,7 @@ async function submitPicks(){
     $("modalBack").classList.remove("show");
     lockCommitment();
     showSuccess(res, payload);
-    sendEmail(payload).catch(() => {});
+    sendEmail(payload, res).catch(() => {});
   } catch(e){
     $("modalWarnings").innerHTML = '<div class="err">Submission failed: ' + escHtml(e.message) + '</div>' + $("modalWarnings").innerHTML;
   } finally {
@@ -527,7 +527,7 @@ function showSuccess(res, payload){
   v.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
-async function sendEmail(payload){
+async function sendEmail(payload, res){
   if (!EMAILJS.publicKey || !payload.email) return;
   if (!window.emailjs){
     await new Promise((ok, no) => { const s = document.createElement("script");
@@ -535,10 +535,31 @@ async function sendEmail(payload){
       s.onload = ok; s.onerror = no; document.head.appendChild(s); });
     window.emailjs.init({ publicKey: EMAILJS.publicKey });
   }
-  const list = payload.picks.map(p => p.qid + ": " + p.choiceText + (p.isDouble ? " (DOUBLE)" : "")).join("\n");
+  // pre-rendered table rows for the template's {{{pick_rows}}} slot
+  const rowStyle = 'padding:10px 6px;border-bottom:1px solid #eef1f6;font-family:Arial,Helvetica,sans-serif;font-size:14px;';
+  const pickRows = payload.picks.map(p => {
+    const g = S.lines.find(x => x.qid === p.qid);
+    const opp = g ? (p.side === "away" ? g.home : g.away) : "";
+    return '<tr>' +
+      '<td style="' + rowStyle + 'color:#f4581f;font-weight:bold;width:44px;">' + escHtml(p.qid) + '</td>' +
+      '<td style="' + rowStyle + 'color:#22314e;font-weight:bold;">' + escHtml(p.choiceText) +
+        (p.isDouble ? ' <span style="background-color:#e8c14b;color:#171003;font-size:10px;font-weight:bold;letter-spacing:1px;padding:2px 8px;border-radius:99px;">&#9733; DOUBLE</span>' : '') + '</td>' +
+      '<td style="' + rowStyle + 'color:#93a3bd;text-align:right;">over ' + escHtml(opp) + '</td></tr>';
+  }).join("");
+  const dq = payload.doubleQid;
+  const doubleText = dq ? "&#9733; " + escHtml(doubledTeamName(dq)) : (payload.willDouble ? "Promised" : "None");
+  const summaryUrl = new URL("Summary.html?week=" + payload.week, location.href).href;
   await window.emailjs.send(EMAILJS.serviceId, EMAILJS.templateId, {
-    to_email: payload.email, player: payload.name, week: String(payload.week),
-    pick_list: list, commitment: payload.numPicks + " picks, double: " + (payload.doubleQid || (payload.willDouble ? "promised" : "none"))
+    to_email: payload.email,
+    player: payload.name,
+    week: String(payload.week),
+    total_picks: String(payload.picks.length),
+    num_picks: String(payload.numPicks),
+    double_text: doubleText,
+    pick_rows: pickRows,
+    submitted_at: etDateTime(res && res.timestamp ? res.timestamp : new Date().toISOString()),
+    confirmation: String(res && res.submissionId ? res.submissionId : payload.submissionId).slice(0, 8),
+    summary_url: summaryUrl
   });
 }
 </script>
