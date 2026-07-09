@@ -211,8 +211,11 @@ function renderBoard(){
 }
 
 function tagFor(g, side){
-  if (g.favSide === side && !isNaN(g.line) && g.line > 0) return "-" + (g.line % 1 === 0 ? g.line.toFixed(0) : g.line);
   if (g.favSide === "pk" || g.spreadText.toUpperCase() === "PK") return "PK";
+  if (!isNaN(g.line) && g.line > 0 && (g.favSide === "away" || g.favSide === "home")){
+    const v = g.line % 1 === 0 ? g.line.toFixed(0) : String(g.line);
+    return (g.favSide === side ? "-" : "+") + v;
+  }
   return "";
 }
 
