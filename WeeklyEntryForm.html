@@ -57,7 +57,8 @@
           <span class="track"></span>
           <span class="sw-lbl" id="willDoubleLbl">I will play a double this week</span>
         </label>
-        <p style="color:var(--chalk-dim);font-size:.82rem;margin-top:8px">Tap the ★ on a picked game to place it. A promised double never placed counts as a loss.</p>
+        <p id="doubleNote" style="display:none;color:var(--push);font-size:.82rem;margin-top:8px">Locked from your first submission.</p>
+        <p style="color:var(--chalk-dim);font-size:.82rem;margin-top:8px">Tap the ★ on a picked game to place it. Your yes/no locks with your first submission, and a promised double never placed counts as a loss.</p>
       </div>
     </div>
   </section>
@@ -272,6 +273,10 @@ function onBoardClick(e){
     const cur = S.picks.get(qid);
     if (!cur) return;
     const turningOn = !cur.isDouble;
+    if (turningOn && S.commitLocked && !$("willDoubleIn").checked){
+      toast("Your first submission declared no double this week — one can't be added.");
+      return;
+    }
     for (const [q, pk] of S.picks) if (pk.isDouble){ pk.isDouble = false; repaintGame(q); }  // only one ★
     cur.isDouble = turningOn;
     if (turningOn) $("willDoubleIn").checked = true;
@@ -336,14 +341,17 @@ async function onNameChosen(){
 
 function lockCommitment(){
   S.commitLocked = true;
-  const n = $("numPicksIn");
-  n.disabled = true;
+  $("numPicksIn").disabled = true;
   $("commitNote").style.display = "";
+  $("willDoubleIn").disabled = true;
+  $("doubleNote").style.display = "";
 }
 function unlockCommitment(){
   S.commitLocked = false;
   $("numPicksIn").disabled = false;
   $("commitNote").style.display = "none";
+  $("willDoubleIn").disabled = false;
+  $("doubleNote").style.display = "none";
 }
 
 function wireDeclaration(){
@@ -441,6 +449,8 @@ function validate(){
     " — the shortfall counts as losses unless you come back and make the rest.");
   if ($("willDoubleIn").checked && !doubledPick())
     warns.push("You promised a double but haven't starred a game — an unplaced double at week's end counts as a loss.");
+  if (S.commitLocked && !$("willDoubleIn").checked && doubledPick())
+    errs.push("Your first submission declared no double this week — remove the ★.");
   return { errs, warns };
 }
 
