@@ -392,11 +392,18 @@ function personCardHtml(r){
     else if (win && win === pk.side) pill = '<span class="pill win">W' + (pk.isDouble ? "×2" : "") + '</span>';
     else if (win) pill = '<span class="pill loss">L' + (pk.isDouble ? "×2" : "") + '</span>';
     const txt = pk.choiceText || (g ? (pk.side === "away" ? g.away : g.home) : pk.side);
+    const kick = g && g.kickoffISO ? etDateTime(g.kickoffISO) : "—";
+    const matchup = g
+      ? escHtml(g.away) + ' <span style="color:var(--chalk-dim)">@</span> ' + escHtml(g.home) +
+        (g.spreadText ? ' <span style="color:var(--chalk-dim);font-size:.85em;white-space:nowrap">(' + escHtml(g.spreadText) + ')</span>' : '')
+      : escHtml(pk.qid);
     return '<tr><td data-label="Game">' + escHtml(pk.qid) + '</td>' +
-      '<td data-label="Pick">' + escHtml(txt) + (pk.isDouble ? " ★" : "") + '</td>' +
+      '<td data-label="Kickoff" style="white-space:nowrap;color:var(--chalk-dim)">' + escHtml(kick) + '</td>' +
+      '<td data-label="Matchup">' + matchup + '</td>' +
+      '<td data-label="Pick"><b>' + escHtml(txt) + '</b>' + (pk.isDouble ? " ★" : "") + '</td>' +
       '<td data-label="Result">' + pill + '</td></tr>';
   }).join("");
-  return note + '<table class="pool responsive"><thead><tr><th>Game</th><th>Pick</th><th>Result</th></tr></thead>' +
+  return note + '<table class="pool responsive"><thead><tr><th>Game</th><th>Kickoff</th><th>Matchup</th><th>Pick</th><th>Result</th></tr></thead>' +
     '<tbody>' + trs + '</tbody></table>';
 }
 
