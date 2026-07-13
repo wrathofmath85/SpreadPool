@@ -48,7 +48,8 @@
         <label class="lbl" for="numPicksIn">Total picks you're committing to this week</label>
         <input type="number" id="numPicksIn" min="7" max="12" step="1">
         <p id="commitNote" style="display:none;color:var(--push);font-size:.82rem;margin-top:6px">Locked from your first submission — this is also your maximum number of picks.</p>
-        <p style="color:var(--chalk-dim);font-size:.82rem;margin-top:6px">7 to 12. This is both a promise and a cap: you can resubmit to add picks up to this number, and every committed pick you never make counts as a loss. It locks after your first submission.</p>
+        <p id="completeNote" style="display:none;color:var(--win);font-size:.82rem;margin-top:6px">Full card — your commitment is exactly these picks.</p>
+        <p style="color:var(--chalk-dim);font-size:.82rem;margin-top:6px">Submit a full card (7&ndash;12 picks, 3+ NFL, 3+ college, required games) and this locks to your pick count automatically. Submitting a partial set? Declare your week's total here (7&ndash;12) &mdash; it becomes both your cap and your promise, and unmade picks count as losses. Either way it locks at your first submission.</p>
       </div>
       <div>
         <label class="lbl">Double</label>
@@ -167,7 +168,7 @@ function renderStatus(){
   const el = $("statusBanner");
   if (S.open) {
     const dl = S.cfgRow.deadlineISO ? " Picks lock <b>" + escHtml(etDateTime(S.cfgRow.deadlineISO)) + "</b>." : "";
-    $("mastSub").innerHTML = "Pick against the spread. " + MIN_PICKS + "&ndash;" + MAX_PICKS + " games (3+ NFL, 3+ college), one optional double." + dl;
+    $("mastSub").innerHTML = "Pick against the spread. Full card: " + MIN_PICKS + "&ndash;" + MAX_PICKS + " games with 3+ NFL and 3+ college. Submit anytime &mdash; even a partial set." + dl;
   } else {
     $("mastSub").textContent = "This week is not accepting picks.";
     el.innerHTML = '<div class="banner warn"><b>Week ' + S.week + ' is closed.</b> The board below is read-only. ' +
@@ -257,15 +258,7 @@ function onBoardClick(e){
           : "Maximum " + MAX_PICKS + " picks — clear one to add another.");
         return;
       }
-      if (!cur){
-        const lg = leagueOf(qid);
-        if (lg && leagueCount(lg) >= leagueCap(lg)){
-          const other = lg === "NFL" ? "college" : "NFL";
-          toast("Max " + leagueCap(lg) + " " + (lg === "NFL" ? "NFL" : "college") +
-            " games with a total of " + effCap() + " — you need room for " + MIN_LEAGUE + " " + other + " picks.");
-          return;
-        }
-      }
+
       S.picks.set(qid, { side: side, isDouble: cur ? cur.isDouble : false });
     }
     repaintGame(qid); refreshTicket(); return;
@@ -376,13 +369,25 @@ function effCap(){
 
 function leagueOf(qid){ const g = S.lines.find(x => x.qid === qid); return g ? g.league : ""; }
 function leagueCount(lg){ let n = 0; for (const q of S.picks.keys()) if (leagueOf(q) === lg) n++; return n; }
-/* Max picks in one league = total cap minus the 3-game reserve for the other
-   league (no reserve if the other league doesn't have 3 games this week). */
-function leagueCap(lg){
-  const other = lg === "NFL" ? "CFB" : "NFL";
-  const otherAvail = S.lines.filter(g => g.league === other).length;
-  return effCap() - (otherAvail >= MIN_LEAGUE ? MIN_LEAGUE : 0);
+
+/* The four "full card" boxes. skip=true means the rule doesn't apply this week. */
+function cardBoxes(){
+  const nflAvail = S.lines.filter(g => g.league === "NFL").length;
+  const cfbAvail = S.lines.filter(g => g.league === "CFB").length;
+  const reqAll = S.lines.filter(g => g.required);
+  const reqMissing = reqAll.filter(g => !S.picks.has(g.qid));
+  return [
+    { key:"total", skip:false, ok:S.picks.size >= MIN_PICKS,
+      label:"At least " + MIN_PICKS + " picks", detail:S.picks.size + " made" },
+    { key:"nfl", skip:nflAvail < MIN_LEAGUE, ok:leagueCount("NFL") >= MIN_LEAGUE,
+      label:"At least " + MIN_LEAGUE + " NFL", detail:leagueCount("NFL") + " made" },
+    { key:"cfb", skip:cfbAvail < MIN_LEAGUE, ok:leagueCount("CFB") >= MIN_LEAGUE,
+      label:"At least " + MIN_LEAGUE + " college", detail:leagueCount("CFB") + " made" },
+    { key:"req", skip:!reqAll.length, ok:reqMissing.length === 0,
+      label:"Required games", detail:reqMissing.length ? "missing " + reqMissing.map(g => g.qid).join(", ") : "all picked" }
+  ];
 }
+function isFullCard(){ return cardBoxes().every(b => b.skip || b.ok); }
 
 function doubledPick(){ for (const [q, p] of S.picks) if (p.isDouble) return q; return null; }
 function doubledTeamName(qid){
@@ -396,8 +401,16 @@ function refreshTicket(){
   const dq = doubledPick();
   $("tDouble").textContent = dq ? "★ " + doubledTeamName(dq) : ($("willDoubleIn").checked ? "Promised" : "None");
   const n = $("numPicksIn");
-  if (!S.commitLocked && (!n.value || parseInt(n.value, 10) < S.picks.size))
-    n.value = Math.min(MAX_PICKS, Math.max(MIN_PICKS, S.picks.size));
+  if (!S.commitLocked){
+    if (isFullCard()){
+      n.value = S.picks.size; n.disabled = true;
+      $("completeNote").style.display = "";
+    } else {
+      n.disabled = false; $("completeNote").style.display = "none";
+      if (!n.value || parseInt(n.value, 10) < Math.max(MIN_PICKS, S.picks.size))
+        n.value = Math.min(MAX_PICKS, Math.max(MIN_PICKS, S.picks.size));
+    }
+  }
 }
 
 function tickClock(){
@@ -421,50 +434,50 @@ function validate(){
   else if (!S.roster.some(r => nameKey(r.name) === nameKey(name)))
     warns.push('"' + escHtml(name) + '" isn\'t on the roster — double-check the spelling.');
   if (!S.picks.size) errs.push("You haven't picked any games.");
-  const declared = parseInt($("numPicksIn").value, 10) || 0;
-  if (declared < MIN_PICKS) errs.push("Commit to at least " + MIN_PICKS + " picks.");
-  if (declared > MAX_PICKS) errs.push("Commitment can't exceed " + MAX_PICKS + " picks.");
-  if (S.picks.size > declared && declared) errs.push("You have " + S.picks.size + " picks but " +
-    (S.commitLocked ? "committed to only " : "a commitment of only ") + declared + " — remove " + (S.picks.size - declared) + ".");
   if (S.picks.size > MAX_PICKS) errs.push("Maximum " + MAX_PICKS + " picks — remove " + (S.picks.size - MAX_PICKS) + ".");
 
-  // league minimums: hard once the card is complete-sized, advisory while partial.
-  // league maximums: commitment minus the 3-game reserve for the other league.
-  for (const [lg, label, otherLabel] of [["NFL", "NFL", "college"], ["CFB", "college", "NFL"]]){
-    const avail = S.lines.filter(g => g.league === lg).length;
-    const otherAvail = S.lines.filter(g => g.league === (lg === "NFL" ? "CFB" : "NFL")).length;
-    const made = [...S.picks.keys()].filter(q => leagueOf(q) === lg).length;
-    if (avail >= MIN_LEAGUE && made < MIN_LEAGUE){
-      const msg = "At least " + MIN_LEAGUE + " " + label + " games are required (you have " + made + ").";
-      if (S.picks.size >= MIN_PICKS) errs.push(msg);
-      else warns.push(msg + " Make sure your final card includes them.");
-    }
-    if (otherAvail >= MIN_LEAGUE && declared && made > declared - MIN_LEAGUE){
-      errs.push("With a commitment of " + declared + ", max " + (declared - MIN_LEAGUE) + " " + label +
-        " games (you have " + made + ") — you must leave room for " + MIN_LEAGUE + " " + otherLabel + " picks.");
-    }
+  const declared = parseInt($("numPicksIn").value, 10) || 0;
+  if (S.commitLocked){
+    if (S.picks.size > effCap()) errs.push("You're locked at " + effCap() + " picks — remove " + (S.picks.size - effCap()) + ".");
+    if (!$("willDoubleIn").checked && doubledPick())
+      errs.push("Your first submission declared no double this week — remove the ★.");
+  } else if (!isFullCard()){
+    if (declared < MIN_PICKS || declared > MAX_PICKS)
+      errs.push("Declare how many picks you'll make this week (" + MIN_PICKS + "–" + MAX_PICKS + ").");
+    else if (declared < S.picks.size)
+      errs.push("Your declaration (" + declared + ") is less than the " + S.picks.size + " picks you've made.");
   }
 
-  const missingReq = S.lines.filter(g => g.required && !g.locked && !S.picks.has(g.qid));
-  if (missingReq.length) errs.push("Required game" + (missingReq.length > 1 ? "s" : "") + " not picked: " +
-    missingReq.map(g => g.qid + " (" + escHtml(g.away) + " at " + escHtml(g.home) + ")").join(", "));
-  if (declared > S.picks.size) warns.push("You're committing to " + declared + " picks but have made " + S.picks.size +
+  // the four boxes are advisory — they decide lock-vs-declare, never block
+  for (const b of cardBoxes()){
+    if (b.skip || b.ok) continue;
+    warns.push(b.label + " — " + b.detail + ". Your final card should check this box.");
+  }
+  if (declared > S.picks.size) warns.push("You're committed to " + declared + " picks but have made " + S.picks.size +
     " — the shortfall counts as losses unless you come back and make the rest.");
   if ($("willDoubleIn").checked && !doubledPick())
     warns.push("You promised a double but haven't starred a game — an unplaced double at week's end counts as a loss.");
-  if (S.commitLocked && !$("willDoubleIn").checked && doubledPick())
-    errs.push("Your first submission declared no double this week — remove the ★.");
   return { errs, warns };
 }
 
 function openReview(){
   const { errs, warns } = validate();
-  $("modalWarnings").innerHTML =
+  const declared = parseInt($("numPicksIn").value, 10) || 0;
+  const dq = doubledPick();
+  const doubleWord = dq ? "a double on " + escHtml(doubledTeamName(dq)) : ($("willDoubleIn").checked ? "a double (not placed yet)" : "no double");
+  const boxesHtml = '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">' +
+    cardBoxes().filter(b => !b.skip).map(b =>
+      '<span class="pill ' + (b.ok ? "win" : "locked") + '">' + (b.ok ? "✓ " : "○ ") + b.label + '</span>').join("") + '</div>';
+  const lockLine = S.commitLocked
+    ? "Your locked declaration: <b>" + declared + " picks</b>, <b>" + doubleWord + "</b>."
+    : (isFullCard()
+        ? "Full card — submitting <b>locks you in at " + S.picks.size + " picks</b> and <b>" + doubleWord + "</b> for the week."
+        : "Partial card — submitting <b>locks your declaration: " + declared + " picks</b> and <b>" + doubleWord + "</b>. Come back to finish before the deadline.");
+  $("modalWarnings").innerHTML = boxesHtml +
+    '<div class="warn" style="border-color:var(--line);background:rgba(255,255,255,.04)">' + lockLine + '</div>' +
     errs.map(e => '<div class="err">' + e + '</div>').join("") +
     warns.map(w => '<div class="warn">' + w + '</div>').join("");
-  const declared = parseInt($("numPicksIn").value, 10) || 0;
-  $("modalSub").innerHTML = "Week " + S.week + " &middot; <b>" + S.picks.size + "</b> picks &middot; committing to <b>" +
-    declared + "</b> &middot; double: <b>" + (doubledPick() || ($("willDoubleIn").checked ? "promised" : "none")) + "</b>";
+  $("modalSub").innerHTML = "Week " + S.week + " &middot; <b>" + S.picks.size + "</b> picks";
   const items = [];
   for (const g of S.lines){
     const p = S.picks.get(g.qid);
