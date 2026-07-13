@@ -37,27 +37,18 @@
     </section>
     <div id="simBanner"></div>
 
+    <!-- standings (week/season toggle, expandable player rows) -->
+    <div class="section-head"><h2>Standings</h2><span class="rule"></span>
+      <span style="display:flex;gap:8px">
+        <button class="btn small primary" id="modeWeek">This Week</button>
+        <button class="btn small" id="modeSeason">Season</button>
+      </span>
+    </div>
+    <p id="standMeta" style="color:var(--chalk-dim);font-size:.82rem;margin:-6px 0 12px"></p>
+    <div id="standRows"></div>
+
     <!-- games -->
     <div id="gamesBoard"></div>
-
-    <!-- standings -->
-    <div class="section-head"><h2>This Week</h2><span class="rule"></span><span class="count" id="wkMeta"></span></div>
-    <section class="card" style="overflow:hidden">
-      <table class="pool responsive"><thead><tr>
-        <th>#</th><th>Player</th><th class="num">W</th><th class="num">L</th><th class="num">T</th><th class="num">Win %</th><th>Double</th>
-      </tr></thead><tbody id="weekBody"></tbody></table>
-    </section>
-
-    <div class="section-head"><h2>Season</h2><span class="rule"></span><span class="count" id="seasonMeta"></span></div>
-    <section class="card" style="overflow:hidden">
-      <table class="pool responsive"><thead><tr>
-        <th>#</th><th>Player</th><th class="num">W</th><th class="num">L</th><th class="num">T</th><th class="num">Win %</th>
-      </tr></thead><tbody id="seasonBody"></tbody></table>
-    </section>
-
-    <!-- player cards -->
-    <div class="section-head"><h2>Every Card</h2><span class="rule"></span><span class="count" id="cardsMeta"></span></div>
-    <div id="cards"></div>
 
     <p style="color:var(--chalk-dim);font-size:.8rem;margin:18px 0 0" id="refreshNote"></p>
   </div>
@@ -89,6 +80,7 @@ const S = {
   revealed: false,
   overrides: new Map(),   // qid -> 'away'|'home'|'tie'  (simulated / admin-pending)
   simMode: false, adminMode: false, adminPw: "",
+  standMode: "week", expanded: new Set(),
   me: qsParam("name") || ""
 };
 const $ = id => document.getElementById(id);
@@ -176,7 +168,6 @@ function render(first){
   fillMeSelect();
   renderGames();
   renderStandings();
-  renderCards();
   $("refreshNote").textContent = "Board refreshes automatically. Last updated " + new Date().toLocaleTimeString();
 }
 
@@ -310,6 +301,7 @@ function scoreWeek(){
       const wt = p.isDouble ? DOUBLE_WEIGHT : 1;
       if (win === "tie") t += wt; else if (win === p.side) w += wt; else l += wt;
     }
+    const teamOf = p => { const g = lineByQid.get(p.qid); return g ? (p.side === "away" ? g.away : g.home) : p.qid; };
     let doubleTxt = "—";
     if (ent){
       const d = declByName.get(k);
@@ -317,99 +309,111 @@ function scoreWeek(){
       if (d){
         if (!isNaN(d.numPicks) && d.numPicks) l += Math.max(0, d.numPicks - ent.picks.length);
         if (d.willDouble && !starred) l += 1;
-        doubleTxt = starred ? "★ " + starred.qid : (d.willDouble ? "promised" : "none");
-      } else doubleTxt = starred ? "★ " + starred.qid : "none";
+        doubleTxt = starred ? "★ " + teamOf(starred) : (d.willDouble ? "promised" : "none");
+      } else doubleTxt = starred ? "★ " + teamOf(starred) : "none";
     } else doubleTxt = "defaults";
-    out.push({ name: person.name, submitted: !!ent, w, l, t, doubleTxt,
+    out.push({ name: person.name, submitted: !!ent, w, l, t, doubleTxt, picks: picks,
       pct: (w + l) ? w / (w + l) : 0 });
   }
   return out;
 }
 
 function renderStandings(){
-  const rows = scoreWeek().sort((a, b) => b.pct - a.pct || b.w - a.w || a.name.localeCompare(b.name));
+  const weekRows = scoreWeek();
   const sim = S.overrides.size > 0;
-  $("wkMeta").textContent = sim ? "includes " + S.overrides.size + " simulated result(s)" : "official results only";
-  $("weekBody").innerHTML = rows.map((r, i) =>
-    '<tr class="' + (nameKey(r.name) === nameKey($("meSel").value) ? "me" : "") + '">' +
-    '<td data-label="#" class="num">' + (i + 1) + '</td>' +
-    '<td data-label="Player">' + escHtml(r.name) + (r.submitted ? "" : ' <span class="pill locked">defaults</span>') + '</td>' +
-    '<td data-label="W" class="num">' + r.w + '</td><td data-label="L" class="num">' + r.l + '</td>' +
-    '<td data-label="T" class="num">' + r.t + '</td>' +
-    '<td data-label="Win %" class="num">' + (r.w + r.l ? (100 * r.pct).toFixed(1) + "%" : "—") + '</td>' +
-    '<td data-label="Double">' + escHtml(r.doubleTxt) + '</td></tr>').join("");
 
-  // season = stored WeeklyResults for past weeks + this week live
+  // season totals = stored past weeks + this week live
   const season = new Map();
   for (const r of S.weekly){
-    if (String(r.week) === String(S.week)) continue;   // live-computed below
+    if (String(r.week) === String(S.week)) continue;
     const k = nameKey(r.name);
-    if (!season.has(k)) season.set(k, { name: String(r.name), w: 0, l: 0, t: 0 });
+    if (!season.has(k)) season.set(k, { w: 0, l: 0, t: 0 });
     const s = season.get(k);
     s.w += parseInt(r.w, 10) || 0; s.l += parseInt(r.l, 10) || 0; s.t += parseInt(r.t, 10) || 0;
   }
-  for (const r of rows){
+  const rows = weekRows.map(r => {
     const k = nameKey(r.name);
-    if (!season.has(k)) season.set(k, { name: r.name, w: 0, l: 0, t: 0 });
-    const s = season.get(k); s.w += r.w; s.l += r.l; s.t += r.t;
-  }
-  const list = [...season.values()].map(s => Object.assign(s, { pct: (s.w + s.l) ? s.w / (s.w + s.l) : 0 }))
-    .sort((a, b) => b.pct - a.pct || b.w - a.w || a.name.localeCompare(b.name));
-  $("seasonMeta").textContent = "through week " + S.week + (sim ? " (with simulations)" : "");
-  $("seasonBody").innerHTML = list.map((s, i) =>
-    '<tr class="' + (nameKey(s.name) === nameKey($("meSel").value) ? "me" : "") + '">' +
-    '<td data-label="#" class="num">' + (i + 1) + '</td><td data-label="Player">' + escHtml(s.name) + '</td>' +
-    '<td data-label="W" class="num">' + s.w + '</td><td data-label="L" class="num">' + s.l + '</td>' +
-    '<td data-label="T" class="num">' + s.t + '</td>' +
-    '<td data-label="Win %" class="num">' + (s.w + s.l ? (100 * s.pct).toFixed(1) + "%" : "—") + '</td></tr>').join("");
-}
+    const past = season.get(k) || { w: 0, l: 0, t: 0 };
+    const sw = past.w + r.w, sl = past.l + r.l, st = past.t + r.t;
+    return Object.assign({}, r, { sw, sl, st, spct: (sw + sl) ? sw / (sw + sl) : 0 });
+  });
 
-/* ---------------- player cards ---------------- */
+  const mode = S.standMode;
+  rows.sort(mode === "week"
+    ? ((a, b) => b.pct - a.pct || b.w - a.w || a.name.localeCompare(b.name))
+    : ((a, b) => b.spct - a.spct || b.sw - a.sw || a.name.localeCompare(b.name)));
 
-function renderCards(){
-  const lineByQid = new Map(S.lines.map(g => [g.qid, g]));
-  const byName = new Map();
-  for (const p of S.picks){
-    const k = nameKey(p.name);
-    if (!byName.has(k)) byName.set(k, { name: p.name, picks: [] });
-    byName.get(k).picks.push(p);
-  }
+  $("modeWeek").classList.toggle("primary", mode === "week");
+  $("modeSeason").classList.toggle("primary", mode === "season");
+  $("standMeta").textContent = (mode === "week"
+    ? "Week " + S.week + (sim ? " — includes " + S.overrides.size + " simulated result(s)" : " — official results only")
+    : "Season through week " + S.week + (sim ? " (with simulations)" : "")) +
+    ". Tap a player to see their week " + S.week + " card.";
+
   const q = nameKey($("searchIn").value);
   const me = nameKey($("meSel").value);
-  const people = [...byName.values()].sort((a, b) => a.name.localeCompare(b.name))
-    .filter(p => !q || nameKey(p.name).includes(q));
-  $("cardsMeta").textContent = people.length + " players";
-  $("cards").innerHTML = people.map(p => {
-    let w = 0, l = 0, t = 0;
-    const rows = p.picks.map(pk => {
-      const g = lineByQid.get(pk.qid);
-      const win = g ? effWinner(g) : "";
-      const wt = pk.isDouble ? DOUBLE_WEIGHT : 1;
-      let pill = '<span class="pill locked">TBD</span>';
-      if (win === "tie"){ t += wt; pill = '<span class="pill push">Push</span>'; }
-      else if (win && win === pk.side){ w += wt; pill = '<span class="pill win">W' + (pk.isDouble ? "×2" : "") + '</span>'; }
-      else if (win){ l += wt; pill = '<span class="pill loss">L' + (pk.isDouble ? "×2" : "") + '</span>'; }
-      return '<tr><td data-label="Game">' + pk.qid + '</td>' +
-        '<td data-label="Pick">' + escHtml(pk.choiceText || pk.side) + (pk.isDouble ? " ★" : "") + '</td>' +
-        '<td data-label="Result">' + pill + '</td></tr>';
-    }).join("");
-    const isMe = me && nameKey(p.name) === me;
-    return '<div class="pcard' + (isMe ? " me openc" : "") + '">' +
-      '<div class="pcard-head" onclick="this.parentElement.classList.toggle(\'openc\')">' +
-        '<span class="caret">▶</span><span class="nm">' + escHtml(p.name) + '</span>' +
-        '<span class="rec">' + w + '-' + l + '-' + t + '</span>' +
-        '<span class="pill ' + (w >= l ? "win" : "loss") + '">' + (w + l ? (100 * w / (w + l)).toFixed(0) + "%" : "—") + '</span>' +
+  const shown = rows.filter(r => !q || nameKey(r.name).includes(q));
+
+  $("standRows").innerHTML = shown.map((r, i) => {
+    const k = nameKey(r.name);
+    const isMe = me && k === me;
+    const rec = mode === "week" ? r.w + "-" + r.l + "-" + r.t : r.sw + "-" + r.sl + "-" + r.st;
+    const pct = mode === "week"
+      ? (r.w + r.l ? (100 * r.pct).toFixed(1) + "%" : "—")
+      : (r.sw + r.sl ? (100 * r.spct).toFixed(1) + "%" : "—");
+    const good = mode === "week" ? r.w >= r.l : r.sw >= r.sl;
+    const dbl = mode === "week"
+      ? '<span style="font-family:Oswald;font-size:.78rem;color:var(--chalk-dim);white-space:nowrap">' + escHtml(r.doubleTxt) + '</span>'
+      : '';
+    return '<div class="pcard' + (isMe ? " me" : "") + (S.expanded.has(k) ? " openc" : "") + '" data-person="' + escHtml(k) + '">' +
+      '<div class="pcard-head">' +
+        '<span class="caret">▶</span>' +
+        '<span style="font-family:Oswald;color:var(--chalk-dim);min-width:26px">' + (i + 1) + '</span>' +
+        '<span class="nm">' + escHtml(r.name) + (r.submitted ? "" : ' <span class="pill locked">defaults</span>') + '</span>' +
+        dbl +
+        '<span class="rec">' + rec + '</span>' +
+        '<span class="pill ' + (good ? "win" : "loss") + '">' + pct + '</span>' +
       '</div>' +
-      '<div class="pcard-body"><table class="pool responsive"><thead><tr><th>Game</th><th>Pick</th><th>Result</th></tr></thead>' +
-      '<tbody>' + rows + '</tbody></table></div></div>';
-  }).join("") || '<div class="state-msg">No cards match.</div>';
+      '<div class="pcard-body">' + (S.expanded.has(k) ? personCardHtml(r) : '') + '</div>' +
+    '</div>';
+  }).join("") || '<div class="state-msg">No players match.</div>';
+}
+
+/* One person's week card (used inside an expanded standings row) */
+function personCardHtml(r){
+  const lineByQid = new Map(S.lines.map(g => [g.qid, g]));
+  const note = r.submitted ? "" :
+    '<p style="color:var(--chalk-dim);font-size:.82rem;padding:10px 16px 0">No submission — scored on the default favorites.</p>';
+  const trs = r.picks.map(pk => {
+    const g = lineByQid.get(pk.qid);
+    const win = g ? effWinner(g) : "";
+    let pill = '<span class="pill locked">TBD</span>';
+    if (win === "tie") pill = '<span class="pill push">Push</span>';
+    else if (win && win === pk.side) pill = '<span class="pill win">W' + (pk.isDouble ? "×2" : "") + '</span>';
+    else if (win) pill = '<span class="pill loss">L' + (pk.isDouble ? "×2" : "") + '</span>';
+    const txt = pk.choiceText || (g ? (pk.side === "away" ? g.away : g.home) : pk.side);
+    return '<tr><td data-label="Game">' + escHtml(pk.qid) + '</td>' +
+      '<td data-label="Pick">' + escHtml(txt) + (pk.isDouble ? " ★" : "") + '</td>' +
+      '<td data-label="Result">' + pill + '</td></tr>';
+  }).join("");
+  return note + '<table class="pool responsive"><thead><tr><th>Game</th><th>Pick</th><th>Result</th></tr></thead>' +
+    '<tbody>' + trs + '</tbody></table>';
 }
 
 /* ---------------- controls / admin ---------------- */
 
 function wireControls(){
-  $("searchIn").addEventListener("input", renderCards);
+  $("searchIn").addEventListener("input", renderStandings);
   $("meSel").addEventListener("change", () => { S.me = $("meSel").value; render(false); });
+  $("modeWeek").addEventListener("click", () => { S.standMode = "week"; renderStandings(); });
+  $("modeSeason").addEventListener("click", () => { S.standMode = "season"; renderStandings(); });
+  $("standRows").addEventListener("click", e => {
+    const card = e.target.closest(".pcard[data-person]");
+    if (!card || !e.target.closest(".pcard-head")) return;
+    const k = card.dataset.person;
+    if (S.expanded.has(k)) S.expanded.delete(k); else S.expanded.add(k);
+    renderStandings();
+  });
   $("simBtn").addEventListener("click", () => {
     S.simMode = !S.simMode;
     if (!S.simMode && !S.adminMode) S.overrides.clear();
