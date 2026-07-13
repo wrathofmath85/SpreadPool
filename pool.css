@@ -55,6 +55,7 @@ h1.mast-title .yr{color:transparent;-webkit-text-stroke:2px var(--accent);backgr
 .pill.closed{color:var(--chalk-dim);background:rgba(255,255,255,.06);border:1px solid var(--line)}
 .pill.req{color:#0a1426;background:var(--push)}
 .pill.locked{color:var(--chalk-dim);background:rgba(255,255,255,.05);border:1px dashed var(--line)}
+.pill.kicked{color:#06120b;background:var(--win);box-shadow:0 0 10px -2px rgba(79,206,133,.6)}
 .pill.win{color:#06120b;background:var(--win)}
 .pill.loss{color:#1c0906;background:var(--danger)}
 .pill.push{color:#171003;background:var(--push)}
