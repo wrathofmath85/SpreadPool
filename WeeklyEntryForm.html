@@ -239,7 +239,7 @@ function gameHtml(g){
       (g.tv ? '<span>' + escHtml(g.tv) + '</span>' : '') +
       (g.loc ? '<span>' + escHtml(g.loc) + '</span>' : '') +
       (g.required ? '<span class="pill req">Required</span>' : '') +
-      (g.locked ? '<span class="pill locked">Locked — kicked off</span>' : '') +
+      (g.locked ? '<span class="pill kicked">Locked — kicked off</span>' : '') +
     '</div>' +
     '<div class="game-row">' + btn("away") + '<span class="at">at</span>' + btn("home") + star + '</div>' +
   '</div>';
@@ -484,7 +484,7 @@ function openReview(){
     if (!p) continue;
     items.push('<div style="display:flex;justify-content:space-between;gap:12px;padding:7px 2px;border-bottom:1px solid rgba(40,64,107,.4);font-size:.92rem">' +
       '<span><span style="color:var(--accent);font-family:Oswald">' + g.qid + '</span> &nbsp;' + escHtml(choiceText(g, p.side)) +
-      (p.isDouble ? ' <span class="pill req">★ Double</span>' : '') + (g.locked ? ' <span class="pill locked">locked</span>' : '') +
+      (p.isDouble ? ' <span class="pill req">★ Double</span>' : '') + (g.locked ? ' <span class="pill kicked">locked</span>' : '') +
       '</span><span style="color:var(--chalk-dim)">over ' + escHtml(p.side === "away" ? g.home : g.away) + '</span></div>');
   }
   $("modalList").innerHTML = items.join("");
