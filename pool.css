@@ -197,3 +197,44 @@ footer.site .dot{color:var(--accent);margin:0 8px}
 @media (prefers-reduced-motion: reduce){
   *{transition:none !important;animation:none !important}
 }
+
+
+/* ============================================================
+   MOBILE POLISH (additive) — picks table + small-screen layout
+   ============================================================ */
+@media(max-width:640px){
+  /* Expanded player card: each pick becomes a 3-line mini-card
+     Line 1: QID ......... kickoff
+     Line 2: matchup (wraps freely)
+     Line 3: pick ......... result pill */
+  table.pool.picks{display:block;width:100%}
+  table.pool.picks thead{display:none}
+  table.pool.picks tbody{display:block}
+  table.pool.picks tbody tr{
+    display:grid;
+    grid-template-columns:auto 1fr auto;
+    grid-template-areas:"game kick kick" "match match match" "pick pick result";
+    gap:3px 12px;padding:12px 16px;border-bottom:1px solid rgba(40,64,107,.45)}
+  table.pool.picks tbody tr:last-child{border-bottom:0}
+  table.pool.picks tbody td{display:block;border:0;padding:0;font-size:.92rem;text-align:left}
+  table.pool.picks tbody td::before{content:none}
+  table.pool.picks td:nth-child(1){grid-area:game;font-family:'Oswald',sans-serif;font-weight:700;color:var(--accent);letter-spacing:.06em}
+  table.pool.picks td:nth-child(2){grid-area:kick;text-align:right;color:var(--chalk-dim);font-size:.76rem;white-space:normal !important;align-self:center}
+  table.pool.picks td:nth-child(3){grid-area:match;font-size:.88rem;padding-top:2px;overflow-wrap:anywhere}
+  table.pool.picks td:nth-child(4){grid-area:pick;font-size:.98rem;padding-top:5px;align-self:center;overflow-wrap:anywhere}
+  table.pool.picks td:nth-child(5){grid-area:result;text-align:right;align-self:center;padding-top:5px}
+
+  /* standings row header: let it wrap instead of squeezing */
+  .pcard-head{flex-wrap:wrap;gap:6px 10px;padding:12px 14px}
+  .pcard-head .nm{flex:1 1 auto;min-width:0;overflow-wrap:anywhere}
+  .pcard-head .rec{font-size:.95rem}
+
+  /* section-head button clusters (This Week/Season, Record/A–Z) */
+  .section-head{flex-wrap:wrap;row-gap:10px}
+  .section-head .btn.small{padding:7px 12px;font-size:.7rem;letter-spacing:.08em}
+
+  /* sticky footer can wrap to two lines on phones — leave room for it */
+  body.has-ticket{padding-bottom:140px}
+  .ticket-in{padding:10px 16px;gap:10px 16px}
+  .ticket .stat b{font-size:.98rem}
+}

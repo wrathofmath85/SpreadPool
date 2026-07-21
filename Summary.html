@@ -437,7 +437,7 @@ function personCardHtml(r){
       '<td data-label="Pick"><b>' + escHtml(txt) + '</b>' + (pk.isDouble ? " ★" : "") + '</td>' +
       '<td data-label="Result">' + pill + '</td></tr>';
   }).join("");
-  return note + '<table class="pool responsive"><thead><tr><th>Game</th><th>Kickoff</th><th>Matchup</th><th>Pick</th><th>Result</th></tr></thead>' +
+  return note + '<table class="pool picks"><thead><tr><th>Game</th><th>Kickoff</th><th>Matchup</th><th>Pick</th><th>Result</th></tr></thead>' +
     '<tbody>' + trs + '</tbody></table>';
 }
 
