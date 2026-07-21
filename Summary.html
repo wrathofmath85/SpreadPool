@@ -22,26 +22,16 @@
 
   <div id="revealed" style="display:none">
 
-    <!-- controls -->
-    <section class="card card-pad" style="display:flex;gap:14px;flex-wrap:wrap;align-items:end">
-      <div style="flex:1;min-width:200px">
-        <label class="lbl" for="meSel">Highlight my card</label>
-        <select id="meSel"><option value="">— choose your name —</option></select>
-      </div>
-      <div style="flex:1;min-width:200px">
-        <label class="lbl" for="searchIn">Find a player</label>
-        <input type="text" id="searchIn" placeholder="Type a name…">
-      </div>
-      <button class="btn" id="simBtn">What-if mode: off</button>
-      <button class="btn" id="adminBtn">Admin</button>
-    </section>
     <div id="simBanner"></div>
 
     <!-- standings (week/season toggle, expandable player rows) -->
     <div class="section-head"><h2>Standings</h2><span class="rule"></span>
-      <span style="display:flex;gap:8px">
+      <span style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn small primary" id="modeWeek">This Week</button>
         <button class="btn small" id="modeSeason">Season</button>
+        <span style="width:10px"></span>
+        <button class="btn small primary" id="sortRecord">Record</button>
+        <button class="btn small" id="sortAlpha">A&ndash;Z</button>
       </span>
     </div>
     <p id="standMeta" style="color:var(--chalk-dim);font-size:.82rem;margin:-6px 0 12px"></p>
@@ -53,6 +43,17 @@
     <p style="color:var(--chalk-dim);font-size:.8rem;margin:18px 0 0" id="refreshNote"></p>
   </div>
 </main>
+
+<!-- pool footer -->
+<div class="ticket" id="poolTicket" style="display:none">
+  <div class="ticket-in">
+    <div class="stat">Pool &mdash; Week <span id="tWkNum"></span><b id="tWeekRec">&mdash;</b></div>
+    <div class="stat">Pool &mdash; Season<b id="tSeasonRec">&mdash;</b></div>
+    <div class="spacer"></div>
+    <button class="btn small ghost" id="clearSimBtn" style="display:none">Reset what-ifs</button>
+    <button class="btn small" id="adminBtn">Admin</button>
+  </div>
+</div>
 
 <!-- admin password modal -->
 <div class="modal-back" id="pwBack">
@@ -79,9 +80,9 @@ const S = {
   lines: [], picks: [], decls: [], roster: [], weekly: [],
   revealed: false,
   overrides: new Map(),   // qid -> 'away'|'home'|'tie'  (simulated / admin-pending)
-  simMode: false, adminMode: false, adminPw: "",
-  standMode: "week", expanded: new Set(),
-  me: qsParam("name") || ""
+  adminMode: false, adminPw: "",
+  standMode: "week", sortMode: "record", expanded: new Set(),
+
 };
 const $ = id => document.getElementById(id);
 
@@ -157,6 +158,8 @@ function render(first){
         if (Date.parse(S.cfgRow.revealISO) <= Date.now()){ clearInterval(t); loadAll(false); }
       }, 1000);
     }
+    document.body.classList.remove("has-ticket");
+    $("poolTicket").style.display = "none";
     return;
   }
   $("gateView").innerHTML = "";
@@ -164,17 +167,29 @@ function render(first){
   const officialCount = S.lines.filter(g => g.winnerSide).length;
   $("mastSub").innerHTML = new Set(S.picks.map(p => nameKey(p.name))).size + " cards in &middot; " +
     officialCount + " of " + S.lines.length + " results official";
-  if (first && S.me) $("meSel").value = S.me;
-  fillMeSelect();
   renderGames();
   renderStandings();
+  updateFooter();
+  updateSimBanner();
+  document.body.classList.add("has-ticket");
+  $("poolTicket").style.display = "";
+  $("tWkNum").textContent = S.week;
   $("refreshNote").textContent = "Board refreshes automatically. Last updated " + new Date().toLocaleTimeString();
 }
 
-function fillMeSelect(){
-  const sel = $("meSel"), cur = sel.value || S.me;
-  sel.innerHTML = '<option value="">— choose your name —</option>' +
-    S.roster.map(r => '<option' + (nameKey(r.name) === nameKey(cur) ? " selected" : "") + '>' + escHtml(r.name) + '</option>').join("");
+/* Pool-wide records: every player's picks combined, live with results/what-ifs */
+function updateFooter(){
+  const rows = scoreWeek();
+  let w = 0, l = 0, t = 0;
+  rows.forEach(r => { w += r.w; l += r.l; t += r.t; });
+  let sw = w, sl = l, st = t;
+  for (const r of S.weekly){
+    if (String(r.week) === String(S.week)) continue;
+    sw += parseInt(r.w, 10) || 0; sl += parseInt(r.l, 10) || 0; st += parseInt(r.t, 10) || 0;
+  }
+  $("tWeekRec").textContent = w + "-" + l + "-" + t;
+  $("tSeasonRec").textContent = sw + "-" + sl + "-" + st;
+  $("clearSimBtn").style.display = S.overrides.size ? "" : "none";
 }
 
 function effWinner(g){ return S.overrides.get(g.qid) || g.winnerSide || ""; }
@@ -226,11 +241,10 @@ function gameHtml(g, c){
     if (w === "tie") return " result-loss";
     return w === side ? " result-win" : " result-loss";
   };
-  const chips = (S.simMode || S.adminMode)
-    ? '<div class="chips">' +
+  const chips = '<div class="chips">' +
         chipBtn(g, "away", w) + chipBtn(g, "tie", w) + chipBtn(g, "home", w) +
         (S.overrides.has(g.qid) ? '<button class="chip" data-clear="' + g.qid + '">clear</button>' : '') +
-      '</div>' : '';
+      '</div>';
   return '<div class="game" id="sg-' + g.qid + '">' +
     '<div class="game-meta">' +
       '<span class="qid">' + g.qid + '</span>' +
@@ -268,6 +282,7 @@ function onChip(e){
   const cur = effWinner(g);
   if (cur === w) S.overrides.delete(qid); else S.overrides.set(qid, w);
   if (!S.overrides.get(qid) && g.winnerSide && S.overrides.has(qid)) S.overrides.delete(qid);
+  updateSimBanner();
   render(false);
 }
 
@@ -318,6 +333,14 @@ function scoreWeek(){
   return out;
 }
 
+/* Sort key: roster last name (falls back to the last word of the name) */
+function lastNameKey(name){
+  const p = S.roster.find(r => nameKey(r.name) === nameKey(name));
+  const last = (p && p.lastName) ? p.lastName : String(name).trim().split(/\s+/).pop();
+  const first = (p && p.firstName) ? p.firstName : String(name);
+  return (last + " " + first).toLowerCase();
+}
+
 function renderStandings(){
   const weekRows = scoreWeek();
   const sim = S.overrides.size > 0;
@@ -339,24 +362,27 @@ function renderStandings(){
   });
 
   const mode = S.standMode;
-  rows.sort(mode === "week"
-    ? ((a, b) => b.pct - a.pct || b.w - a.w || a.name.localeCompare(b.name))
-    : ((a, b) => b.spct - a.spct || b.sw - a.sw || a.name.localeCompare(b.name)));
+  if (S.sortMode === "alpha"){
+    rows.sort((a, b) => lastNameKey(a.name).localeCompare(lastNameKey(b.name)));
+  } else {
+    rows.sort(mode === "week"
+      ? ((a, b) => b.pct - a.pct || b.w - a.w || a.name.localeCompare(b.name))
+      : ((a, b) => b.spct - a.spct || b.sw - a.sw || a.name.localeCompare(b.name)));
+  }
 
   $("modeWeek").classList.toggle("primary", mode === "week");
   $("modeSeason").classList.toggle("primary", mode === "season");
+  $("sortRecord").classList.toggle("primary", S.sortMode === "record");
+  $("sortAlpha").classList.toggle("primary", S.sortMode === "alpha");
   $("standMeta").textContent = (mode === "week"
     ? "Week " + S.week + (sim ? " — includes " + S.overrides.size + " simulated result(s)" : " — official results only")
     : "Season through week " + S.week + (sim ? " (with simulations)" : "")) +
     ". Tap a player to see their week " + S.week + " card.";
 
-  const q = nameKey($("searchIn").value);
-  const me = nameKey($("meSel").value);
-  const shown = rows.filter(r => !q || nameKey(r.name).includes(q));
+  const shown = rows;
 
   $("standRows").innerHTML = shown.map((r, i) => {
     const k = nameKey(r.name);
-    const isMe = me && k === me;
     const rec = mode === "week" ? r.w + "-" + r.l + "-" + r.t : r.sw + "-" + r.sl + "-" + r.st;
     const pct = mode === "week"
       ? (r.w + r.l ? (100 * r.pct).toFixed(1) + "%" : "—")
@@ -365,10 +391,10 @@ function renderStandings(){
     const dbl = mode === "week"
       ? '<span style="font-family:Oswald;font-size:.78rem;color:var(--chalk-dim);white-space:nowrap">' + escHtml(r.doubleTxt) + '</span>'
       : '';
-    return '<div class="pcard' + (isMe ? " me" : "") + (S.expanded.has(k) ? " openc" : "") + '" data-person="' + escHtml(k) + '">' +
+    return '<div class="pcard' + (S.expanded.has(k) ? " openc" : "") + '" data-person="' + escHtml(k) + '">' +
       '<div class="pcard-head">' +
         '<span class="caret">▶</span>' +
-        '<span style="font-family:Oswald;color:var(--chalk-dim);min-width:26px">' + (i + 1) + '</span>' +
+        '<span style="font-family:Oswald;color:var(--chalk-dim);min-width:26px">' + (S.sortMode === "record" ? (i + 1) : "&middot;") + '</span>' +
         '<span class="nm">' + escHtml(r.name) + (r.submitted ? "" : ' <span class="pill locked">defaults</span>') + '</span>' +
         dbl +
         '<span class="rec">' + rec + '</span>' +
@@ -382,8 +408,16 @@ function renderStandings(){
 /* One person's week card (used inside an expanded standings row) */
 function personCardHtml(r){
   const lineByQid = new Map(S.lines.map(g => [g.qid, g]));
-  const note = r.submitted ? "" :
-    '<p style="color:var(--chalk-dim);font-size:.82rem;padding:10px 16px 0">No submission — scored on the default favorites.</p>';
+  // week-by-week season log: stored past weeks + this week live
+  const hist = S.weekly
+    .filter(x => nameKey(x.name) === nameKey(r.name) && String(x.week) !== String(S.week))
+    .map(x => ({ wk: parseInt(x.week, 10), rec: (parseInt(x.w,10)||0) + "-" + (parseInt(x.l,10)||0) + "-" + (parseInt(x.t,10)||0) }))
+    .sort((a, b) => a.wk - b.wk);
+  hist.push({ wk: S.week, rec: r.w + "-" + r.l + "-" + r.t + " (live)" });
+  const log = '<p style="color:var(--chalk-dim);font-size:.82rem;padding:10px 16px 0;font-family:Oswald;letter-spacing:.04em">' +
+    'Season log: ' + hist.map(h => "Wk " + h.wk + ": <b style=\'color:var(--chalk)\'>" + h.rec + "</b>").join(" &nbsp;&middot;&nbsp; ") + '</p>';
+  const note = log + (r.submitted ? "" :
+    '<p style="color:var(--chalk-dim);font-size:.82rem;padding:10px 16px 0">No submission — scored on the default favorites.</p>');
   const trs = r.picks.map(pk => {
     const g = lineByQid.get(pk.qid);
     const win = g ? effWinner(g) : "";
@@ -410,22 +444,17 @@ function personCardHtml(r){
 /* ---------------- controls / admin ---------------- */
 
 function wireControls(){
-  $("searchIn").addEventListener("input", renderStandings);
-  $("meSel").addEventListener("change", () => { S.me = $("meSel").value; render(false); });
   $("modeWeek").addEventListener("click", () => { S.standMode = "week"; renderStandings(); });
   $("modeSeason").addEventListener("click", () => { S.standMode = "season"; renderStandings(); });
+  $("sortRecord").addEventListener("click", () => { S.sortMode = "record"; renderStandings(); });
+  $("sortAlpha").addEventListener("click", () => { S.sortMode = "alpha"; renderStandings(); });
+  $("clearSimBtn").addEventListener("click", () => { S.overrides.clear(); updateSimBanner(); render(false); });
   $("standRows").addEventListener("click", e => {
     const card = e.target.closest(".pcard[data-person]");
     if (!card || !e.target.closest(".pcard-head")) return;
     const k = card.dataset.person;
     if (S.expanded.has(k)) S.expanded.delete(k); else S.expanded.add(k);
     renderStandings();
-  });
-  $("simBtn").addEventListener("click", () => {
-    S.simMode = !S.simMode;
-    if (!S.simMode && !S.adminMode) S.overrides.clear();
-    $("simBtn").textContent = "What-if mode: " + (S.simMode ? "on" : "off");
-    updateSimBanner(); render(false);
   });
   $("adminBtn").addEventListener("click", () => {
     if (S.adminMode) return submitResults();
@@ -448,8 +477,8 @@ function updateSimBanner(){
   const el = $("simBanner");
   if (S.adminMode) el.innerHTML = '<div class="banner warn"><b>Admin mode.</b> Set each game\'s outcome with the chips, then hit ' +
     '"Submit official results". Wrong password will be rejected on submit. Chips you set are simulated until then.</div>';
-  else if (S.simMode) el.innerHTML = '<div class="banner"><span class="pill sim">Simulation</span>&nbsp; What-if results live only on your screen ' +
-    'and reset when you leave. Games with official results are fixed.</div>';
+  else if (S.overrides.size) el.innerHTML = '<div class="banner"><span class="pill sim">Simulation</span>&nbsp; ' + S.overrides.size +
+    ' what-if result(s) applied — standings and the footer record update live, on your screen only. Use "Reset what-ifs" in the footer to clear.</div>';
   else el.innerHTML = "";
 }
 
