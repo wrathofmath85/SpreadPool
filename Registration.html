@@ -82,6 +82,32 @@ h1 .pct{color:var(--accent)}
   max-width:46ch;margin:16px auto 0;color:var(--chalk-dim);
   font-size:1.02rem;
 }
+.fee-badge{
+  display:inline-flex;align-items:baseline;gap:8px;
+  margin:20px auto 0;padding:9px 18px;
+  background:rgba(244,88,31,.1);
+  border:1px solid var(--accent-deep);border-radius:999px;
+}
+.fee-badge .amt{
+  font-family:'Anton',sans-serif;font-size:1.35rem;
+  letter-spacing:.02em;color:var(--accent);line-height:1;
+}
+.fee-badge .lbl{
+  font-family:'Oswald',sans-serif;font-weight:500;font-size:.82rem;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--chalk-dim);
+}
+.fee-callout{
+  display:flex;align-items:center;gap:14px;
+  margin:-4px 0 14px;padding:13px 16px;
+  background:rgba(244,88,31,.08);
+  border:1px solid var(--accent-deep);border-radius:12px;
+}
+.fee-callout .fc-amt{
+  font-family:'Anton',sans-serif;font-size:1.7rem;
+  color:var(--accent);line-height:1;flex-shrink:0;
+}
+.fee-callout .fc-text{font-size:.9rem;color:var(--chalk)}
+.fee-callout .fc-text strong{color:var(--chalk);font-weight:600}
 
 /* ---------- FORM PANEL ---------- */
 .panel{
@@ -275,6 +301,7 @@ input.invalid{border-color:var(--danger);box-shadow:0 0 0 3px rgba(255,107,94,.1
     <div class="eyebrow">2026 Season</div>
     <h1>Player <span class="pct">Registration</span></h1>
     <p class="lede">Get on the board. Fill this out once and you're locked in for the season.</p>
+    <div class="fee-badge"><span class="amt">$40</span><span class="lbl">for the season</span></div>
   </header>
 
   <main class="panel">
@@ -326,7 +353,10 @@ input.invalid{border-color:var(--danger);box-shadow:0 0 0 3px rgba(255,107,94,.1
         </div>
 
         <div class="legend">Payment method<span class="req">*</span></div>
-        <div class="hint" style="margin:-8px 0 14px">All options go to the same person — pick whichever is easiest for you.</div>
+        <div class="fee-callout">
+          <span class="fc-amt">$40</span>
+          <span class="fc-text">The entry fee is <strong>$40 for the year</strong>. Send it using any of the methods below — pick whichever is easiest for you.</span>
+        </div>
 
         <div class="pay-grid" id="payGrid">
           <label class="pay">
@@ -384,7 +414,7 @@ input.invalid{border-color:var(--danger);box-shadow:0 0 0 3px rgba(255,107,94,.1
       <h2 id="resultTitle">You're in!</h2>
       <p id="resultMsg">Your registration has been recorded.</p>
       <div class="pay-reminder" id="payReminder" style="display:none">
-        <div class="pr-label">Send your entry fee via</div>
+        <div class="pr-label">Send your $40 entry fee via</div>
         <div class="pr-method" id="prMethod"></div>
         <div class="pr-handle" id="prHandle"></div>
       </div>
