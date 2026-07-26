@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rules &middot; 2026 Spread Pool</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@400;500;600;700&family=Archivo:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="pool.css">
+<style>
+/* ---- page-specific: rules layout (built on top of pool.css) ---- */
+
+/* top nav back-link */
+.topnav{display:flex;justify-content:center;padding-top:26px}
+.topnav a{font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.14em;font-size:.74rem;font-weight:600;
+  color:var(--chalk-dim);text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:color .15s}
+.topnav a:hover{color:var(--accent)}
+.topnav a svg{width:15px;height:15px}
+
+/* quick-reference strip */
+.quickref{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:6px 0 8px}
+@media(max-width:720px){.quickref{grid-template-columns:repeat(2,1fr)}}
+.qr{background:linear-gradient(180deg,var(--surface),var(--bg-2));border:1px solid var(--line);border-radius:14px;
+  padding:16px 18px;text-align:center;box-shadow:var(--shadow)}
+.qr .n{font-family:'Anton',sans-serif;color:var(--accent);font-size:clamp(1.7rem,5vw,2.3rem);line-height:1}
+.qr .l{font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.13em;font-size:.66rem;font-weight:600;
+  color:var(--chalk-dim);margin-top:7px}
+
+/* rule list */
+.rules{list-style:none;counter-reset:rule;display:flex;flex-direction:column;gap:12px}
+.rule-item{position:relative;counter-increment:rule;display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:start;
+  background:linear-gradient(180deg,var(--surface),var(--bg-2));border:1px solid var(--line);border-radius:14px;
+  padding:16px 18px;box-shadow:var(--shadow)}
+.rule-item::before{content:counter(rule);font-family:'Anton',sans-serif;font-size:1.35rem;line-height:1;
+  min-width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:10px;
+  color:var(--accent);background:rgba(244,88,31,.10);border:1px solid rgba(244,88,31,.35)}
+.rule-item .body{padding-top:3px}
+.rule-item .body p{font-size:.97rem}
+.rule-item .body p + p{margin-top:9px}
+.rule-item .body .note{margin-top:11px;border:1px solid rgba(232,193,75,.45);background:rgba(232,193,75,.07);
+  border-radius:10px;padding:10px 13px;font-size:.9rem;color:var(--chalk)}
+.rule-item .body .note b{color:var(--push)}
+.rule-item strong.k{color:var(--accent);font-weight:700}
+
+/* highlight callout cards used inside rules */
+.callout{display:flex;gap:12px;align-items:flex-start;margin-top:11px;border:1px solid rgba(244,88,31,.4);
+  background:rgba(244,88,31,.07);border-radius:10px;padding:11px 14px;font-size:.9rem}
+.callout svg{width:18px;height:18px;color:var(--accent);flex:none;margin-top:2px}
+.callout b{color:var(--accent)}
+
+/* payout ladder */
+.payout{display:flex;flex-direction:column;gap:10px}
+.payout-row{display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;
+  border:1px solid var(--line);border-radius:12px;padding:12px 16px;background:var(--field)}
+.payout-row .place{font-family:'Anton',sans-serif;font-size:1.15rem;color:var(--accent);min-width:46px}
+.payout-row .desc{font-size:.94rem;color:var(--chalk)}
+.payout-row .pct{font-family:'Oswald',sans-serif;font-weight:700;font-size:1.15rem;letter-spacing:.03em;text-align:right;white-space:nowrap}
+.payout-bar{height:8px;border-radius:999px;background:rgba(255,255,255,.06);overflow:hidden;margin-top:8px;grid-column:1 / -1}
+.payout-bar span{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-deep))}
+.payout-extra{display:flex;flex-direction:column;gap:9px;margin-top:14px}
+.payout-extra div{display:flex;gap:12px;align-items:baseline;font-size:.93rem;color:var(--chalk-dim)}
+.payout-extra div b{color:var(--chalk);font-weight:600}
+.payout-extra .tag{font-family:'Oswald',sans-serif;font-weight:700;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;
+  color:#0a1426;background:var(--push);padding:3px 9px;border-radius:999px;white-space:nowrap;flex:none}
+.payout-extra .tag.win{background:var(--win)}
+.payout-note{color:var(--chalk-dim);font-size:.85rem;margin-top:14px;font-style:italic}
+
+/* payment / entry card */
+.pay-grid{display:grid;grid-template-columns:auto 1fr;gap:0;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+@media(max-width:640px){.pay-grid{grid-template-columns:1fr}}
+.pay-grid .fee{background:linear-gradient(160deg,var(--accent),var(--accent-deep));color:#fff;padding:26px 30px;
+  display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;min-width:150px}
+.pay-grid .fee .amt{font-family:'Anton',sans-serif;font-size:3.2rem;line-height:.9}
+.pay-grid .fee .cap{font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.16em;font-size:.7rem;font-weight:600;margin-top:8px;opacity:.92}
+.pay-grid .fee .due{font-family:'Oswald',sans-serif;font-size:.74rem;letter-spacing:.06em;margin-top:14px;
+  border-top:1px solid rgba(255,255,255,.3);padding-top:12px;opacity:.95}
+.pay-methods{background:linear-gradient(180deg,var(--surface),var(--bg-2));padding:22px 24px;display:flex;flex-direction:column;gap:13px}
+.pm{display:grid;grid-template-columns:88px 1fr;gap:14px;align-items:baseline}
+.pm .lbl2{font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.12em;font-size:.72rem;font-weight:600;color:var(--chalk-dim)}
+.pm .val{font-size:.96rem;word-break:break-word}
+.pm .val a{color:var(--accent);text-decoration:none}
+.pm .val a:hover{text-decoration:underline}
+.pm .val .addr{line-height:1.45}
+
+.foote-callout{display:flex;gap:14px;align-items:center;border:1px solid var(--line);border-radius:14px;
+  padding:16px 20px;background:linear-gradient(90deg,rgba(244,88,31,.10),transparent)}
+.foote-callout .badge{font-family:'Anton',sans-serif;text-transform:uppercase;font-size:.9rem;letter-spacing:.04em;
+  color:#0a1426;background:var(--accent);padding:7px 13px;border-radius:8px;white-space:nowrap;flex:none}
+.foote-callout p{font-size:.95rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <nav class="topnav">
+    <a href="index.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      Back to Home
+    </a>
+  </nav>
+
+  <header class="mast">
+    <span class="kicker"><a href="index.html">Office Pick'em League</a></span>
+    <h1 class="mast-title"><span class="yr">2026</span> Spread Pool &middot; Rules</h1>
+    <p class="mast-sub">Everything you need to play: <b>picks, spreads, doublers, deadlines, and the payout.</b></p>
+  </header>
+
+  <!-- QUICK REFERENCE -->
+  <section>
+    <div class="section-head">
+      <h2>The Basics</h2>
+      <span class="rule"></span>
+      <span class="count">At a glance</span>
+    </div>
+    <div class="quickref">
+      <div class="qr"><div class="n">7&ndash;12</div><div class="l">Games / Week</div></div>
+      <div class="qr"><div class="n">2</div><div class="l">Required Games</div></div>
+      <div class="qr"><div class="n">1</div><div class="l">Doubler / Week</div></div>
+      <div class="qr"><div class="n">$40</div><div class="l">Entry Fee</div></div>
+    </div>
+    <div class="foote-callout" style="margin-top:14px">
+      <span class="badge">Weeks Run</span>
+      <p>A week's games run <strong style="color:var(--chalk)">Thursday through Monday</strong>. Official spreads go out Thursday morning; picks are due by <strong style="color:var(--accent)">5:00 PM ET Friday</strong> (or 5:00 PM ET Thursday if you take a Thursday game).</p>
+    </div>
+  </section>
+
+  <!-- FULL RULES -->
+  <section>
+    <div class="section-head">
+      <h2>Full Rules</h2>
+      <span class="rule"></span>
+      <span class="count">14 Rules</span>
+    </div>
+
+    <ol class="rules">
+
+      <li class="rule-item"><div class="body">
+        <p>A minimum of <strong class="k">7</strong> and a maximum of <strong class="k">12</strong> games are picked each week.</p>
+      </div></li>
+
+      <li class="rule-item"><div class="body">
+        <p><strong class="k">TWO games</strong> each week are the <em>required games of the week</em> &mdash; everyone must pick these. They are <b>Monday Night's NFL game</b> and the <b>College GameDay game</b>.</p>
+      </div></li>
+
+      <li class="rule-item"><div class="body">
+        <p>Of your 7&ndash;12 picks, at least <strong class="k">3 must be college</strong> and <strong class="k">3 must be NFL</strong> (the required games count toward these). So at a minimum you pick 2 of each on your own, plus the two required games &mdash; and you must still hit the 7-game minimum overall.</p>
+      </div></li>
+
+      <li class="rule-item"><div class="body">
+        <p>Each week you may designate one game as a <strong class="k">DOUBLER</strong>, worth double (win or loss). Pick all 12 games with a doubler and you can effectively win or lose 13.</p>
+        <div class="callout">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          <span>The doubler doesn't change the 7-game minimum &mdash; you still need at least <b>7 separate games</b>, with the option to make one of them the doubler.</span>
+        </div>
+      </div></li>
+
+      <li class="rule-item"><div class="body">
+        <p>A week consists of games from <strong class="k">Thursday through Monday</strong>.</p>
+      </div></li>
+
+      <li class="rule-item"><div class="body">
+        <p>The contest runs from <strong class="k">September 5th, 2026 through December 2nd, 2026</strong> (13 weeks).</p>
+      </div></li>
+
+      <li class="rule-item"><div class="body">
+        <p><strong class="k">The Foote Rule.</strong> Each game can only be picked once &mdash; you cannot pick both sides and guarantee yourself a .500 record.</p>
+      </div></li>
+
+      <li class="rule-item"><div class="body">
+        <p>The official spreads are sent out <strong class="k">Thursday morning</strong> in a template for you to fill out.</p>
+      </div></li>
+
+      <li class="rule-item"><div class="body">
+        <p>Picks must be turned in by <strong class="k">5:00 PM ET Friday</strong> &mdash; or <strong class="k">5:00 PM ET Thursday</strong> if you pick any Thursday game. You cannot pick a game after it has started.</p>
+        <div class="callout">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span>Taking a Thursday game but holding your other picks until Friday? You must tell us the <b>total number of games</b> you'll pick that week when you submit your Thursday picks.</span>
+        </div>
+      </div></li>
+
+      <li class="rule-item"><div class="body">
+        <p>If your picks aren't in by 5:00 PM ET Friday, you're given the <strong class="k">default picks</strong>: the favored team in the first 2 college games Saturday, the favored team in the first 3 NFL games Sunday, and the favored teams in both required games.</p>
+      </div></li>
+
+      <li class="rule-item"><div class="body">
+        <p>The player with the best winning percentage collects the winnings, calculated as:</p>
+        <p style="font-family:'Oswald',sans-serif;letter-spacing:.02em;color:var(--chalk);background:var(--field);border:1px solid var(--line);border-radius:10px;padding:11px 14px;text-align:center;font-size:.95rem">
+          ( wins + (ties &divide; 2) ) &divide; ( wins + losses + ties )
+        </p>
+        <p>There are three payouts: a <b>weekly winner</b>, an <b>overall percentage winner</b>, and a <b>most-wins-for-the-season winner</b>. The tiebreaker is total games picked; if still tied, the money is split evenly.</p>
+        <div class="note">
+          <b>Defaults &amp; the weekly payout.</b> If you <em>declare</em> you want the default picks for a week, you can still win the weekly payout. If you simply <em>forget</em> to submit and are given the defaults, you cannot win that week &mdash; but it still counts toward your YTD pool.
+        </div>
+      </div></li>
+
+      <li class="rule-item"><div class="body">
+        <p>The remaining money is paid out to the overall winners (roughly):</p>
+
+        <div class="payout" style="margin-top:12px">
+          <div class="payout-row">
+            <span class="place">1st</span><span class="desc">Overall percentage winner</span><span class="pct" style="color:var(--accent)">~50%</span>
+            <div class="payout-bar"><span style="width:100%"></span></div>
+          </div>
+          <div class="payout-row">
+            <span class="place">2nd</span><span class="desc">Runner-up</span><span class="pct">~25%</span>
+            <div class="payout-bar"><span style="width:50%"></span></div>
+          </div>
+          <div class="payout-row">
+            <span class="place">3rd</span><span class="desc">Third place</span><span class="pct">~10%</span>
+            <div class="payout-bar"><span style="width:20%"></span></div>
+          </div>
+          <div class="payout-row">
+            <span class="place">4th</span><span class="desc">Fourth place</span><span class="pct">~5%</span>
+            <div class="payout-bar"><span style="width:10%"></span></div>
+          </div>
+        </div>
+
+        <div class="payout-extra">
+          <div><span class="tag">Bonus</span><span><b>Most wins picked</b> for the entire year &mdash; roughly 10% of the pot.</span></div>
+          <div><span class="tag win">Refund</span><span><b>Worst winning %</b> gets at least their money back.</span></div>
+        </div>
+        <p class="payout-note">Percentages are approximate and adjusted to the size of the pot.</p>
+      </div></li>
+
+      <li class="rule-item"><div class="body">
+        <p>The cost is <strong class="k">$40</strong>, due by <strong class="k">September 2nd</strong>.</p>
+
+        <div class="pay-grid" style="margin-top:12px">
+          <div class="fee">
+            <div class="amt">$40</div>
+            <div class="cap">Entry Fee</div>
+            <div class="due">Due Sep 2, 2026</div>
+          </div>
+          <div class="pay-methods">
+            <div class="pm">
+              <span class="lbl2">Mail To</span>
+              <span class="val"><span class="addr">Phil Michael<br>1030 Spinner Ct<br>Cicero, IN 46034</span></span>
+            </div>
+            <div class="pm">
+              <span class="lbl2">PayPal</span>
+              <span class="val"><a href="mailto:phil.michael88@yahoo.com">phil.michael88@yahoo.com</a></span>
+            </div>
+            <div class="pm">
+              <span class="lbl2">Zelle</span>
+              <span class="val"><a href="mailto:phil.michael88@yahoo.com">phil.michael88@yahoo.com</a></span>
+            </div>
+            <div class="pm">
+              <span class="lbl2">Venmo</span>
+              <span class="val">Foxy-Lady85</span>
+            </div>
+          </div>
+        </div>
+      </div></li>
+
+      <li class="rule-item"><div class="body">
+        <p>The <strong class="k">commissioner</strong> retains ultimate authority on any rule or situation not expressly noted above. If the commissioner or his assistant are at work past 5:00 PM, they have discretion to accept picks &mdash; as long as none of those games have started.</p>
+      </div></li>
+
+    </ol>
+  </section>
+
+  <footer class="site">
+    2026 Spread Pool <span class="dot">&bull;</span> Good luck, and may the chalk be with you
+  </footer>
+
+</div>
+</body>
+</html>
