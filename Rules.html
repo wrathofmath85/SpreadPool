@@ -18,15 +18,6 @@
 .topnav a:hover{color:var(--accent)}
 .topnav a svg{width:15px;height:15px}
 
-/* quick-reference strip */
-.quickref{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:6px 0 8px}
-@media(max-width:720px){.quickref{grid-template-columns:repeat(2,1fr)}}
-.qr{background:linear-gradient(180deg,var(--surface),var(--bg-2));border:1px solid var(--line);border-radius:14px;
-  padding:16px 18px;text-align:center;box-shadow:var(--shadow)}
-.qr .n{font-family:'Anton',sans-serif;color:var(--accent);font-size:clamp(1.7rem,5vw,2.3rem);line-height:1}
-.qr .l{font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.13em;font-size:.66rem;font-weight:600;
-  color:var(--chalk-dim);margin-top:7px}
-
 /* rule list */
 .rules{list-style:none;counter-reset:rule;display:flex;flex-direction:column;gap:12px}
 .rule-item{position:relative;counter-increment:rule;display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:start;
@@ -66,28 +57,23 @@
 .payout-extra .tag.win{background:var(--win)}
 .payout-note{color:var(--chalk-dim);font-size:.85rem;margin-top:14px;font-style:italic}
 
-/* payment / entry card */
-.pay-grid{display:grid;grid-template-columns:auto 1fr;gap:0;border:1px solid var(--line);border-radius:14px;overflow:hidden}
-@media(max-width:640px){.pay-grid{grid-template-columns:1fr}}
-.pay-grid .fee{background:linear-gradient(160deg,var(--accent),var(--accent-deep));color:#fff;padding:26px 30px;
-  display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;min-width:150px}
-.pay-grid .fee .amt{font-family:'Anton',sans-serif;font-size:3.2rem;line-height:.9}
-.pay-grid .fee .cap{font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.16em;font-size:.7rem;font-weight:600;margin-top:8px;opacity:.92}
-.pay-grid .fee .due{font-family:'Oswald',sans-serif;font-size:.74rem;letter-spacing:.06em;margin-top:14px;
-  border-top:1px solid rgba(255,255,255,.3);padding-top:12px;opacity:.95}
-.pay-methods{background:linear-gradient(180deg,var(--surface),var(--bg-2));padding:22px 24px;display:flex;flex-direction:column;gap:13px}
-.pm{display:grid;grid-template-columns:88px 1fr;gap:14px;align-items:baseline}
-.pm .lbl2{font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.12em;font-size:.72rem;font-weight:600;color:var(--chalk-dim)}
-.pm .val{font-size:.96rem;word-break:break-word}
-.pm .val a{color:var(--accent);text-decoration:none}
-.pm .val a:hover{text-decoration:underline}
-.pm .val .addr{line-height:1.45}
+/* payment: fee banner + 2x2 method grid (matches entry site) */
+.pay-fee{display:flex;gap:22px;align-items:center;border:1px solid var(--accent);
+  background:linear-gradient(180deg,var(--surface),var(--bg-2));border-radius:14px;padding:20px 24px;margin:12px 0 14px}
+.pay-fee .amt{font-family:'Anton',sans-serif;font-size:clamp(2.4rem,7vw,3rem);color:var(--accent);line-height:.9;flex:none}
+.pay-fee p{font-size:1rem;color:var(--chalk)}
+.pay-fee p b{color:#fff;font-weight:700}
 
-.foote-callout{display:flex;gap:14px;align-items:center;border:1px solid var(--line);border-radius:14px;
-  padding:16px 20px;background:linear-gradient(90deg,rgba(244,88,31,.10),transparent)}
-.foote-callout .badge{font-family:'Anton',sans-serif;text-transform:uppercase;font-size:.9rem;letter-spacing:.04em;
-  color:#0a1426;background:var(--accent);padding:7px 13px;border-radius:8px;white-space:nowrap;flex:none}
-.foote-callout p{font-size:.95rem}
+.pay-grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:640px){.pay-grid2{grid-template-columns:1fr}}
+.pmcard{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start;border:1px solid var(--line);
+  border-radius:14px;background:linear-gradient(180deg,var(--surface),var(--bg-2));padding:18px 20px}
+.pmcard .dot2{width:22px;height:22px;border-radius:50%;border:2px solid var(--chalk-dim);flex:none;margin-top:2px}
+.pmcard .method{font-family:'Oswald',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.08em;font-size:1.02rem;color:#fff}
+.pmcard .mval{font-family:'Oswald',sans-serif;font-weight:600;letter-spacing:.02em;color:var(--accent);font-size:1.05rem;margin-top:4px}
+.pmcard .mval a{color:var(--accent);text-decoration:none}
+.pmcard .mval a:hover{text-decoration:underline}
+.pmcard .mnote{font-family:'Oswald',sans-serif;font-weight:600;text-transform:uppercase;letter-spacing:.08em;font-size:.72rem;color:var(--chalk-dim);margin-top:8px}
 </style>
 </head>
 <body>
@@ -105,25 +91,6 @@
     <h1 class="mast-title"><span class="yr">2026</span> Spread Pool &middot; Rules</h1>
     <p class="mast-sub">Everything you need to play: <b>picks, spreads, doublers, deadlines, and the payout.</b></p>
   </header>
-
-  <!-- QUICK REFERENCE -->
-  <section>
-    <div class="section-head">
-      <h2>The Basics</h2>
-      <span class="rule"></span>
-      <span class="count">At a glance</span>
-    </div>
-    <div class="quickref">
-      <div class="qr"><div class="n">7&ndash;12</div><div class="l">Games / Week</div></div>
-      <div class="qr"><div class="n">2</div><div class="l">Required Games</div></div>
-      <div class="qr"><div class="n">1</div><div class="l">Doubler / Week</div></div>
-      <div class="qr"><div class="n">$40</div><div class="l">Entry Fee</div></div>
-    </div>
-    <div class="foote-callout" style="margin-top:14px">
-      <span class="badge">Weeks Run</span>
-      <p>A week's games run <strong style="color:var(--chalk)">Thursday through Monday</strong>. Official spreads go out Thursday morning; picks are due by <strong style="color:var(--accent)">5:00 PM ET Friday</strong> (or 5:00 PM ET Thursday if you take a Thursday game).</p>
-    </div>
-  </section>
 
   <!-- FULL RULES -->
   <section>
@@ -160,7 +127,7 @@
       </div></li>
 
       <li class="rule-item"><div class="body">
-        <p>The contest runs from <strong class="k">September 5th, 2026 through December 2nd, 2026</strong> (13 weeks).</p>
+        <p>The contest runs from <strong class="k">September 10th, 2026 through December 7th, 2026</strong> (13 weeks).</p>
       </div></li>
 
       <li class="rule-item"><div class="body">
@@ -168,19 +135,19 @@
       </div></li>
 
       <li class="rule-item"><div class="body">
-        <p>The official spreads are sent out <strong class="k">Thursday morning</strong> in a template for you to fill out.</p>
+        <p>The official spreads are posted <strong class="k">Thursday morning on the Entry Website</strong>. You'll get an <b>email</b> &mdash; and a <b>text, if you opt in</b> &mdash; the moment the new week's lines are up.</p>
       </div></li>
 
       <li class="rule-item"><div class="body">
-        <p>Picks must be turned in by <strong class="k">5:00 PM ET Friday</strong> &mdash; or <strong class="k">5:00 PM ET Thursday</strong> if you pick any Thursday game. You cannot pick a game after it has started.</p>
+        <p>Picks are due by <strong class="k">midnight ET on Friday</strong>. Once that deadline passes, <b>everyone's picks become available to view</b>. You cannot pick a game after it has started.</p>
         <div class="callout">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          <span>Taking a Thursday game but holding your other picks until Friday? You must tell us the <b>total number of games</b> you'll pick that week when you submit your Thursday picks.</span>
+          <span>Picking a Thursday game? It locks the moment it kicks off &mdash; before Friday's deadline. When you lock in a Thursday pick, you must <b>commit on the Entry Website the number of games you'll pick that week and your doubler status.</b></span>
         </div>
       </div></li>
 
       <li class="rule-item"><div class="body">
-        <p>If your picks aren't in by 5:00 PM ET Friday, you're given the <strong class="k">default picks</strong>: the favored team in the first 2 college games Saturday, the favored team in the first 3 NFL games Sunday, and the favored teams in both required games.</p>
+        <p>If your picks aren't in by <strong class="k">midnight ET Friday</strong>, you're given the <strong class="k">default picks</strong>: the favored team in the first 2 college games Saturday, the favored team in the first 3 NFL games Sunday, and the favored teams in both required games.</p>
       </div></li>
 
       <li class="rule-item"><div class="body">
@@ -190,7 +157,7 @@
         </p>
         <p>There are three payouts: a <b>weekly winner</b>, an <b>overall percentage winner</b>, and a <b>most-wins-for-the-season winner</b>. The tiebreaker is total games picked; if still tied, the money is split evenly.</p>
         <div class="note">
-          <b>Defaults &amp; the weekly payout.</b> If you <em>declare</em> you want the default picks for a week, you can still win the weekly payout. If you simply <em>forget</em> to submit and are given the defaults, you cannot win that week &mdash; but it still counts toward your YTD pool.
+          <b>No declaring defaults this year.</b> You either submit your own picks or you're given the defaults &mdash; there's no in-between. If you're given the defaults, you are <b>not eligible for any weekly awards</b> that week, though your record still counts toward the season-long (YTD) standings.
         </div>
       </div></li>
 
@@ -224,37 +191,48 @@
       </div></li>
 
       <li class="rule-item"><div class="body">
-        <p>The cost is <strong class="k">$40</strong>, due by <strong class="k">September 2nd</strong>.</p>
+        <p>The cost is <strong class="k">$40 for the year</strong>. Send it using any of the methods below &mdash; pick whichever is easiest for you.</p>
 
-        <div class="pay-grid" style="margin-top:12px">
-          <div class="fee">
-            <div class="amt">$40</div>
-            <div class="cap">Entry Fee</div>
-            <div class="due">Due Sep 2, 2026</div>
+        <div class="pay-fee">
+          <span class="amt">$40</span>
+          <p>The entry fee is <b>$40 for the year</b>. Send it using any of the methods below &mdash; pick whichever is easiest for you.</p>
+        </div>
+
+        <div class="pay-grid2">
+          <div class="pmcard">
+            <span class="dot2"></span>
+            <div>
+              <div class="method">Apple Pay</div>
+              <div class="mval"><a href="tel:+17085425972">(708) 542-5972</a></div>
+            </div>
           </div>
-          <div class="pay-methods">
-            <div class="pm">
-              <span class="lbl2">Mail To</span>
-              <span class="val"><span class="addr">Phil Michael<br>1030 Spinner Ct<br>Cicero, IN 46034</span></span>
+          <div class="pmcard">
+            <span class="dot2"></span>
+            <div>
+              <div class="method">Venmo</div>
+              <div class="mval">@Foxy-Lady85</div>
+              <div class="mnote">If asked, last 4 of phone: 5972</div>
             </div>
-            <div class="pm">
-              <span class="lbl2">PayPal</span>
-              <span class="val"><a href="mailto:phil.michael88@yahoo.com">phil.michael88@yahoo.com</a></span>
+          </div>
+          <div class="pmcard">
+            <span class="dot2"></span>
+            <div>
+              <div class="method">PayPal</div>
+              <div class="mval">@FOXYLADY85</div>
             </div>
-            <div class="pm">
-              <span class="lbl2">Zelle</span>
-              <span class="val"><a href="mailto:phil.michael88@yahoo.com">phil.michael88@yahoo.com</a></span>
-            </div>
-            <div class="pm">
-              <span class="lbl2">Venmo</span>
-              <span class="val">Foxy-Lady85</span>
+          </div>
+          <div class="pmcard">
+            <span class="dot2"></span>
+            <div>
+              <div class="method">Zelle</div>
+              <div class="mval"><a href="tel:+17085425972">(708) 542-5972</a></div>
             </div>
           </div>
         </div>
       </div></li>
 
       <li class="rule-item"><div class="body">
-        <p>The <strong class="k">commissioner</strong> retains ultimate authority on any rule or situation not expressly noted above. If the commissioner or his assistant are at work past 5:00 PM, they have discretion to accept picks &mdash; as long as none of those games have started.</p>
+        <p>The <strong class="k">commissioner</strong> retains ultimate authority on any rule or situation not expressly noted above.</p>
       </div></li>
 
     </ol>
