@@ -21,6 +21,7 @@
   --accent-deep:#c83803;   /* deep Bears orange */
   --success:#f4581f;       /* confirm accent */
   --danger:#ff6b5e;
+  --warn:#f5b942;          /* duplicate / already-registered */
   --shadow:0 18px 40px -18px rgba(0,0,0,.8);
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -256,6 +257,7 @@ input.invalid{border-color:var(--danger);box-shadow:0 0 0 3px rgba(255,107,94,.1
 @keyframes pop{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
 .modal-top{height:4px;background:linear-gradient(90deg,var(--accent-deep),var(--accent),var(--accent-deep))}
 .modal-top.bad{background:linear-gradient(90deg,#b3463a,var(--danger),#b3463a)}
+.modal-top.warn{background:linear-gradient(90deg,#b8862a,var(--warn),#b8862a)}
 .modal-body{padding:30px 26px 26px;text-align:center}
 .badge{
   width:64px;height:64px;margin:0 auto 16px;border-radius:50%;
@@ -264,6 +266,7 @@ input.invalid{border-color:var(--danger);box-shadow:0 0 0 3px rgba(255,107,94,.1
   background:rgba(244,88,31,.14);border:2px solid var(--success);color:var(--success);
 }
 .badge.bad{background:rgba(255,107,94,.12);border-color:var(--danger);color:var(--danger)}
+.badge.warn{background:rgba(245,185,66,.13);border-color:var(--warn);color:var(--warn)}
 .modal h2{
   font-family:'Anton',sans-serif;font-weight:400;font-size:1.9rem;
   text-transform:uppercase;letter-spacing:.01em;margin-bottom:8px;
@@ -541,7 +544,7 @@ function showLoading(on){
   o.setAttribute("aria-hidden", on ? "false" : "true");
 }
 
-function showResult(ok, payment){
+function showResult(status, payload){
   const o = $("resultOverlay");
   const top = $("modalTop");
   const badge = $("resultBadge");
@@ -550,9 +553,12 @@ function showResult(ok, payment){
   const reminder = $("payReminder");
   const actions = $("modalActions");
 
-  if(ok){
-    top.classList.remove("bad");
-    badge.classList.remove("bad");
+  top.classList.remove("bad","warn");
+  badge.classList.remove("bad","warn");
+  reminder.style.display = "none";
+
+  if(status === "success"){
+    const payment = payload;
     badge.innerHTML = "&#10003;";
     title.textContent = "You're in!";
     msg.textContent = "Your registration has been recorded. See you on the board.";
@@ -560,18 +566,42 @@ function showResult(ok, payment){
       $("prMethod").textContent = payment;
       $("prHandle").textContent = PAY_HANDLES[payment];
       reminder.style.display = "block";
-    } else {
-      reminder.style.display = "none";
     }
     actions.innerHTML =
       '<a class="btn" href="index.html" style="text-decoration:none;display:flex;align-items:center;justify-content:center">Back to the pool</a>';
-  } else {
+
+  } else if(status === "duplicate"){
+    const name = (payload && payload.name) ? payload.name : "That name";
+    top.classList.add("warn");
+    badge.classList.add("warn");
+    badge.innerHTML = "&#33;";
+    title.textContent = "Already registered";
+    msg.textContent = name + " is already in the pool, so we didn't add a second entry. "
+      + "If you're entering under a different name, use the button below. "
+      + "If you think this is a mistake, reach out to the commissioner.";
+    actions.innerHTML =
+      '<button type="button" class="btn ghost" id="differentNameBtn">Use a different name</button>'
+      + '<a class="btn" href="index.html" style="text-decoration:none;display:flex;align-items:center;justify-content:center">Back to the pool</a>';
+    setTimeout(() => {
+      const db = $("differentNameBtn");
+      if(db) db.addEventListener("click", () => {
+        o.classList.remove("show");
+        o.setAttribute("aria-hidden","true");
+        $("firstName").value = "";
+        $("lastName").value = "";
+        clearErr("firstName");
+        clearErr("lastName");
+        submitBtn.disabled = false;
+        $("firstName").focus();
+      });
+    }, 0);
+
+  } else { /* error */
     top.classList.add("bad");
     badge.classList.add("bad");
     badge.innerHTML = "&#33;";
     title.textContent = "That didn't go through";
     msg.textContent = "Your registration wasn't saved. Check your connection and try again.";
-    reminder.style.display = "none";
     actions.innerHTML = '<button type="button" class="btn ghost" id="retryBtn">Try again</button>';
     setTimeout(() => {
       const rb = $("retryBtn");
@@ -611,16 +641,18 @@ async function submitRegistration(){
     });
     const out = await res.json();
     showLoading(false);
-    if(out && out.ok){
-      showResult(true, data.payment);
+    if(out && out.ok && out.duplicate){
+      showResult("duplicate", { name: (data.firstName + " " + data.lastName).trim() });
+    } else if(out && out.ok){
+      showResult("success", data.payment);
     } else {
       console.error("Submit rejected:", out);
-      showResult(false);
+      showResult("error");
     }
   } catch(err){
     console.error("Submit failed:", err);
     showLoading(false);
-    showResult(false);
+    showResult("error");
   }
 }
 
