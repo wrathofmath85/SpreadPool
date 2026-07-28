@@ -206,10 +206,12 @@ footer .dot{color:var(--accent);margin:0 8px}
 const ENTRY_FILE   = w => `entry.html?week=${w}`;
 const SUMMARY_FILE = w => `summary.html?week=${w}`;
 
-/* Registration cutoff: Sep 11, 2026 at 5:00 PM Eastern.
-   September is EDT (UTC-4), so the offset below is correct. */
-const REGISTRATION_CLOSE = new Date("2026-09-11T17:00:00-04:00");
-const REGISTRATION_CLOSE_LABEL = "Sep 11, 2026";
+/* Registration closes automatically at Week 1's PicksDeadlineISO from the
+   Config sheet (fetched in loadSchedule). The fallback below renders instantly
+   and covers an API outage; the live sheet value overrides it. To change the
+   real cutoff, edit Week 1's PicksDeadlineISO in the sheet -- not here. */
+const REGISTRATION_CLOSE_FALLBACK_ISO = "2026-09-12T12:00:00-04:00";
+let   REGISTRATION_CLOSE_ISO = REGISTRATION_CLOSE_FALLBACK_ISO;
 
 /* Live data now comes from the Apps Script API configured in pool.js
    (POOL_API). The fallbacks below render instantly and are replaced
@@ -271,16 +273,30 @@ function parseMDY(s){
 function todayLocal(){ const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate()); }
 function fmtDate(d){ return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`; }
 
-/* ---------- registration window ---------- */
+/* ---------- registration window ----------
+   Cutoff = Week 1 PicksDeadlineISO from the Config sheet. setRegistrationClose()
+   is called with the live value once config loads. #ctaRow is rebuilt on every
+   call so the state can flip either direction (fallback -> live) safely. */
+const REGISTER_CTA_HTML = document.getElementById('ctaRow').innerHTML;
+
+function setRegistrationClose(iso){
+  if(iso && !isNaN(Date.parse(iso))){ REGISTRATION_CLOSE_ISO = iso; setupRegistration(); }
+}
+
 function setupRegistration(){
   const note = document.getElementById('regDeadline');
-  if(new Date() < REGISTRATION_CLOSE){
-    note.innerHTML = `Registration closes <b>${REGISTRATION_CLOSE_LABEL}</b> &middot; 5:00 PM Eastern`;
+  const cta  = document.getElementById('ctaRow');
+  const closeMs = Date.parse(REGISTRATION_CLOSE_ISO);
+  if(isNaN(closeMs)){ cta.innerHTML = REGISTER_CTA_HTML; note.textContent = ""; note.classList.remove('closed'); return; }
+  const label = (typeof etDateTime === "function") ? etDateTime(REGISTRATION_CLOSE_ISO) : new Date(closeMs).toLocaleString();
+  if(Date.now() < closeMs){
+    cta.innerHTML = REGISTER_CTA_HTML;
+    note.classList.remove('closed');
+    note.innerHTML = `Registration closes <b>${label}</b>`;
   } else {
-    document.getElementById('ctaRow').innerHTML =
-      '<span class="btn-register is-closed" aria-disabled="true">Registration closed</span>';
+    cta.innerHTML = '<span class="btn-register is-closed" aria-disabled="true">Registration closed</span>';
     note.classList.add('closed');
-    note.innerHTML = `Registration closed <b>${REGISTRATION_CLOSE_LABEL}</b> &middot; 5:00 PM Eastern`;
+    note.innerHTML = `Registration closed <b>${label}</b>`;
   }
 }
 
@@ -341,10 +357,14 @@ function loadSchedule(){
   renderWeek(computeCurrentWeek(FALLBACK_SCHEDULE)); /* instant */
   if(typeof POOL_API !== "string" || POOL_API.indexOf("http") !== 0) return;
   apiGet({ fn:"config" }).then(res => {
-    const rows = (res.config || []).map(r => ({
+    const cfg = res.config || [];
+    const rows = cfg.map(r => ({
       Week: String(r.week ?? ""), "Begin Date": String(r.begindate ?? ""), Status: String(r.status ?? "")
     }));
     const cur = computeCurrentWeek(rows); if(cur) renderWeek(cur);
+    /* registration closes at Week 1's picks deadline */
+    const wk1 = cfg.find(r => parseInt(r.week ?? r.Week, 10) === 1);
+    if(wk1) setRegistrationClose(String(wk1.picksdeadlineiso ?? wk1.PicksDeadlineISO ?? "").trim());
   }).catch(err => console.warn("Config API unavailable; using fallback.", err));
 }
 
