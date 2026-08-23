@@ -49,6 +49,13 @@ h1 .yr{color:transparent;-webkit-text-stroke:2px var(--accent);background:none;d
 .reg-deadline{margin-top:16px;font-family:'Oswald',sans-serif;font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:var(--chalk-dim)}
 .reg-deadline b{color:var(--accent);font-weight:700}
 .reg-deadline.closed b{color:var(--danger)}
+/* REGISTERED COUNT BANNER */
+.reg-count{display:none;margin:26px auto 0;justify-content:center}
+.reg-count.show{display:flex}
+.reg-count .pill{display:inline-flex;align-items:center;gap:12px;font-family:'Oswald',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.16em;font-size:.82rem;color:var(--chalk);padding:10px 22px;border-radius:999px;background:linear-gradient(120deg,rgba(244,88,31,.14),rgba(244,88,31,.05));border:1px solid var(--accent);box-shadow:0 10px 26px -14px rgba(244,88,31,.6),inset 0 1px 0 rgba(255,255,255,.08)}
+.reg-count .pill .num{font-family:'Anton',sans-serif;font-weight:400;font-size:1.5rem;line-height:1;color:var(--accent);letter-spacing:.02em}
+.reg-count .dot-live{width:9px;height:9px;border-radius:50%;background:var(--accent);animation:regPulse 1.9s ease-out infinite}
+@keyframes regPulse{0%{box-shadow:0 0 0 0 rgba(244,88,31,.55)}70%{box-shadow:0 0 0 9px rgba(244,88,31,0)}100%{box-shadow:0 0 0 0 rgba(244,88,31,0)}}
 
 /* secondary CTA: Rules link (kept outside #ctaRow so it survives the
    registration-closed innerHTML swap) */
@@ -133,6 +140,9 @@ footer .dot{color:var(--accent);margin:0 8px}
     <span class="kicker">Office Pick'em League</span>
     <h1><span class="yr">2026</span><br>Spread Pool</h1>
     <p class="tagline">Pick the spreads. Beat the line. Outlast the office. Thirteen weeks, one champion.</p>
+    <div class="reg-count" id="regCountBanner" role="status" aria-live="polite">
+      <span class="pill"><span class="dot-live"></span><span class="num" id="regCountNum">0</span> Registered!</span>
+    </div>
     <div class="cta-row" id="ctaRow">
       <a class="btn-register" href="Registration.html">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
@@ -407,9 +417,49 @@ function loadChampions(){
   }).catch(err => console.warn("History API unavailable; using fallback.", err));
 }
 
+/* ---------- registered players count ----------
+   Counts entries from the Participants feed (same Apps Script API as config/
+   history). Banner stays hidden until a positive count arrives, so an API
+   outage or an empty sheet simply shows nothing rather than "0 Registered".
+   The response shape is handled defensively: an array, or an object whose
+   .participants / .players / .entries property is the array. */
+function animateCount(el, target){
+  const dur = 700, t0 = performance.now();
+  function step(t){ const p = Math.min((t - t0) / dur, 1);
+    el.textContent = Math.round(p * target).toLocaleString();
+    if(p < 1) requestAnimationFrame(step); }
+  requestAnimationFrame(step);
+}
+function showRegisteredCount(n){
+  if(!(n > 0)) return;
+  const banner = document.getElementById("regCountBanner");
+  const num    = document.getElementById("regCountNum");
+  if(!banner || !num) return;
+  banner.classList.add("show");
+  animateCount(num, n);
+}
+function countParticipants(payload){
+  let list = Array.isArray(payload) ? payload
+           : (payload && (payload.participants || payload.players || payload.entries || payload.registered));
+  if(!Array.isArray(list)) return 0;
+  /* ignore blank rows (a participant needs a name in some column) */
+  return list.filter(r => {
+    if(r == null) return false;
+    if(typeof r === "string") return r.trim() !== "";
+    return Object.values(r).some(v => String(v == null ? "" : v).trim() !== "");
+  }).length;
+}
+function loadRegisteredCount(){
+  if(typeof POOL_API !== "string" || POOL_API.indexOf("http") !== 0) return;
+  apiGet({ fn:"participants" })
+    .then(res => showRegisteredCount(countParticipants(res)))
+    .catch(err => console.warn("Participants API unavailable; count hidden.", err));
+}
+
 setupRegistration();
 loadSchedule();
 loadChampions();
+loadRegisteredCount();
 </script>
 </body>
 </html>
