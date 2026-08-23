@@ -438,22 +438,45 @@ function showRegisteredCount(n){
   banner.classList.add("show");
   animateCount(num, n);
 }
+/* Pull the participant array out of whatever the API returns, then count
+   non-blank rows. Handles a bare array, or an object holding the array under
+   any of the common keys (pool.js calls the participant list a "roster"). */
 function countParticipants(payload){
-  let list = Array.isArray(payload) ? payload
-           : (payload && (payload.participants || payload.players || payload.entries || payload.registered));
+  let list = null;
+  if(Array.isArray(payload)){
+    list = payload;
+  } else if(payload && typeof payload === "object"){
+    const keys = ["roster","participants","players","entries","registered","people","names","data","rows"];
+    for(const k of keys){ if(Array.isArray(payload[k])){ list = payload[k]; break; } }
+    /* last resort: first array-valued property on the object */
+    if(!list){ for(const k in payload){ if(Array.isArray(payload[k])){ list = payload[k]; break; } } }
+  }
   if(!Array.isArray(list)) return 0;
-  /* ignore blank rows (a participant needs a name in some column) */
   return list.filter(r => {
     if(r == null) return false;
     if(typeof r === "string") return r.trim() !== "";
     return Object.values(r).some(v => String(v == null ? "" : v).trim() !== "");
   }).length;
 }
+/* We do not know the exact endpoint name your Apps Script uses, so try the
+   likely ones in order and use the first that returns a positive count.
+   Whatever works is logged to the console so you can lock it in later. */
 function loadRegisteredCount(){
   if(typeof POOL_API !== "string" || POOL_API.indexOf("http") !== 0) return;
-  apiGet({ fn:"participants" })
-    .then(res => showRegisteredCount(countParticipants(res)))
-    .catch(err => console.warn("Participants API unavailable; count hidden.", err));
+  const candidates = ["roster","participants","registrations","registered","players","entrants","entries"];
+  (async () => {
+    for(const fn of candidates){
+      try{
+        const res = await apiGet({ fn });
+        const n = countParticipants(res);
+        console.log("[regCount] fn=" + fn + " -> " + n + " registered", res);
+        if(n > 0){ showRegisteredCount(n); return; }
+      }catch(err){
+        console.warn("[regCount] fn=" + fn + " failed:", err.message);
+      }
+    }
+    console.warn("[regCount] No endpoint returned participants; banner hidden.");
+  })();
 }
 
 setupRegistration();
