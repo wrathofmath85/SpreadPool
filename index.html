@@ -13,7 +13,7 @@
 :root{
   --bg:#070e1b; --bg-2:#0a1426; --field:#0d1a32; --surface:#102039; --surface-2:#142747;
   --line:#28406b; --chalk:#eef2f8; --chalk-dim:#93a3bd;
-  --accent:#f4581f; --accent-deep:#c83803; --danger:#ff6b5e;
+  --accent:#f4581f; --accent-deep:#c83803; --danger:#ff6b5e; --push:#e8c14b;
   --shadow:0 18px 40px -18px rgba(0,0,0,.8);
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -32,7 +32,6 @@ body::before{
   mask-image:linear-gradient(180deg, transparent, #000 18%, #000 82%, transparent);
 }
 .wrap{position:relative;z-index:1;max-width:1120px;margin:0 auto;padding:0 22px}
-
 /* MASTHEAD */
 header{padding:64px 0 36px;text-align:center}
 .kicker{font-family:'Oswald',sans-serif;letter-spacing:.42em;text-transform:uppercase;font-size:.78rem;font-weight:600;color:var(--accent);display:inline-flex;align-items:center;gap:14px;margin-bottom:18px}
@@ -46,16 +45,34 @@ h1 .yr{color:transparent;-webkit-text-stroke:2px var(--accent);background:none;d
 .btn-register:hover{transform:translateY(-3px);box-shadow:0 20px 40px -10px rgba(244,88,31,.7),inset 0 1px 0 rgba(255,255,255,.25)}
 .btn-register svg{width:20px;height:20px}
 .btn-register.is-closed{color:var(--chalk-dim);background:rgba(255,255,255,.05);border:1px solid var(--line);box-shadow:none;cursor:default;pointer-events:none}
-.reg-deadline{margin-top:16px;font-family:'Oswald',sans-serif;font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:var(--chalk-dim)}
+.reg-deadline{margin-top:16px;font-family:'Oswald',sans-serif;font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:var(--chalk-dim);min-height:1.2em}
 .reg-deadline b{color:var(--accent);font-weight:700}
 .reg-deadline.closed b{color:var(--danger)}
-/* REGISTERED COUNT BANNER */
-.reg-count{display:none;margin:26px auto 0;justify-content:center}
-.reg-count.show{display:flex}
-.reg-count .pill{display:inline-flex;align-items:center;gap:12px;font-family:'Oswald',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.16em;font-size:.82rem;color:var(--chalk);padding:10px 22px;border-radius:999px;background:linear-gradient(120deg,rgba(244,88,31,.14),rgba(244,88,31,.05));border:1px solid var(--accent);box-shadow:0 10px 26px -14px rgba(244,88,31,.6),inset 0 1px 0 rgba(255,255,255,.08)}
-.reg-count .pill .num{font-family:'Anton',sans-serif;font-weight:400;font-size:1.5rem;line-height:1;color:var(--accent);letter-spacing:.02em}
+
+/* ============================================================
+   REGISTERED COUNT BANNER
+   The pill is painted on the FIRST frame and never changes height,
+   so nothing below it can shift while the count is in flight.
+     .is-loading      -> pill visible, number is a dimmed placeholder
+     .is-ready        -> live count
+     .is-unavailable  -> pill hidden with visibility (box is kept)
+   ============================================================ */
+.reg-count{display:flex;justify-content:center;margin:26px auto 0;min-height:46px}
+.reg-count.is-unavailable{visibility:hidden}
+.reg-count .pill{display:inline-flex;align-items:center;gap:12px;font-family:'Oswald',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.16em;font-size:.82rem;color:var(--chalk);padding:10px 22px;border-radius:999px;background:linear-gradient(120deg,rgba(244,88,31,.14),rgba(244,88,31,.05));border:1px solid var(--accent);box-shadow:0 10px 26px -14px rgba(244,88,31,.6),inset 0 1px 0 rgba(255,255,255,.08);transition:border-color .35s ease, background .35s ease}
+.reg-count .pill .num{font-family:'Anton',sans-serif;font-weight:400;font-size:1.5rem;line-height:1;color:var(--accent);letter-spacing:.02em;
+  /* fixed digit box: the number can grow 0 -> 67 -> 100 without nudging the text beside it */
+  min-width:2.6ch;text-align:center;font-variant-numeric:tabular-nums;transition:color .35s ease}
 .reg-count .dot-live{width:9px;height:9px;border-radius:50%;background:var(--accent);animation:regPulse 1.9s ease-out infinite}
+/* quiet skeleton state while the roster call is in flight */
+.reg-count.is-loading .pill{border-color:var(--line);background:rgba(255,255,255,.04);box-shadow:none}
+.reg-count.is-loading .num{color:var(--chalk-dim);animation:regSkel 1.25s ease-in-out infinite}
+.reg-count.is-loading .dot-live{background:var(--chalk-dim);animation:regSkel 1.25s ease-in-out infinite}
 @keyframes regPulse{0%{box-shadow:0 0 0 0 rgba(244,88,31,.55)}70%{box-shadow:0 0 0 9px rgba(244,88,31,0)}100%{box-shadow:0 0 0 0 rgba(244,88,31,0)}}
+@keyframes regSkel{0%,100%{opacity:.3}50%{opacity:.75}}
+@media (prefers-reduced-motion: reduce){
+  .reg-count .dot-live,.reg-count.is-loading .num{animation:none}
+}
 
 /* secondary CTA: Rules link (kept outside #ctaRow so it survives the
    registration-closed innerHTML swap) */
@@ -63,40 +80,46 @@ h1 .yr{color:transparent;-webkit-text-stroke:2px var(--accent);background:none;d
 .btn-rules{font-family:'Oswald',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.14em;font-size:.9rem;display:inline-flex;align-items:center;gap:10px;padding:12px 26px;border-radius:999px;text-decoration:none;color:var(--chalk);background:rgba(255,255,255,.05);border:1px solid var(--line);transition:transform .18s ease, border-color .18s ease, color .18s ease}
 .btn-rules:hover{border-color:var(--accent);color:var(--accent);transform:translateY(-2px)}
 .btn-rules svg{width:18px;height:18px}
-
 /* SECTION TITLES */
 .section-head{display:flex;align-items:baseline;gap:16px;margin:18px 0 22px}
 .section-head h2{font-family:'Anton',sans-serif;font-weight:400;text-transform:uppercase;font-size:clamp(1.6rem,4vw,2.3rem);letter-spacing:.02em}
 .section-head .rule{flex:1;height:2px;background:linear-gradient(90deg,var(--line),transparent);align-self:center}
 .section-head .count{font-family:'Oswald',sans-serif;color:var(--accent);font-weight:600;font-size:.95rem;letter-spacing:.1em}
 section{padding:26px 0}
-
 /* THIS-WEEK MARQUEE */
 .marquee{position:relative;overflow:hidden;display:flex;align-items:center;gap:30px;flex-wrap:wrap;
   background:linear-gradient(120deg,var(--surface),var(--field));border:1px solid var(--accent);border-radius:20px;
   padding:30px 34px;box-shadow:0 22px 50px -20px rgba(0,0,0,.85),0 0 0 4px rgba(244,88,31,.06)}
 .marquee.is-closed{border-color:var(--line);box-shadow:0 22px 50px -20px rgba(0,0,0,.85)}
 .marquee::after{content:"";position:absolute;right:-60px;top:-60px;width:260px;height:260px;background:radial-gradient(circle,rgba(244,88,31,.16),transparent 70%);pointer-events:none}
+/* practice week wears gold instead of orange so it never reads as the real thing */
+.marquee.is-practice{border-color:rgba(232,193,75,.55);box-shadow:0 22px 50px -20px rgba(0,0,0,.85),0 0 0 4px rgba(232,193,75,.05)}
+.marquee.is-practice::after{background:radial-gradient(circle,rgba(232,193,75,.14),transparent 70%)}
+.marquee.is-practice .mq-num{color:var(--push)}
 .mq-num{position:relative;font-family:'Anton',sans-serif;line-height:.78;color:var(--accent);text-align:center}
 .mq-num .wk{display:block;font-family:'Oswald',sans-serif;font-weight:600;font-size:.8rem;letter-spacing:.34em;color:var(--chalk-dim);margin-bottom:6px}
 .mq-num .n{display:block;font-size:clamp(4.4rem,15vw,7rem)}
 .mq-mid{flex:1;min-width:180px}
 .mq-status{display:inline-block;font-family:'Oswald',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.14em;font-size:.66rem;padding:4px 11px;border-radius:999px;margin-bottom:9px}
+.mq-status + .mq-status{margin-left:8px}
 .mq-status.open{color:#0a1426;background:var(--accent)}
 .mq-status.closed{color:var(--chalk-dim);background:rgba(255,255,255,.06);border:1px solid var(--line)}
+.mq-status.practice{color:var(--push);background:rgba(232,193,75,.12);border:1px solid rgba(232,193,75,.5)}
 .mq-mid .now{font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.16em;font-weight:700;font-size:1.05rem}
 .mq-mid .when{color:var(--chalk-dim);margin-top:4px;font-size:.95rem}
+.mq-mid .note{margin-top:10px;padding-left:11px;border-left:2px solid rgba(232,193,75,.6);color:var(--chalk-dim);font-size:.9rem}
 .mq-mid .next{margin-top:12px;font-family:'Oswald',sans-serif;font-size:.78rem;letter-spacing:.08em;color:var(--chalk-dim);text-transform:uppercase}
 .mq-mid .next b{color:var(--accent);font-weight:600}
 .mq-actions{display:flex;gap:12px;flex-wrap:wrap}
 .mq-btn{font-family:'Oswald',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.1em;font-size:.92rem;text-decoration:none;padding:15px 26px;border-radius:11px;transition:all .17s ease;white-space:nowrap}
 .mq-entry{color:#fff;background:var(--accent);box-shadow:0 10px 24px -10px rgba(244,88,31,.6)}
 .mq-entry:hover{background:#ff7036;transform:translateY(-2px)}
+.marquee.is-practice .mq-entry{color:#171003;background:var(--push);box-shadow:0 10px 24px -10px rgba(232,193,75,.55)}
+.marquee.is-practice .mq-entry:hover{background:#f2cf5f}
 .mq-summary{color:var(--chalk);background:rgba(255,255,255,.05);border:1px solid var(--line)}
 .mq-summary:hover{background:rgba(255,255,255,.1);border-color:var(--accent);transform:translateY(-2px)}
 .mq-closed{color:var(--chalk-dim);background:rgba(255,255,255,.04);border:1px dashed var(--line);cursor:default}
 .mq-loading{color:var(--chalk-dim);font-family:'Oswald',sans-serif;letter-spacing:.1em;padding:20px}
-
 /* HALL OF CHAMPIONS */
 .champ-card{background:linear-gradient(180deg,var(--surface),var(--bg-2));border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:var(--shadow)}
 .champ-banner{display:flex;align-items:center;gap:14px;padding:18px 22px;background:linear-gradient(90deg,rgba(244,88,31,.12),transparent);border-bottom:1px solid var(--line)}
@@ -120,7 +143,6 @@ tbody tr:last-child td{border-bottom:none}
 .state-msg code{background:rgba(255,255,255,.06);padding:2px 7px;border-radius:5px;font-size:.85em;color:var(--accent)}
 footer{padding:42px 0 56px;text-align:center;color:var(--chalk-dim);font-size:.82rem}
 footer .dot{color:var(--accent);margin:0 8px}
-
 @media (max-width:620px){
   .table-scroll{overflow-x:visible}
   table{min-width:0}
@@ -135,13 +157,14 @@ footer .dot{color:var(--accent);margin:0 8px}
 </head>
 <body>
 <div class="wrap">
-
   <header>
     <span class="kicker">Office Pick'em League</span>
     <h1><span class="yr">2026</span><br>Spread Pool</h1>
     <p class="tagline">Pick the spreads. Beat the line. Outlast the office. Thirteen weeks, one champion.</p>
-    <div class="reg-count" id="regCountBanner" role="status" aria-live="polite">
-      <span class="pill"><span class="dot-live"></span><span class="num" id="regCountNum">0</span> Registered!</span>
+    <!-- Rendered on the first frame in its loading state; only the number
+         changes when the roster call lands, so the button never moves. -->
+    <div class="reg-count is-loading" id="regCountBanner" role="status" aria-live="polite">
+      <span class="pill"><span class="dot-live"></span><span class="num" id="regCountNum">&ndash;&ndash;</span> Registered!</span>
     </div>
     <div class="cta-row" id="ctaRow">
       <a class="btn-register" href="Registration.html">
@@ -157,7 +180,6 @@ footer .dot{color:var(--accent);margin:0 8px}
     </div>
     <p class="reg-deadline" id="regDeadline"></p>
   </header>
-
   <section id="thisweek">
     <div class="section-head">
       <h2>This Week</h2>
@@ -168,7 +190,6 @@ footer .dot{color:var(--accent);margin:0 8px}
       <span class="mq-loading">Finding this week...</span>
     </div>
   </section>
-
   <section id="champions">
     <div class="section-head">
       <h2>Hall of Champions</h2>
@@ -200,36 +221,42 @@ footer .dot{color:var(--accent);margin:0 8px}
       </div>
     </div>
   </section>
-
   <footer>
     2026 Spread Pool <span class="dot">&bull;</span> Good luck, and may the chalk be with you
   </footer>
-
 </div>
-
 <script src="pool.js"></script>
 <script>
 /* ============================================================
    CONFIG -- edit these in one place.
    Links are all relative (same GitHub repo, no external URLs).
    ============================================================ */
-const ENTRY_FILE   = w => `WeeklyEntryForm.html`;
-const SUMMARY_FILE = w => `Summary.html`;
+const ENTRY_FILE   = w => `WeeklyEntryForm.html?week=${w}`;
+const SUMMARY_FILE = w => `Summary.html?week=${w}`;
+
+/* Week 0 is the optional practice round: it shows up in "This Week" like any
+   other week, but it is labeled as practice everywhere and the API leaves it
+   out of season standings. PRACTICE_WEEK/weekLabel live in pool.js; these
+   locals are guarded copies so this page still renders if pool.js fails. */
+const PRACTICE_W  = (typeof PRACTICE_WEEK === "number") ? PRACTICE_WEEK : 0;
+const TOTAL_WKS   = (typeof TOTAL_WEEKS  === "number") ? TOTAL_WEEKS  : 13;  /* real, scoring weeks */
+function isPractice(w){ return Number(w) === PRACTICE_W; }
+function wkLabel(w){ return isPractice(w) ? "Practice Week" : `Week ${w}`; }
 
 /* Registration closes automatically at Week 1's PicksDeadlineISO from the
-   Config sheet (fetched in loadSchedule). The fallback below renders instantly
-   and covers an API outage; the live sheet value overrides it. To change the
-   real cutoff, edit Week 1's PicksDeadlineISO in the sheet -- not here. */
+   Config sheet (fetched in loadSchedule) -- deliberately Week 1, not Week 0,
+   so someone can still join after the practice round has come and gone. The
+   fallback below renders instantly and covers an API outage; the live sheet
+   value overrides it. To change the real cutoff, edit Week 1's
+   PicksDeadlineISO in the sheet -- not here. */
 const REGISTRATION_CLOSE_FALLBACK_ISO = "2026-09-12T12:00:00-04:00";
 let   REGISTRATION_CLOSE_ISO = REGISTRATION_CLOSE_FALLBACK_ISO;
-
 /* Live data now comes from the Apps Script API configured in pool.js
    (POOL_API). The fallbacks below render instantly and are replaced
    the moment the API responds. */
-
-
-/* ---- Fallbacks (snapshots of your sheets; a live CSV URL overrides them) ---- */
+/* ---- Fallbacks (snapshots of your sheets; the live API overrides them) ---- */
 const FALLBACK_SCHEDULE = [
+  {Week:"0",  "Begin Date":"9/3/2026"},
   {Week:"1",  "Begin Date":"9/10/2026"},
   {Week:"2",  "Begin Date":"9/17/2026"},
   {Week:"3",  "Begin Date":"9/24/2026"},
@@ -262,7 +289,6 @@ const FALLBACK_HISTORY = [
   {Year:"2010","Percent Winner":"Helm","Percent":"60%","Most Wins Winner":"Harrison","Most Wins":"81"},
   {Year:"2009","Percent Winner":"D. Cooper","Percent":"","Most Wins Winner":"Knoop","Most Wins":"89"}
 ];
-
 /* ---------- helpers ---------- */
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 function bust(u){ return u + (u.includes("?") ? "&" : "?") + "_=" + Date.now(); }
@@ -282,17 +308,14 @@ function parseMDY(s){
 }
 function todayLocal(){ const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate()); }
 function fmtDate(d){ return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`; }
-
 /* ---------- registration window ----------
    Cutoff = Week 1 PicksDeadlineISO from the Config sheet. setRegistrationClose()
    is called with the live value once config loads. #ctaRow is rebuilt on every
    call so the state can flip either direction (fallback -> live) safely. */
 const REGISTER_CTA_HTML = document.getElementById('ctaRow').innerHTML;
-
 function setRegistrationClose(iso){
   if(iso && !isNaN(Date.parse(iso))){ REGISTRATION_CLOSE_ISO = iso; setupRegistration(); }
 }
-
 function setupRegistration(){
   const note = document.getElementById('regDeadline');
   const cta  = document.getElementById('ctaRow');
@@ -309,10 +332,11 @@ function setupRegistration(){
     note.innerHTML = `Registration closed <b>${label}</b>`;
   }
 }
-
-/* ---------- current week ---------- */
-/* Current week = the latest week whose Begin Date is on or before today;
-   before the season starts, that's Week 1 and it shows as not yet open. */
+/* ---------- current week ----------
+   Current week = the highest week marked Open in Config; failing that, the
+   latest week whose Begin Date is on or before today. Week 0 is a legitimate
+   answer here -- note the filter tests for a real number rather than a truthy
+   one, because 0 is falsy and used to be silently dropped. */
 function computeCurrentWeek(rows){
   const list = rows
     .map(r => {
@@ -321,8 +345,8 @@ function computeCurrentWeek(rows){
       if(!d){ const ms = Date.parse(raw); if(!isNaN(ms)){ const t = new Date(ms); d = new Date(t.getFullYear(), t.getMonth(), t.getDate()); } }
       return { week: parseInt(pick(r,["week"]),10), date: d, status: pick(r,["status"]).toLowerCase() };
     })
-    .filter(r => r.week && r.date)
-    .sort((a,b) => a.date - b.date);
+    .filter(r => !isNaN(r.week) && r.date)          /* week 0 is valid */
+    .sort((a,b) => a.week - b.week);                /* order by week, not date */
   if(!list.length) return null;
   const today = todayLocal();
   let idx = -1;
@@ -336,32 +360,39 @@ function renderWeek(cur){
   const card = document.getElementById('weekCard');
   if(!cur){ card.innerHTML = '<span class="mq-loading">Schedule unavailable.</span>'; return; }
   const w = cur.week;
+  const practice = isPractice(w);
   const isOpen = cur.status ? cur.status === "open" : cur.date <= todayLocal();
   card.classList.toggle('is-closed', !isOpen);
+  card.classList.toggle('is-practice', practice);
 
-  const statusPill = isOpen
-    ? '<span class="mq-status open">Open</span>'
-    : '<span class="mq-status closed">Closed</span>';
-  const headline = isOpen ? `Week ${w} is live` : `Week ${w} opens ${fmtDate(cur.date)}`;
+  const statusPill =
+    (isOpen ? '<span class="mq-status open">Open</span>'
+            : '<span class="mq-status closed">Closed</span>') +
+    (practice ? '<span class="mq-status practice">Practice</span>' : '');
+  const headline = isOpen ? `${wkLabel(w)} is live` : `${wkLabel(w)} opens ${fmtDate(cur.date)}`;
   const whenTxt  = isOpen
     ? `Picks opened ${fmtDate(cur.date)}`
     : `Not open yet &middot; picks open ${fmtDate(cur.date)}`;
-  const nextTxt = cur.next ? `<div class="next">Next up &middot; <b>Week ${cur.next.week}</b> on ${fmtDate(cur.next.date)}</div>` : "";
+  const noteTxt = practice
+    ? `<div class="note">Optional warm-up round. Nothing here counts &mdash; no wins, no losses, no effect on the standings or the championship. Take a swing at it so we can shake out the bugs before Week 1.</div>`
+    : "";
+  const nextTxt = cur.next ? `<div class="next">Next up &middot; <b>${wkLabel(cur.next.week)}</b> on ${fmtDate(cur.next.date)}</div>` : "";
   const actions = isOpen
-    ? `<a class="mq-btn mq-entry" href="${ENTRY_FILE(w)}">Entry Form</a>
+    ? `<a class="mq-btn mq-entry" href="${ENTRY_FILE(w)}">${practice ? "Try the Entry Form" : "Entry Form"}</a>
        <a class="mq-btn mq-summary" href="${SUMMARY_FILE(w)}">Pick Summary</a>`
     : `<span class="mq-btn mq-closed">Opens ${fmtDate(cur.date)}</span>`;
-
   card.innerHTML = `
-    <div class="mq-num"><span class="wk">Week</span><span class="n">${w}</span></div>
+    <div class="mq-num"><span class="wk">${practice ? "Practice" : "Week"}</span><span class="n">${w}</span></div>
     <div class="mq-mid">
       ${statusPill}
       <div class="now">${headline}</div>
       <div class="when">${whenTxt}</div>
+      ${noteTxt}
       ${nextTxt}
     </div>
     <div class="mq-actions">${actions}</div>`;
-  document.getElementById('seasonState').textContent = `Week ${w} of 13`;
+  document.getElementById('seasonState').textContent =
+    practice ? "Practice Week" : `Week ${w} of ${TOTAL_WKS}`;
 }
 function loadSchedule(){
   renderWeek(computeCurrentWeek(FALLBACK_SCHEDULE)); /* instant */
@@ -372,12 +403,11 @@ function loadSchedule(){
       Week: String(r.week ?? ""), "Begin Date": String(r.begindate ?? ""), Status: String(r.status ?? "")
     }));
     const cur = computeCurrentWeek(rows); if(cur) renderWeek(cur);
-    /* registration closes at Week 1's picks deadline */
+    /* registration closes at Week 1's picks deadline (not the practice week's) */
     const wk1 = cfg.find(r => parseInt(r.week ?? r.Week, 10) === 1);
     if(wk1) setRegistrationClose(String(wk1.picksdeadlineiso ?? wk1.PicksDeadlineISO ?? "").trim());
   }).catch(err => console.warn("Config API unavailable; using fallback.", err));
 }
-
 /* ---------- champions ---------- */
 function setChampState(msg){
   document.getElementById('champBody').innerHTML =
@@ -416,14 +446,23 @@ function loadChampions(){
     try{ renderChampions(mapHistory(rows)); }catch(e){ console.error(e); }
   }).catch(err => console.warn("History API unavailable; using fallback.", err));
 }
-
 /* ---------- registered players count ----------
-   Counts entries from the Participants feed (same Apps Script API as config/
-   history). Banner stays hidden until a positive count arrives, so an API
-   outage or an empty sheet simply shows nothing rather than "0 Registered".
-   The response shape is handled defensively: an array, or an object whose
-   .participants / .players / .entries property is the array. */
+   The pill is in the DOM from the first frame in its .is-loading state, so the
+   Register button never moves once the number arrives -- the digits swap
+   inside a fixed-width box and that is the only thing that changes.
+   Endpoint is fn=roster (the Apps Script's participants feed). If it can't be
+   reached the pill goes visibility:hidden, which keeps its box and therefore
+   still causes no shift. */
+let regCountShown = false;                        /* a live count never gets taken back down */
+function setRegCountState(state){                 /* loading | ready | unavailable */
+  const banner = document.getElementById("regCountBanner");
+  if(!banner || (regCountShown && state !== "ready")) return;
+  banner.classList.remove("is-loading","is-ready","is-unavailable");
+  banner.classList.add("is-" + state);
+}
 function animateCount(el, target){
+  const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if(reduce){ el.textContent = target.toLocaleString(); return; }
   const dur = 700, t0 = performance.now();
   function step(t){ const p = Math.min((t - t0) / dur, 1);
     el.textContent = Math.round(p * target).toLocaleString();
@@ -431,16 +470,15 @@ function animateCount(el, target){
   requestAnimationFrame(step);
 }
 function showRegisteredCount(n){
-  if(!(n > 0)) return;
-  const banner = document.getElementById("regCountBanner");
-  const num    = document.getElementById("regCountNum");
-  if(!banner || !num) return;
-  banner.classList.add("show");
+  const num = document.getElementById("regCountNum");
+  if(!num || !(n > 0)){ setRegCountState("unavailable"); return; }
+  setRegCountState("ready");
+  regCountShown = true;
   animateCount(num, n);
 }
 /* Pull the participant array out of whatever the API returns, then count
-   non-blank rows. Handles a bare array, or an object holding the array under
-   any of the common keys (pool.js calls the participant list a "roster"). */
+   non-blank rows. fn=roster returns {roster:[...]}, but this stays defensive
+   in case the payload shape ever changes. */
 function countParticipants(payload){
   let list = null;
   if(Array.isArray(payload)){
@@ -448,7 +486,6 @@ function countParticipants(payload){
   } else if(payload && typeof payload === "object"){
     const keys = ["roster","participants","players","entries","registered","people","names","data","rows"];
     for(const k of keys){ if(Array.isArray(payload[k])){ list = payload[k]; break; } }
-    /* last resort: first array-valued property on the object */
     if(!list){ for(const k in payload){ if(Array.isArray(payload[k])){ list = payload[k]; break; } } }
   }
   if(!Array.isArray(list)) return 0;
@@ -458,27 +495,20 @@ function countParticipants(payload){
     return Object.values(r).some(v => String(v == null ? "" : v).trim() !== "");
   }).length;
 }
-/* We do not know the exact endpoint name your Apps Script uses, so try the
-   likely ones in order and use the first that returns a positive count.
-   Whatever works is logged to the console so you can lock it in later. */
 function loadRegisteredCount(){
-  if(typeof POOL_API !== "string" || POOL_API.indexOf("http") !== 0) return;
-  const candidates = ["roster","participants","registrations","registered","players","entrants","entries"];
-  (async () => {
-    for(const fn of candidates){
-      try{
-        const res = await apiGet({ fn });
-        const n = countParticipants(res);
-        console.log("[regCount] fn=" + fn + " -> " + n + " registered", res);
-        if(n > 0){ showRegisteredCount(n); return; }
-      }catch(err){
-        console.warn("[regCount] fn=" + fn + " failed:", err.message);
-      }
-    }
-    console.warn("[regCount] No endpoint returned participants; banner hidden.");
+  if(typeof POOL_API !== "string" || POOL_API.indexOf("http") !== 0){ setRegCountState("unavailable"); return; }
+  let tries = 0;
+  (function attempt(){
+    tries++;
+    apiGet({ fn:"roster" }).then(res => {
+      showRegisteredCount(countParticipants(res));
+    }).catch(err => {
+      console.warn("[regCount] roster fetch failed (try " + tries + "):", err.message);
+      if(tries < 2) setTimeout(attempt, 1500);
+      else setRegCountState("unavailable");
+    });
   })();
 }
-
 setupRegistration();
 loadSchedule();
 loadChampions();

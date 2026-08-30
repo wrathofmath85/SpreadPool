@@ -13,7 +13,7 @@
 
 <header class="mast wrap">
   <div class="kicker"><a href="index.html">2026 Spread Pool</a></div>
-  <h1 class="mast-title">Week <span class="yr" id="wkNum">–</span> Entry</h1>
+  <h1 class="mast-title" id="mastTitle">Week <span class="yr" id="wkNum">–</span> Entry</h1>
   <p class="mast-sub" id="mastSub">Loading this week's board…</p>
 </header>
 
@@ -103,7 +103,7 @@ const EMAILJS = { publicKey: "YB5J-75APa-V6Giku", serviceId: "service_uwt5e0k", 
 const MIN_PICKS = 7, MAX_PICKS = 12, MIN_LEAGUE = 3;
 
 const S = {
-  week: null, cfgRow: null, open: false,
+  week: null, cfgRow: null, open: false, practice: false,
   lines: [], roster: [],
   picks: new Map(),          // qid -> {side, isDouble}
   lockedSaved: new Map(),    // saved picks on games already kicked off (always resubmitted)
@@ -122,8 +122,10 @@ async function init(){
   S.week = resolved.week;
   S.cfgRow = resolved.row;
   S.open = weekIsOpenClient(S.cfgRow);
+  S.practice = isPracticeWeek(S.week);        /* week 0 — optional, never scored */
   $("wkNum").textContent = S.week;
-  document.title = "Week " + S.week + " Entry — 2026 Spread Pool";
+  if (S.practice) $("mastTitle").innerHTML = '<span class="yr practice">Practice</span> Entry';
+  document.title = weekLabel(S.week) + " Entry — 2026 Spread Pool";
 
   const [linesRes, rosterRes] = await Promise.all([
     apiGet({ fn: "lines", week: S.week }),
@@ -164,14 +166,28 @@ function normalizeLines(rows){
   })).filter(r => r.qid && r.away && r.home);
 }
 
+/* The practice notice sits above every other banner and stays put whether the
+   week is open or closed, so nobody can mistake week 0 for the real thing. */
+function practiceBannerHtml(){
+  if (!S.practice) return "";
+  return '<div class="practice-banner"><b>Practice week &mdash; nothing here counts.</b> ' +
+    'This is an optional warm-up: picks are scored exactly like a real week so the machinery gets tested, ' +
+    'but the results never reach the standings or the championship. Pick freely and break things.</div>';
+}
+
 function renderStatus(){
   const el = $("statusBanner");
   if (S.open) {
     const dl = S.cfgRow.deadlineISO ? " Picks lock <b>" + escHtml(etDateTime(S.cfgRow.deadlineISO)) + "</b>." : "";
-    $("mastSub").innerHTML = "Pick against the spread. Full card: " + MIN_PICKS + "&ndash;" + MAX_PICKS + " games with 3+ NFL and 3+ college. Submit anytime &mdash; even a partial set." + dl;
+    $("mastSub").innerHTML = (S.practice ? "Optional practice round. " : "") +
+      "Pick against the spread. Full card: " + MIN_PICKS + "&ndash;" + MAX_PICKS + " games with 3+ NFL and 3+ college. Submit anytime &mdash; even a partial set." + dl;
+    el.innerHTML = practiceBannerHtml();
   } else {
-    $("mastSub").textContent = "This week is not accepting picks.";
-    el.innerHTML = '<div class="banner warn"><b>Week ' + S.week + ' is closed.</b> The board below is read-only. ' +
+    $("mastSub").textContent = S.practice
+      ? "The practice round is closed."
+      : "This week is not accepting picks.";
+    el.innerHTML = practiceBannerHtml() +
+      '<div class="banner warn"><b>' + weekLabel(S.week) + ' is closed.</b> The board below is read-only. ' +
       'Check the <a href="Summary.html?week=' + S.week + '" style="color:var(--accent)">pick summary</a> for results.</div>';
   }
 }
@@ -207,7 +223,7 @@ function renderBoard(){
       html += gameHtml(g);
     }
   }
-  board.innerHTML = html || '<div class="state-msg">No games posted for week ' + S.week + ' yet.</div>';
+  board.innerHTML = html || '<div class="state-msg">No games posted for ' + weekLabel(S.week).toLowerCase() + ' yet.</div>';
   board.addEventListener("click", onBoardClick);
 }
 
@@ -477,7 +493,8 @@ function openReview(){
     '<div class="warn" style="border-color:var(--line);background:rgba(255,255,255,.04)">' + lockLine + '</div>' +
     errs.map(e => '<div class="err">' + e + '</div>').join("") +
     warns.map(w => '<div class="warn">' + w + '</div>').join("");
-  $("modalSub").innerHTML = "Week " + S.week + " &middot; <b>" + S.picks.size + "</b> picks";
+  $("modalSub").innerHTML = weekLabel(S.week) + " &middot; <b>" + S.picks.size + "</b> picks" +
+    (S.practice ? ' &middot; <span class="pill practice">practice, not scored</span>' : "");
   const items = [];
   for (const g of S.lines){
     const p = S.picks.get(g.qid);
@@ -568,7 +585,7 @@ async function sendEmail(payload, res){
   await window.emailjs.send(EMAILJS.serviceId, EMAILJS.templateId, {
     to_email: payload.email,
     player: payload.name,
-    week: String(payload.week),
+    week: isPracticeWeek(payload.week) ? "0 — Practice (not scored)" : String(payload.week),
     total_picks: String(payload.picks.length),
     num_picks: String(payload.numPicks),
     double_text: doubleText,

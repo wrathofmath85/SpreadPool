@@ -13,7 +13,7 @@
 
 <header class="mast wrap">
   <div class="kicker"><a href="index.html">2026 Spread Pool</a></div>
-  <h1 class="mast-title">Week <span class="yr" id="wkNum">–</span> Board</h1>
+  <h1 class="mast-title" id="mastTitle">Week <span class="yr" id="wkNum">–</span> Board</h1>
   <p class="mast-sub" id="mastSub">Loading…</p>
 </header>
 
@@ -22,6 +22,7 @@
 
   <div id="revealed" style="display:none">
 
+    <div id="practiceBanner"></div>
     <div id="simBanner"></div>
 
     <!-- standings (week/season toggle, expandable player rows) -->
@@ -47,8 +48,8 @@
 <!-- pool footer -->
 <div class="ticket" id="poolTicket" style="display:none">
   <div class="ticket-in">
-    <div class="stat">Pool &mdash; Week <span id="tWkNum"></span><b id="tWeekRec">&mdash;</b></div>
-    <div class="stat">Pool &mdash; Season<b id="tSeasonRec">&mdash;</b></div>
+    <div class="stat">Pool &mdash; <span id="tWkNum"></span><b id="tWeekRec">&mdash;</b></div>
+    <div class="stat" id="tSeasonStat">Pool &mdash; Season<b id="tSeasonRec">&mdash;</b></div>
     <div class="spacer"></div>
     <button class="btn small ghost" id="clearSimBtn" style="display:none">Reset what-ifs</button>
     <button class="btn small" id="adminBtn">Admin</button>
@@ -76,7 +77,7 @@
 const DOUBLE_WEIGHT = 2, MIN_PICKS = 7, REFRESH_MS = 180000;
 
 const S = {
-  week: null, cfgRow: null,
+  week: null, cfgRow: null, practice: false,
   lines: [], picks: [], decls: [], roster: [], weekly: [],
   revealed: false,
   overrides: new Map(),   // qid -> 'away'|'home'|'tie'  (simulated / admin-pending)
@@ -101,13 +102,18 @@ async function loadAll(first){
     const r = resolveWeek(cfg.config);
     if (!r) throw new Error("No weeks in Config.");
     S.week = r.week; S.cfgRow = r.row;
+    S.practice = isPracticeWeek(S.week);          /* week 0 — live scoring, zero season effect */
     $("wkNum").textContent = S.week;
-    document.title = "Week " + S.week + " Board — 2026 Spread Pool";
+    if (S.practice) $("mastTitle").innerHTML = '<span class="yr practice">Practice</span> Board';
+    document.title = weekLabel(S.week) + " Board — 2026 Spread Pool";
   }
   const all = await apiGet({ fn: "all", week: S.week });
   S.lines  = normalizeLines(all.lines);
   S.roster = all.roster || [];
+  /* season-only: the API strips practice-week rows out of weeklyResults, so
+     nothing summed below can pick up week 0 */
   S.weekly = all.weeklyResults || [];
+  if (typeof all.practice === "boolean") S.practice = all.practice;
   const pb = all.picksBundle || {};
   S.revealed = !!pb.revealed;
   S.picks = (pb.picks || []).map(p => ({
@@ -141,12 +147,20 @@ function normalizeLines(rows){
 
 /* ---------------- render ---------------- */
 
+function practiceNoticeHtml(){
+  return S.practice
+    ? '<div class="practice-banner"><b>Practice week &mdash; nothing here counts.</b> ' +
+      'Records are scored exactly like a real week so the math gets a workout, but they are excluded ' +
+      'from season standings, the Hall of Champions and every tiebreaker.</div>'
+    : "";
+}
+
 function render(first){
   if (!S.revealed){
     $("revealed").style.display = "none";
     const at = (S.cfgRow && S.cfgRow.revealISO) || "";
     $("mastSub").textContent = "Picks are sealed until reveal time.";
-    $("gateView").innerHTML = '<div class="card card-pad" style="text-align:center;padding:44px 22px">' +
+    $("gateView").innerHTML = practiceNoticeHtml() + '<div class="card card-pad" style="text-align:center;padding:44px 22px">' +
       '<div class="kicker">Sealed</div>' +
       '<p style="font-size:1.05rem">Everyone\'s picks go public ' + (at ? '<b style="color:var(--accent)">' + escHtml(etDateTime(at)) + '</b>' : 'at reveal time') + '.</p>' +
       (at ? '<p style="margin-top:10px;font-family:Oswald;font-size:1.6rem;letter-spacing:.06em" id="gateClock"></p>' : '') +
@@ -173,7 +187,9 @@ function render(first){
   updateSimBanner();
   document.body.classList.add("has-ticket");
   $("poolTicket").style.display = "";
-  $("tWkNum").textContent = S.week;
+  $("tWkNum").textContent = weekLabelShort(S.week);
+  $("tSeasonStat").style.display = S.practice ? "none" : "";
+  $("practiceBanner").innerHTML = practiceNoticeHtml();
   $("refreshNote").textContent = "Board refreshes automatically. Last updated " + new Date().toLocaleTimeString();
 }
 
@@ -182,7 +198,8 @@ function updateFooter(){
   const rows = scoreWeek();
   let w = 0, l = 0, t = 0;
   rows.forEach(r => { w += r.w; l += r.l; t += r.t; });
-  let sw = w, sl = l, st = t;
+  /* a practice week contributes nothing to the season line */
+  let sw = S.practice ? 0 : w, sl = S.practice ? 0 : l, st = S.practice ? 0 : t;
   for (const r of S.weekly){
     if (String(r.week) === String(S.week)) continue;
     sw += parseInt(r.w, 10) || 0; sl += parseInt(r.l, 10) || 0; st += parseInt(r.t, 10) || 0;
@@ -306,6 +323,9 @@ function scoreWeek(){
   for (const person of S.roster){
     const k = nameKey(person.name);
     const ent = byName.get(k);
+    /* practice week is opt-in — mirror the server and skip people who sat it
+       out, rather than handing them a default-pick record that isn't stored */
+    if (S.practice && !ent) continue;
     const picks = ent ? ent.picks : defaults;
     let w = 0, l = 0, t = 0;
     for (const p of picks){
@@ -354,10 +374,12 @@ function renderStandings(){
     const s = season.get(k);
     s.w += parseInt(r.w, 10) || 0; s.l += parseInt(r.l, 10) || 0; s.t += parseInt(r.t, 10) || 0;
   }
+  const live = S.practice ? { w: 0, l: 0, t: 0 } : null;   /* practice adds nothing to the season */
   const rows = weekRows.map(r => {
     const k = nameKey(r.name);
     const past = season.get(k) || { w: 0, l: 0, t: 0 };
-    const sw = past.w + r.w, sl = past.l + r.l, st = past.t + r.t;
+    const add = live || r;
+    const sw = past.w + add.w, sl = past.l + add.l, st = past.t + add.t;
     return Object.assign({}, r, { sw, sl, st, spct: (sw + sl) ? sw / (sw + sl) : 0 });
   });
 
@@ -375,9 +397,11 @@ function renderStandings(){
   $("sortRecord").classList.toggle("primary", S.sortMode === "record");
   $("sortAlpha").classList.toggle("primary", S.sortMode === "alpha");
   $("standMeta").textContent = (mode === "week"
-    ? "Week " + S.week + (sim ? " — includes " + S.overrides.size + " simulated result(s)" : " — official results only")
-    : "Season through week " + S.week + (sim ? " (with simulations)" : "")) +
-    ". Tap a player to see their week " + S.week + " card.";
+    ? weekLabel(S.week) + (sim ? " — includes " + S.overrides.size + " simulated result(s)" : " — official results only")
+    : (S.practice
+        ? "Season totals — the practice week is not counted"
+        : "Season through week " + S.week + (sim ? " (with simulations)" : ""))) +
+    ". Tap a player to see their " + weekLabel(S.week).toLowerCase() + " card.";
 
   const shown = rows;
 
@@ -402,7 +426,9 @@ function renderStandings(){
       '</div>' +
       '<div class="pcard-body">' + (S.expanded.has(k) ? personCardHtml(r) : '') + '</div>' +
     '</div>';
-  }).join("") || '<div class="state-msg">No players match.</div>';
+  }).join("") || '<div class="state-msg">' + (S.practice
+      ? "Nobody has submitted a practice card yet."
+      : "No players match.") + '</div>';
 }
 
 /* One person's week card (used inside an expanded standings row) */
@@ -413,9 +439,9 @@ function personCardHtml(r){
     .filter(x => nameKey(x.name) === nameKey(r.name) && String(x.week) !== String(S.week))
     .map(x => ({ wk: parseInt(x.week, 10), rec: (parseInt(x.w,10)||0) + "-" + (parseInt(x.l,10)||0) + "-" + (parseInt(x.t,10)||0) }))
     .sort((a, b) => a.wk - b.wk);
-  hist.push({ wk: S.week, rec: r.w + "-" + r.l + "-" + r.t + " (live)" });
+  hist.push({ wk: S.week, rec: r.w + "-" + r.l + "-" + r.t + (S.practice ? " (practice, not counted)" : " (live)") });
   const log = '<p style="color:var(--chalk-dim);font-size:.82rem;padding:10px 16px 0;font-family:Oswald;letter-spacing:.04em">' +
-    'Season log: ' + hist.map(h => "Wk " + h.wk + ": <b style=\'color:var(--chalk)\'>" + h.rec + "</b>").join(" &nbsp;&middot;&nbsp; ") + '</p>';
+    'Season log: ' + hist.map(h => (isPracticeWeek(h.wk) ? "Practice" : "Wk " + h.wk) + ": <b style=\'color:var(--chalk)\'>" + h.rec + "</b>").join(" &nbsp;&middot;&nbsp; ") + '</p>';
   const note = log + (r.submitted ? "" :
     '<p style="color:var(--chalk-dim);font-size:.82rem;padding:10px 16px 0">No submission — scored on the default favorites.</p>');
   const trs = r.picks.map(pk => {

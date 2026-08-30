@@ -8,6 +8,29 @@ const POOL_API = "https://script.google.com/macros/s/AKfycbzLd6cxuwhcwbJllgw3c5I
 
 const POOL_YEAR = 2026;
 
+/* ---------------- practice week ----------------
+   Week 0 is the optional pre-season practice round. It behaves like a normal
+   week everywhere picks are concerned (open/closed, deadlines, reveal,
+   scoring) but it is labeled as practice in the UI and the API leaves it out
+   of season standings, so nothing done in it can touch the championship.
+
+   Two things to watch for anywhere you handle a week number:
+     1. 0 is falsy. `if (!week)` and `week || ''` will silently discard the
+        practice week — use `week == null || week === ''` and `week ?? ''`.
+     2. Compare as numbers or trimmed strings, never truthiness. */
+const PRACTICE_WEEK = 0;
+const TOTAL_WEEKS   = 13;                       /* real, scoring weeks */
+
+function isPracticeWeek(w){ return Number(w) === PRACTICE_WEEK; }
+function hasWeek(w){ return !(w == null || w === "" || (typeof w === "number" && isNaN(w))); }
+
+/* "Practice Week" / "Week 7" — for headings */
+function weekLabel(w){ return isPracticeWeek(w) ? "Practice Week" : "Week " + w; }
+/* "Practice" / "Week 7" — for tight spaces (pills, table cells) */
+function weekLabelShort(w){ return isPracticeWeek(w) ? "Practice" : "Week " + w; }
+/* "Practice Week" / "Week 7 of 13" — for the season position line */
+function weekPositionLabel(w){ return isPracticeWeek(w) ? "Practice Week" : "Week " + w + " of " + TOTAL_WEEKS; }
+
 /* ---------------- API ---------------- */
 
 async function apiGet(params) {
@@ -57,16 +80,18 @@ function normConfigRows(rows) {
       deadlineISO: String(r.picksdeadlineiso ?? r.PicksDeadlineISO ?? "").trim(),
       revealISO: String(r.revealiso ?? r.RevealISO ?? "").trim()
     }))
-    .filter(r => !isNaN(r.week))
+    .filter(r => !isNaN(r.week))                 /* week 0 survives this */
     .sort((a, b) => a.week - b.week);
 }
 
-/* ?week=N wins; else the highest week marked Open; else the latest week
-   whose BeginDate has arrived; else week 1. Returns {week, row, next}. */
+/* ?week=N wins (including ?week=0); else the highest week marked Open; else
+   the latest week whose BeginDate has arrived; else the first row.
+   Returns {week, row, next, practice}. */
 function resolveWeek(configRows) {
   const rows = normConfigRows(configRows);
   if (!rows.length) return null;
-  const param = parseInt(qsParam("week"), 10);
+  const raw = qsParam("week");
+  const param = (raw === null || raw.trim() === "") ? NaN : parseInt(raw, 10);
   let row = null;
   if (!isNaN(param)) row = rows.find(r => r.week === param) || { week: param };
   if (!row) {
@@ -79,7 +104,12 @@ function resolveWeek(configRows) {
     row = begun.length ? begun[begun.length - 1] : rows[0];
   }
   const i = rows.findIndex(r => r.week === row.week);
-  return { week: row.week, row: row, next: i >= 0 ? rows[i + 1] || null : null };
+  return {
+    week: row.week,
+    row: row,
+    next: i >= 0 ? rows[i + 1] || null : null,
+    practice: isPracticeWeek(row.week)
+  };
 }
 
 function weekIsOpenClient(row) {
@@ -89,6 +119,14 @@ function weekIsOpenClient(row) {
     if (!isNaN(dl) && Date.now() >= dl) return false;
   }
   return true;
+}
+
+/* Season rows only — drops practice-week rows from any list of {week:...}
+   objects (weeklyResults, picks, etc.) before totals are computed.
+   The API already does this for fn=weeklyresults and fn=all; this is here for
+   any page that aggregates rows it fetched some other way. */
+function seasonRowsOnly(rows) {
+  return (rows || []).filter(r => !isPracticeWeek(r.week ?? r.Week));
 }
 
 /* ---------------- Eastern-time formatting ---------------- */

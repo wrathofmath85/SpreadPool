@@ -238,3 +238,13 @@ footer.site .dot{color:var(--accent);margin:0 8px}
   .ticket-in{padding:10px 16px;gap:10px 16px}
   .ticket .stat b{font-size:.98rem}
 }
+
+/* ============================================================
+   PRACTICE WEEK (week 0) — shared bits for entry/summary pages
+   Gold, never orange, so a practice round never reads as the real thing.
+   ============================================================ */
+.pill.practice{color:var(--push);background:rgba(232,193,75,.12);border:1px solid rgba(232,193,75,.5)}
+.practice-banner{border-radius:12px;padding:12px 16px;font-size:.93rem;margin:14px 0;
+  border:1px solid rgba(232,193,75,.45);background:rgba(232,193,75,.07)}
+.practice-banner b{color:var(--push)}
+.mast-title .yr.practice{-webkit-text-stroke-color:var(--push)}
