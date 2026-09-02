@@ -21,6 +21,11 @@
 .paycard .pm{font-family:'Oswald',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.12em;font-size:.76rem;color:var(--chalk)}
 .paycard .ph{font-family:'Oswald',sans-serif;font-weight:600;font-size:1.02rem;color:var(--accent);margin-top:4px;letter-spacing:.02em}
 .paycard .hint{font-family:'Oswald',sans-serif;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--chalk-dim);margin-top:4px}
+/* name dropdown — native picker on mobile, custom caret on desktop */
+select#nameIn{appearance:none;-webkit-appearance:none;cursor:pointer;padding-right:34px;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8' fill='none' stroke='%2393a3bd' stroke-width='1.8' stroke-linecap='round'><path d='M1 1.5 L6 6.5 L11 1.5'/></svg>");
+  background-repeat:no-repeat;background-position:right 12px center;background-size:11px 8px}
+select#nameIn option{background:var(--field);color:var(--chalk)}
 /* test-copy ribbon */
 #testRibbon{position:fixed;top:0;left:0;right:0;z-index:200;text-align:center;pointer-events:none;
   font-family:'Oswald',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.28em;font-size:.68rem;
@@ -45,8 +50,7 @@ body.testing header.mast{padding-top:58px}
     <div class="field-row">
       <div>
         <label class="lbl" for="nameIn">Your name</label>
-        <input type="text" id="nameIn" list="rosterList" placeholder="Start typing your name…" autocomplete="off">
-        <datalist id="rosterList"></datalist>
+        <select id="nameIn"><option value="">Select your name…</option></select>
       </div>
       <div>
         <label class="lbl" for="emailIn">Email for confirmation</label>
@@ -195,9 +199,11 @@ async function init(){
   S.roster = rosterRes.roster || [];
   S.paidKnown = rosterHasPaidColumn(S.roster);
 
-  $("rosterList").innerHTML = S.roster.map(r => '<option value="' + escHtml(r.name) + '">').join("");
+  if (!S.paidKnown) console.warn("Roster feed has no Paid field — the paid gate is OFF (failing open). " +
+    "Add paid: to getRoster() in the Apps Script and deploy a NEW VERSION of the web app.");
+
+  fillNameSelect();
   $("nameIn").addEventListener("change", onNameChosen);
-  $("nameIn").addEventListener("blur", onNameChosen);
 
   renderStatus();
   renderBoard();
@@ -226,6 +232,38 @@ function normalizeLines(rows){
     required: /^y/i.test(String(r.required || "")),
     locked: !!r.kickoffiso && Date.parse(r.kickoffiso) <= Date.now()
   })).filter(r => r.qid && r.away && r.home);
+}
+
+/* ---------------- roster dropdown ----------------
+   A real <select> instead of input+datalist: phones give it a proper native
+   picker (datalist is half-supported on mobile and often shows nothing), and
+   a name can now only ever BE a real roster name — no typo'd spelling can
+   slip past the paid check.
+   Sorted by LAST name, then first. Displayed "Last, First"; the value posted
+   is still the normal "First Last" the sheet expects. */
+
+function personLast(r){
+  if (r.lastName) return String(r.lastName).trim();
+  const p = String(r.name || "").trim().split(/\s+/);
+  return p.length > 1 ? p[p.length - 1] : "";
+}
+function personFirst(r){
+  if (r.firstName) return String(r.firstName).trim();
+  const p = String(r.name || "").trim().split(/\s+/);
+  return p.length > 1 ? p.slice(0, -1).join(" ") : (p[0] || "");
+}
+function rosterLabel(r){
+  const l = personLast(r), f = personFirst(r);
+  return l && f ? l + ", " + f : (r.name || "");
+}
+function rosterSorted(){
+  const cmp = (a, b) => String(a).localeCompare(String(b), undefined, { sensitivity: "base" });
+  return S.roster.slice().sort((x, y) =>
+    cmp(personLast(x), personLast(y)) || cmp(personFirst(x), personFirst(y)));
+}
+function fillNameSelect(){
+  $("nameIn").innerHTML = '<option value="">Select your name…</option>' +
+    rosterSorted().map(r => '<option value="' + escHtml(r.name) + '">' + escHtml(rosterLabel(r)) + '</option>').join("");
 }
 
 /* ---------------- paid gate ----------------
@@ -320,18 +358,32 @@ function testBannerHtml(){
     '<b>Nothing here is saved</b>: no rows are written to the sheet and no confirmation email is sent.</div>';
 }
 
+/* Test-page only: says out loud whether the Paid column actually made it
+   through the API, so a silent gate is never a mystery. Never shown live. */
+function paidDiagHtml(){
+  if (!TEST_MODE) return "";
+  if (!S.paidKnown) return '<div class="banner warn"><b>Paid gate is OFF.</b> ' +
+    'The <code>fn=roster</code> feed has no <code>paid</code> field, so nobody can be blocked. ' +
+    'Add <code>paid:</code> to <code>getRoster()</code> in the Apps Script, then Deploy &rarr; Manage deployments &rarr; <b>New version</b>.</div>';
+  const unpaid = S.roster.filter(r => !isPaid(r));
+  return '<div class="banner good"><b>Paid gate is ON.</b> ' + unpaid.length + ' of ' + S.roster.length +
+    ' on the roster are not marked paid' +
+    (unpaid.length ? ': ' + escHtml(unpaid.slice(0, 8).map(r => r.name).join(", ")) +
+      (unpaid.length > 8 ? ' …and ' + (unpaid.length - 8) + ' more' : '') : '') + '.</div>';
+}
+
 function renderStatus(){
   const el = $("statusBanner");
   if (S.open) {
     const dl = (S.cfgRow.deadlineISO && !TEST_MODE) ? " Picks lock <b>" + escHtml(etDateTime(S.cfgRow.deadlineISO)) + "</b>." : "";
     $("mastSub").innerHTML = (TEST_MODE ? "TEST COPY. " : "") + (S.practice ? "Optional practice round. " : "") +
       "Pick against the spread. Full card: " + MIN_PICKS + "&ndash;" + MAX_PICKS + " games with 3+ NFL and 3+ college. Submit anytime &mdash; even a partial set." + dl;
-    el.innerHTML = testBannerHtml() + practiceBannerHtml() + (S.blocked ? unpaidBannerHtml() : "");
+    el.innerHTML = testBannerHtml() + paidDiagHtml() + practiceBannerHtml() + (S.blocked ? unpaidBannerHtml() : "");
   } else {
     $("mastSub").textContent = S.practice
       ? "The practice round is closed."
       : "This week is not accepting picks.";
-    el.innerHTML = practiceBannerHtml() +
+    el.innerHTML = paidDiagHtml() + practiceBannerHtml() +
       '<div class="banner warn"><b>' + weekLabel(S.week) + ' is closed.</b> The board below is read-only. ' +
       'Check the <a href="Summary.html?week=' + S.week + '" style="color:var(--accent)">pick summary</a> for results.</div>' +
       (S.blocked ? unpaidBannerHtml() : "");
@@ -604,7 +656,7 @@ function wireModal(){
 function validate(){
   const errs = [], warns = [];
   const name = $("nameIn").value.trim();
-  if (!name) errs.push("Enter your name.");
+  if (!name) errs.push("Pick your name from the dropdown.");
   else if (!S.roster.some(r => nameKey(r.name) === nameKey(name)))
     warns.push('"' + escHtml(name) + '" isn\'t on the roster — double-check the spelling.');
   if (S.blocked) errs.push(escHtml(S.blockedName) + " isn't marked as paid — the " + ENTRY_FEE + " entry fee has to be in before picks can be submitted.");
