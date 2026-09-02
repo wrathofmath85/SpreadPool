@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TEST — The Board — 2026 Spread Pool</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@400;500;600;700&family=Archivo:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="pool.css">
+<style>
+/* test-copy ribbon */
+#testRibbon{position:fixed;top:0;left:0;right:0;z-index:200;text-align:center;pointer-events:none;
+  font-family:'Oswald',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.28em;font-size:.68rem;
+  color:#171003;background:var(--push);padding:5px 10px;box-shadow:0 6px 18px -8px rgba(0,0,0,.9)}
+body.testing header.mast{padding-top:58px}
+</style>
+</head>
+<body>
+
+<div id="testRibbon" style="display:none">Test copy &middot; nothing is saved</div>
+
+<header class="mast wrap">
+  <div class="kicker"><a href="index.html">2026 Spread Pool</a></div>
+  <h1 class="mast-title" id="mastTitle">Week <span class="yr" id="wkNum">–</span> Board</h1>
+  <p class="mast-sub" id="mastSub">Loading…</p>
+</header>
+
+<main class="wrap" id="main">
+  <div id="testBanner"></div>
+  <div id="gateView"></div>
+
+  <div id="revealed" style="display:none">
+
+    <div id="practiceBanner"></div>
+    <div id="simBanner"></div>
+
+    <!-- standings (week/season toggle, expandable player rows) -->
+    <div class="section-head"><h2>Standings</h2><span class="rule"></span>
+      <span style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn small primary" id="modeWeek">This Week</button>
+        <button class="btn small" id="modeSeason">Season</button>
+        <span style="width:10px"></span>
+        <button class="btn small primary" id="sortRecord">Record</button>
+        <button class="btn small" id="sortAlpha">A&ndash;Z</button>
+      </span>
+    </div>
+    <p id="standMeta" style="color:var(--chalk-dim);font-size:.82rem;margin:-6px 0 12px"></p>
+    <div id="standRows"></div>
+
+    <!-- games -->
+    <div id="gamesBoard"></div>
+
+    <p style="color:var(--chalk-dim);font-size:.8rem;margin:18px 0 0" id="refreshNote"></p>
+  </div>
+</main>
+
+<!-- pool footer -->
+<div class="ticket" id="poolTicket" style="display:none">
+  <div class="ticket-in">
+    <div class="stat">Pool &mdash; <span id="tWkNum"></span><b id="tWeekRec">&mdash;</b></div>
+    <div class="stat" id="tSeasonStat">Pool &mdash; Season<b id="tSeasonRec">&mdash;</b></div>
+    <div class="spacer"></div>
+    <button class="btn small ghost" id="clearSimBtn" style="display:none">Reset what-ifs</button>
+    <button class="btn small" id="adminBtn">Admin</button>
+  </div>
+</div>
+
+<!-- admin password modal -->
+<div class="modal-back" id="pwBack">
+  <div class="modal" style="max-width:440px">
+    <h3>Results password</h3>
+    <p class="sub">Set outcomes with the chips (they appear in admin mode), then submit. Everyone sees them as official.</p>
+    <div id="pwErr"></div>
+    <input type="password" id="pwIn" placeholder="Password" autocomplete="off">
+    <div class="actions">
+      <button class="btn ghost" id="pwCancel">Cancel</button>
+      <button class="btn primary" id="pwOk">Unlock admin</button>
+    </div>
+  </div>
+</div>
+
+<footer class="site">2026 Spread Pool<span class="dot">&bull;</span><a href="index.html" style="color:var(--chalk-dim)">Home</a></footer>
+
+<script src="pool.js"></script>
+<script>
+/* ============================================================
+   TEST_MODE — leave false on the live board.
+   The test copy (SummaryTEST.html) is byte-identical except this
+   one line is true. When true the page can unlock the sealed
+   picks with the results password, and the Admin button becomes
+   a dry run that writes nothing.
+   ============================================================ */
+const TEST_MODE = true;
+
+const DOUBLE_WEIGHT = 2, MIN_PICKS = 7, REFRESH_MS = 180000;
+
+const S = {
+  week: null, cfgRow: null, practice: false,
+  lines: [], picks: [], decls: [], roster: [], weekly: [],
+  revealed: false, preview: false,
+  overrides: new Map(),   // qid -> 'away'|'home'|'tie'  (simulated / admin-pending)
+  adminMode: false, adminPw: "",
+  standMode: "week", sortMode: "record", expanded: new Set(),
+
+};
+const $ = id => document.getElementById(id);
+
+init().catch(e => { $("gateView").innerHTML = '<div class="banner bad">Could not load the board: ' + escHtml(e.message) + '</div>'; });
+
+async function init(){
+  if (POOL_API.indexOf("http") !== 0) throw new Error("POOL_API is not set in pool.js yet.");
+  if (TEST_MODE){
+    document.body.classList.add("testing");
+    $("testRibbon").style.display = "";
+    document.title = "TEST — " + document.title;
+    $("testBanner").innerHTML = '<div class="banner bad" style="margin-top:0"><b>Test copy &mdash; not the live board.</b> ' +
+      'It ignores reveal time, so the picks below may not be public yet. Everything here is read-only against the ' +
+      'real sheet: what-ifs stay on your screen, and the Admin button is a dry run that writes nothing.</div>';
+  }
+  wireControls();
+  await loadAll(true);
+  setInterval(() => loadAll(false).catch(() => {}), REFRESH_MS);
+}
+
+async function loadAll(first){
+  const cfg = first ? await apiGet({ fn: "config" }) : null;
+  if (first){
+    const r = resolveWeek(cfg.config);
+    if (!r) throw new Error("No weeks in Config.");
+    S.week = r.week; S.cfgRow = r.row;
+    S.practice = isPracticeWeek(S.week);          /* week 0 — live scoring, zero season effect */
+    $("wkNum").textContent = S.week;
+    if (S.practice) $("mastTitle").innerHTML = '<span class="yr practice">Practice</span> Board';
+    document.title = weekLabel(S.week) + " Board — 2026 Spread Pool";
+  }
+  const q = { fn: "all", week: S.week };
+  if (TEST_MODE) q.preview = 1;        // test board always sees picks, reveal time or not
+  const all = await apiGet(q);
+  S.lines  = normalizeLines(all.lines);
+  S.roster = all.roster || [];
+  /* season-only: the API strips practice-week rows out of weeklyResults, so
+     nothing summed below can pick up week 0 */
+  S.weekly = all.weeklyResults || [];
+  if (typeof all.practice === "boolean") S.practice = all.practice;
+  const pb = all.picksBundle || {};
+  S.revealed = !!pb.revealed;
+  S.preview  = !!pb.preview;      // true only when the reveal gate was actually bypassed
+  S.picks = (pb.picks || []).map(p => ({
+    name: String(p.name || ""), qid: String(p.qid || ""),
+    side: String(p.side || "").toLowerCase(),
+    choiceText: String(p.choicetext || ""),
+    isDouble: String(p.isdouble).toUpperCase() === "TRUE"
+  }));
+  S.decls = (pb.declarations || []).map(d => ({
+    name: String(d.name || ""),
+    numPicks: parseInt(d.numpicks, 10) || 0,
+    willDouble: String(d.willdouble).toUpperCase() === "TRUE"
+  }));
+  // drop overrides for games that now have an official result
+  for (const g of S.lines) if (g.winnerSide) S.overrides.delete(g.qid);
+  render(first);
+}
+
+function normalizeLines(rows){
+  return (rows || []).map(r => ({
+    qid: String(r.qid || ""), league: String(r.league || "").toUpperCase(),
+    away: String(r.awayteam || ""), home: String(r.hometeam || ""),
+    kickoffISO: String(r.kickoffiso || ""), tv: String(r.tv || ""),
+    spreadText: String(r.spreadtext || ""),
+    favSide: String(r.favoredside || "").toLowerCase(),
+    isDefault: /^y/i.test(String(r.default || "")),
+    awayScore: r.awayscore, homeScore: r.homescore,
+    winnerSide: String(r.winnerside || "").toLowerCase()
+  })).filter(r => r.qid && r.away && r.home);
+}
+
+/* ---------------- render ---------------- */
+
+function practiceNoticeHtml(){
+  return S.practice
+    ? '<div class="practice-banner"><b>Practice week &mdash; nothing here counts.</b> ' +
+      'Records are scored exactly like a real week so the math gets a workout, but they are excluded ' +
+      'from season standings, the Hall of Champions and every tiebreaker.</div>'
+    : "";
+}
+
+function render(first){
+  if (!S.revealed){
+    $("revealed").style.display = "none";
+    const at = (S.cfgRow && S.cfgRow.revealISO) || "";
+    $("mastSub").textContent = "Picks are sealed until reveal time.";
+    $("gateView").innerHTML = practiceNoticeHtml() + '<div class="card card-pad" style="text-align:center;padding:44px 22px">' +
+      '<div class="kicker">Sealed</div>' +
+      '<p style="font-size:1.05rem">Everyone\'s picks go public ' + (at ? '<b style="color:var(--accent)">' + escHtml(etDateTime(at)) + '</b>' : 'at reveal time') + '.</p>' +
+      (at ? '<p style="margin-top:10px;font-family:Oswald;font-size:1.6rem;letter-spacing:.06em" id="gateClock"></p>' : '') +
+      '<p style="color:var(--chalk-dim);margin-top:14px;font-size:.9rem">This page checks automatically — leave it open.</p>' +
+      (TEST_MODE ? '<p class="banner warn" style="margin-top:18px;text-align:left">Test copy, still sealed — that means the ' +
+        '<code>&amp;preview=</code> support isn\'t deployed yet. After editing the Apps Script: Deploy &rarr; ' +
+        'Manage deployments &rarr; <b>New version</b>.</p>' : '') +
+      '</div>';
+    if (S.cfgRow && S.cfgRow.revealISO){
+      const t = setInterval(() => {
+        const el = $("gateClock"); if (!el){ clearInterval(t); return; }
+        el.textContent = countdownText(S.cfgRow.revealISO);
+        if (Date.parse(S.cfgRow.revealISO) <= Date.now()){ clearInterval(t); loadAll(false); }
+      }, 1000);
+    }
+    document.body.classList.remove("has-ticket");
+    $("poolTicket").style.display = "none";
+    return;
+  }
+  $("gateView").innerHTML = "";
+  $("revealed").style.display = "";
+  const officialCount = S.lines.filter(g => g.winnerSide).length;
+  $("mastSub").innerHTML = (TEST_MODE ? "TEST COPY &middot; " : "") +
+    new Set(S.picks.map(p => nameKey(p.name))).size + " cards in &middot; " +
+    officialCount + " of " + S.lines.length + " results official";
+  renderGames();
+  renderStandings();
+  updateFooter();
+  updateSimBanner();
+  document.body.classList.add("has-ticket");
+  $("poolTicket").style.display = "";
+  $("tWkNum").textContent = weekLabelShort(S.week);
+  $("tSeasonStat").style.display = S.practice ? "none" : "";
+  $("practiceBanner").innerHTML = practiceNoticeHtml();
+  $("refreshNote").textContent = "Board refreshes automatically. Last updated " + new Date().toLocaleTimeString();
+}
+
+/* Pool-wide records: every player's picks combined, live with results/what-ifs */
+function updateFooter(){
+  const rows = scoreWeek();
+  let w = 0, l = 0, t = 0;
+  rows.forEach(r => { w += r.w; l += r.l; t += r.t; });
+  /* a practice week contributes nothing to the season line */
+  let sw = S.practice ? 0 : w, sl = S.practice ? 0 : l, st = S.practice ? 0 : t;
+  for (const r of S.weekly){
+    if (String(r.week) === String(S.week)) continue;
+    sw += parseInt(r.w, 10) || 0; sl += parseInt(r.l, 10) || 0; st += parseInt(r.t, 10) || 0;
+  }
+  $("tWeekRec").textContent = w + "-" + l + "-" + t;
+  $("tSeasonRec").textContent = sw + "-" + sl + "-" + st;
+  $("clearSimBtn").style.display = S.overrides.size ? "" : "none";
+}
+
+function effWinner(g){ return S.overrides.get(g.qid) || g.winnerSide || ""; }
+
+function renderGames(){
+  const el = $("gamesBoard");
+  const counts = pickCounts();
+  const sections = [["NFL", "NFL"], ["CFB", "College"]];
+  let html = "";
+  for (const [lg, title] of sections){
+    const games = S.lines.filter(g => g.league === lg);
+    if (!games.length) continue;
+    html += '<div class="section-head"><h2>' + title + '</h2><span class="rule"></span><span class="count">' + games.length + ' games</span></div>';
+    let lastDay = "";
+    for (const g of games){
+      const day = etDayKey(g.kickoffISO);
+      if (day && day !== lastDay){ html += '<div class="day-head">' + escHtml(etDayLabel(g.kickoffISO)) + '</div>'; lastDay = day; }
+      html += gameHtml(g, counts.get(g.qid) || { away: 0, home: 0, stars: 0 });
+    }
+  }
+  el.innerHTML = html;
+  el.onclick = onChip;
+}
+
+function pickCounts(){
+  const m = new Map();
+  for (const p of S.picks){
+    if (!m.has(p.qid)) m.set(p.qid, { away: 0, home: 0, stars: 0 });
+    const c = m.get(p.qid);
+    if (p.side === "away") c.away++; else if (p.side === "home") c.home++;
+    if (p.isDouble) c.stars++;
+  }
+  return m;
+}
+
+function gameHtml(g, c){
+  const w = effWinner(g), simmed = S.overrides.has(g.qid);
+  const total = c.away + c.home;
+  const aPct = total ? Math.round(100 * c.away / total) : 0;
+  const scoreTxt = (g.awayScore !== "" && g.awayScore != null && g.homeScore !== "" && g.homeScore != null &&
+                    !isNaN(parseInt(g.awayScore, 10)))
+    ? '<span style="color:var(--chalk)">' + parseInt(g.awayScore, 10) + '&ndash;' + parseInt(g.homeScore, 10) + '</span>' : '';
+  const resPill = w
+    ? (simmed ? '<span class="pill sim">Sim: ' + winnerLabel(g, w) + '</span>'
+              : '<span class="pill win">' + winnerLabel(g, w) + '</span>')
+    : '';
+  const teamCls = side => {
+    if (!w) return "";
+    if (w === "tie") return " result-loss";
+    return w === side ? " result-win" : " result-loss";
+  };
+  const chips = '<div class="chips">' +
+        chipBtn(g, "away", w) + chipBtn(g, "tie", w) + chipBtn(g, "home", w) +
+        (S.overrides.has(g.qid) ? '<button class="chip" data-clear="' + g.qid + '">clear</button>' : '') +
+      '</div>';
+  return '<div class="game" id="sg-' + g.qid + '">' +
+    '<div class="game-meta">' +
+      '<span class="qid">' + g.qid + '</span>' +
+      (g.kickoffISO ? '<span>' + escHtml(etTime(g.kickoffISO)) + '</span>' : '') +
+      (g.tv ? '<span>' + escHtml(g.tv) + '</span>' : '') +
+      (g.spreadText ? '<span style="color:var(--chalk)">' + escHtml(g.spreadText) + '</span>' : '') +
+      scoreTxt + '<span style="flex:1"></span>' + resPill +
+    '</div>' +
+    '<div class="game-row" style="grid-template-columns:1fr auto 1fr">' +
+      '<div class="teambtn' + teamCls("away") + '" style="cursor:default"><span>' + escHtml(g.away) + '</span><span class="tag">' + c.away + (c.stars && sideHasStar(g.qid, "away") ? " ★" : "") + '</span></div>' +
+      '<span class="at">at</span>' +
+      '<div class="teambtn' + teamCls("home") + '" style="cursor:default"><span>' + escHtml(g.home) + '</span><span class="tag">' + c.home + (c.stars && sideHasStar(g.qid, "home") ? " ★" : "") + '</span></div>' +
+    '</div>' +
+    (total ? '<div class="dist"><span>' + aPct + '%</span><div class="bar"><span class="a" style="width:' + aPct + '%"></span><span class="h" style="width:' + (100 - aPct) + '%"></span></div><span>' + (100 - aPct) + '%</span></div>' : '') +
+    chips +
+  '</div>';
+}
+
+function sideHasStar(qid, side){ return S.picks.some(p => p.qid === qid && p.side === side && p.isDouble); }
+function winnerLabel(g, w){ return w === "tie" ? "Push" : escHtml(w === "away" ? g.away : g.home); }
+function chipBtn(g, side, w){
+  const on = w === side ? " on" + (side === "tie" ? " tie" : "") : "";
+  const lbl = side === "tie" ? "Push" : (side === "away" ? g.away : g.home);
+  const dis = (!S.adminMode && g.winnerSide) ? "disabled" : "";   // what-if can't move official results
+  return '<button class="chip' + on + '" data-qid="' + g.qid + '" data-w="' + side + '" ' + dis + '>' + escHtml(lbl) + '</button>';
+}
+
+function onChip(e){
+  const clr = e.target.closest("[data-clear]");
+  if (clr){ S.overrides.delete(clr.dataset.clear); render(false); return; }
+  const ch = e.target.closest(".chip[data-qid]");
+  if (!ch || ch.disabled) return;
+  const qid = ch.dataset.qid, w = ch.dataset.w;
+  const g = S.lines.find(x => x.qid === qid);
+  const cur = effWinner(g);
+  if (cur === w) S.overrides.delete(qid); else S.overrides.set(qid, w);
+  if (!S.overrides.get(qid) && g.winnerSide && S.overrides.has(qid)) S.overrides.delete(qid);
+  updateSimBanner();
+  render(false);
+}
+
+/* ---------------- scoring (mirrors the server's computeWeekly) ---------------- */
+
+function scoreWeek(){
+  const lineByQid = new Map(S.lines.map(g => [g.qid, g]));
+  const defaults = S.lines
+    .filter(g => g.isDefault && (g.favSide === "away" || g.favSide === "home"))
+    .map(g => ({ qid: g.qid, side: g.favSide, isDouble: false }));
+
+  const byName = new Map();
+  for (const p of S.picks){
+    const k = nameKey(p.name);
+    if (!byName.has(k)) byName.set(k, { name: p.name, picks: [] });
+    byName.get(k).picks.push(p);
+  }
+  const declByName = new Map(S.decls.map(d => [nameKey(d.name), d]));
+
+  const out = [];
+  for (const person of S.roster){
+    const k = nameKey(person.name);
+    const ent = byName.get(k);
+    /* practice week is opt-in — mirror the server and skip people who sat it
+       out, rather than handing them a default-pick record that isn't stored */
+    if (S.practice && !ent) continue;
+    const picks = ent ? ent.picks : defaults;
+    let w = 0, l = 0, t = 0;
+    for (const p of picks){
+      const g = lineByQid.get(p.qid);
+      if (!g) continue;
+      const win = effWinner(g);
+      if (!win) continue;
+      const wt = p.isDouble ? DOUBLE_WEIGHT : 1;
+      if (win === "tie") t += wt; else if (win === p.side) w += wt; else l += wt;
+    }
+    const teamOf = p => { const g = lineByQid.get(p.qid); return g ? (p.side === "away" ? g.away : g.home) : p.qid; };
+    let doubleTxt = "—";
+    if (ent){
+      const d = declByName.get(k);
+      const starred = ent.picks.find(p => p.isDouble);
+      if (d){
+        if (!isNaN(d.numPicks) && d.numPicks) l += Math.max(0, d.numPicks - ent.picks.length);
+        if (d.willDouble && !starred) l += 1;
+        doubleTxt = starred ? "★ " + teamOf(starred) : (d.willDouble ? "promised" : "none");
+      } else doubleTxt = starred ? "★ " + teamOf(starred) : "none";
+    } else doubleTxt = "defaults";
+    out.push({ name: person.name, submitted: !!ent, w, l, t, doubleTxt, picks: picks,
+      pct: (w + l) ? w / (w + l) : 0 });
+  }
+  return out;
+}
+
+/* Sort key: roster last name (falls back to the last word of the name) */
+function lastNameKey(name){
+  const p = S.roster.find(r => nameKey(r.name) === nameKey(name));
+  const last = (p && p.lastName) ? p.lastName : String(name).trim().split(/\s+/).pop();
+  const first = (p && p.firstName) ? p.firstName : String(name);
+  return (last + " " + first).toLowerCase();
+}
+
+function renderStandings(){
+  const weekRows = scoreWeek();
+  const sim = S.overrides.size > 0;
+
+  // season totals = stored past weeks + this week live
+  const season = new Map();
+  for (const r of S.weekly){
+    if (String(r.week) === String(S.week)) continue;
+    const k = nameKey(r.name);
+    if (!season.has(k)) season.set(k, { w: 0, l: 0, t: 0 });
+    const s = season.get(k);
+    s.w += parseInt(r.w, 10) || 0; s.l += parseInt(r.l, 10) || 0; s.t += parseInt(r.t, 10) || 0;
+  }
+  const live = S.practice ? { w: 0, l: 0, t: 0 } : null;   /* practice adds nothing to the season */
+  const rows = weekRows.map(r => {
+    const k = nameKey(r.name);
+    const past = season.get(k) || { w: 0, l: 0, t: 0 };
+    const add = live || r;
+    const sw = past.w + add.w, sl = past.l + add.l, st = past.t + add.t;
+    return Object.assign({}, r, { sw, sl, st, spct: (sw + sl) ? sw / (sw + sl) : 0 });
+  });
+
+  const mode = S.standMode;
+  if (S.sortMode === "alpha"){
+    rows.sort((a, b) => lastNameKey(a.name).localeCompare(lastNameKey(b.name)));
+  } else {
+    rows.sort(mode === "week"
+      ? ((a, b) => b.pct - a.pct || b.w - a.w || a.name.localeCompare(b.name))
+      : ((a, b) => b.spct - a.spct || b.sw - a.sw || a.name.localeCompare(b.name)));
+  }
+
+  $("modeWeek").classList.toggle("primary", mode === "week");
+  $("modeSeason").classList.toggle("primary", mode === "season");
+  $("sortRecord").classList.toggle("primary", S.sortMode === "record");
+  $("sortAlpha").classList.toggle("primary", S.sortMode === "alpha");
+  $("standMeta").textContent = (mode === "week"
+    ? weekLabel(S.week) + (sim ? " — includes " + S.overrides.size + " simulated result(s)" : " — official results only")
+    : (S.practice
+        ? "Season totals — the practice week is not counted"
+        : "Season through week " + S.week + (sim ? " (with simulations)" : ""))) +
+    ". Tap a player to see their " + weekLabel(S.week).toLowerCase() + " card.";
+
+  const shown = rows;
+
+  $("standRows").innerHTML = shown.map((r, i) => {
+    const k = nameKey(r.name);
+    const rec = mode === "week" ? r.w + "-" + r.l + "-" + r.t : r.sw + "-" + r.sl + "-" + r.st;
+    const pct = mode === "week"
+      ? (r.w + r.l ? (100 * r.pct).toFixed(1) + "%" : "—")
+      : (r.sw + r.sl ? (100 * r.spct).toFixed(1) + "%" : "—");
+    const good = mode === "week" ? r.w >= r.l : r.sw >= r.sl;
+    const dbl = mode === "week"
+      ? '<span style="font-family:Oswald;font-size:.78rem;color:var(--chalk-dim);white-space:nowrap">' + escHtml(r.doubleTxt) + '</span>'
+      : '';
+    return '<div class="pcard' + (S.expanded.has(k) ? " openc" : "") + '" data-person="' + escHtml(k) + '">' +
+      '<div class="pcard-head">' +
+        '<span class="caret">▶</span>' +
+        '<span style="font-family:Oswald;color:var(--chalk-dim);min-width:26px">' + (S.sortMode === "record" ? (i + 1) : "&middot;") + '</span>' +
+        '<span class="nm">' + escHtml(r.name) + (r.submitted ? "" : ' <span class="pill locked">defaults</span>') + '</span>' +
+        dbl +
+        '<span class="rec">' + rec + '</span>' +
+        '<span class="pill ' + (good ? "win" : "loss") + '">' + pct + '</span>' +
+      '</div>' +
+      '<div class="pcard-body">' + (S.expanded.has(k) ? personCardHtml(r) : '') + '</div>' +
+    '</div>';
+  }).join("") || '<div class="state-msg">' + (S.practice
+      ? "Nobody has submitted a practice card yet."
+      : "No players match.") + '</div>';
+}
+
+/* One person's week card (used inside an expanded standings row) */
+function personCardHtml(r){
+  const lineByQid = new Map(S.lines.map(g => [g.qid, g]));
+  // week-by-week season log: stored past weeks + this week live
+  const hist = S.weekly
+    .filter(x => nameKey(x.name) === nameKey(r.name) && String(x.week) !== String(S.week))
+    .map(x => ({ wk: parseInt(x.week, 10), rec: (parseInt(x.w,10)||0) + "-" + (parseInt(x.l,10)||0) + "-" + (parseInt(x.t,10)||0) }))
+    .sort((a, b) => a.wk - b.wk);
+  hist.push({ wk: S.week, rec: r.w + "-" + r.l + "-" + r.t + (S.practice ? " (practice, not counted)" : " (live)") });
+  const log = '<p style="color:var(--chalk-dim);font-size:.82rem;padding:10px 16px 0;font-family:Oswald;letter-spacing:.04em">' +
+    'Season log: ' + hist.map(h => (isPracticeWeek(h.wk) ? "Practice" : "Wk " + h.wk) + ": <b style=\'color:var(--chalk)\'>" + h.rec + "</b>").join(" &nbsp;&middot;&nbsp; ") + '</p>';
+  const note = log + (r.submitted ? "" :
+    '<p style="color:var(--chalk-dim);font-size:.82rem;padding:10px 16px 0">No submission — scored on the default favorites.</p>');
+  const trs = r.picks.map(pk => {
+    const g = lineByQid.get(pk.qid);
+    const win = g ? effWinner(g) : "";
+    let pill = '<span class="pill locked">TBD</span>';
+    if (win === "tie") pill = '<span class="pill push">Push</span>';
+    else if (win && win === pk.side) pill = '<span class="pill win">W' + (pk.isDouble ? "×2" : "") + '</span>';
+    else if (win) pill = '<span class="pill loss">L' + (pk.isDouble ? "×2" : "") + '</span>';
+    const txt = pk.choiceText || (g ? (pk.side === "away" ? g.away : g.home) : pk.side);
+    const kick = g && g.kickoffISO ? etDateTime(g.kickoffISO) : "—";
+    const matchup = g
+      ? escHtml(g.away) + ' <span style="color:var(--chalk-dim)">@</span> ' + escHtml(g.home) +
+        (g.spreadText ? ' <span style="color:var(--chalk-dim);font-size:.85em;white-space:nowrap">(' + escHtml(g.spreadText) + ')</span>' : '')
+      : escHtml(pk.qid);
+    return '<tr><td data-label="Game">' + escHtml(pk.qid) + '</td>' +
+      '<td data-label="Kickoff" style="white-space:nowrap;color:var(--chalk-dim)">' + escHtml(kick) + '</td>' +
+      '<td data-label="Matchup">' + matchup + '</td>' +
+      '<td data-label="Pick"><b>' + escHtml(txt) + '</b>' + (pk.isDouble ? " ★" : "") + '</td>' +
+      '<td data-label="Result">' + pill + '</td></tr>';
+  }).join("");
+  return note + '<table class="pool picks"><thead><tr><th>Game</th><th>Kickoff</th><th>Matchup</th><th>Pick</th><th>Result</th></tr></thead>' +
+    '<tbody>' + trs + '</tbody></table>';
+}
+
+/* ---------------- controls / admin ---------------- */
+
+function wireControls(){
+  $("modeWeek").addEventListener("click", () => { S.standMode = "week"; renderStandings(); });
+  $("modeSeason").addEventListener("click", () => { S.standMode = "season"; renderStandings(); });
+  $("sortRecord").addEventListener("click", () => { S.sortMode = "record"; renderStandings(); });
+  $("sortAlpha").addEventListener("click", () => { S.sortMode = "alpha"; renderStandings(); });
+  $("clearSimBtn").addEventListener("click", () => { S.overrides.clear(); updateSimBanner(); render(false); });
+  $("standRows").addEventListener("click", e => {
+    const card = e.target.closest(".pcard[data-person]");
+    if (!card || !e.target.closest(".pcard-head")) return;
+    const k = card.dataset.person;
+    if (S.expanded.has(k)) S.expanded.delete(k); else S.expanded.add(k);
+    renderStandings();
+  });
+  $("adminBtn").addEventListener("click", () => {
+    if (S.adminMode) return submitResults();
+    $("pwErr").innerHTML = ""; $("pwIn").value = "";
+    $("pwBack").classList.add("show"); $("pwIn").focus();
+  });
+  $("pwCancel").addEventListener("click", () => $("pwBack").classList.remove("show"));
+  $("pwOk").addEventListener("click", () => {
+    const pw = $("pwIn").value;
+    if (!pw){ $("pwErr").innerHTML = '<div class="err">Enter the password.</div>'; return; }
+    S.adminPw = pw; S.adminMode = true;
+    $("pwBack").classList.remove("show");
+    $("adminBtn").textContent = TEST_MODE ? "Dry-run results" : "Submit official results";
+    $("adminBtn").classList.add("primary");
+    updateSimBanner(); render(false);
+  });
+}
+
+function updateSimBanner(){
+  let html = "";
+  if (S.preview) html += '<div class="banner warn"><b>Previewing sealed picks.</b> ' +
+    'Reveal time hasn\'t passed yet, so these cards are not public on the live board.</div>';
+  if (S.adminMode) html += '<div class="banner warn"><b>Admin mode.</b> Set each game\'s outcome with the chips, then hit ' +
+    '"' + (TEST_MODE ? "Dry-run results" : "Submit official results") + '". ' +
+    (TEST_MODE ? 'This is the test copy — submitting writes nothing to the sheet.'
+               : 'Wrong password will be rejected on submit.') +
+    ' Chips you set are simulated until then.</div>';
+  else if (S.overrides.size) html += '<div class="banner"><span class="pill sim">Simulation</span>&nbsp; ' + S.overrides.size +
+    ' what-if result(s) applied — standings and the footer record update live, on your screen only. Use "Reset what-ifs" in the footer to clear.</div>';
+  $("simBanner").innerHTML = html;
+}
+
+async function submitResults(){
+  const results = [];
+  for (const g of S.lines){
+    const o = S.overrides.get(g.qid);
+    if (o && o !== g.winnerSide) results.push({ qid: g.qid, winnerSide: o });
+  }
+  if (!results.length){ $("simBanner").innerHTML = '<div class="banner warn">No new outcomes set — click chips first.</div>'; return; }
+  if (TEST_MODE){
+    $("simBanner").innerHTML = '<div class="banner warn"><b>Dry run — nothing was written.</b> ' + results.length +
+      ' result(s) would have been saved to the sheet: ' +
+      escHtml(results.map(r => r.qid + "→" + r.winnerSide).join(", ")) +
+      '. Use the live board to set results for real.</div>';
+    return;
+  }
+  $("adminBtn").disabled = true;
+  $("adminBtn").innerHTML = '<span class="spin"></span>&nbsp;Submitting';
+  try {
+    await apiPost({ action: "setResults", password: S.adminPw, week: S.week, results: results });
+    S.overrides.clear();
+    await loadAll(false);
+    $("simBanner").innerHTML = '<div class="banner good"><b>' + results.length + ' result(s) locked in.</b> The board below is official.</div>';
+  } catch(e){
+    $("simBanner").innerHTML = '<div class="banner bad">Results not saved: ' + escHtml(e.message) + '</div>';
+    if (/password/i.test(e.message)){ S.adminMode = false; $("adminBtn").textContent = "Admin"; $("adminBtn").classList.remove("primary"); }
+  } finally {
+    $("adminBtn").disabled = false;
+    if (S.adminMode) $("adminBtn").textContent = TEST_MODE ? "Dry-run results" : "Submit official results";
+  }
+}
+</script>
+</body>
+</html>
