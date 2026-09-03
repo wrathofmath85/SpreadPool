@@ -248,3 +248,25 @@ footer.site .dot{color:var(--accent);margin:0 8px}
   border:1px solid rgba(232,193,75,.45);background:rgba(232,193,75,.07)}
 .practice-banner b{color:var(--push)}
 .mast-title .yr.practice{-webkit-text-stroke-color:var(--push)}
+/* ============================================================
+   PENALTY ROWS — losses with no game behind them
+   A short card or a promised-but-unplaced double adds to L without
+   a pick attached, which used to make a record look like it came
+   out of nowhere (0-1-0 with nothing but TBDs on the card). These
+   rows sit at the bottom of an expanded player card and say why.
+   ============================================================ */
+.pen-note{padding:10px 16px 0;font-size:.82rem;color:var(--chalk-dim)}
+.pen-note b{color:var(--danger);font-weight:600}
+
+table.pool.picks tbody tr.pen td{background:rgba(255,107,94,.07)}
+table.pool.picks tbody tr.pen td:first-child{box-shadow:inset 3px 0 0 var(--danger)}
+.pen-title{display:block;font-family:'Oswald',sans-serif;font-weight:600;
+  letter-spacing:.06em;text-transform:uppercase;font-size:.78rem;color:var(--danger)}
+.pen-why{display:block;color:var(--chalk-dim);font-size:.82rem;margin-top:2px}
+.pen-dash{color:var(--chalk-dim)}
+
+@media(max-width:640px){
+  /* keep the accent bar down the left edge of the whole mini-card */
+  table.pool.picks tbody tr.pen{background:rgba(255,107,94,.07);box-shadow:inset 3px 0 0 var(--danger)}
+  table.pool.picks tbody tr.pen td{background:none;box-shadow:none}
+}

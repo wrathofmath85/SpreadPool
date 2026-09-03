@@ -372,17 +372,43 @@ function scoreWeek(){
       if (win === "tie") t += wt; else if (win === p.side) w += wt; else l += wt;
     }
     const teamOf = p => { const g = lineByQid.get(p.qid); return g ? (p.side === "away" ? g.away : g.home) : p.qid; };
+
+    /* Penalty losses land in L with no game attached, which is why a card can
+       read 0-1-0 with nothing on it but TBDs. Collect each one with a reason so
+       the expanded card can show a row for it. The arithmetic below is exactly
+       what it always was and still matches the server — this only records WHY. */
+    const penalties = [];
     let doubleTxt = "—";
     if (ent){
       const d = declByName.get(k);
       const starred = ent.picks.find(p => p.isDouble);
       if (d){
-        if (!isNaN(d.numPicks) && d.numPicks) l += Math.max(0, d.numPicks - ent.picks.length);
-        if (d.willDouble && !starred) l += 1;
+        const declared = parseInt(d.numPicks, 10);
+        const short = (!isNaN(declared) && declared) ? Math.max(0, declared - ent.picks.length) : 0;
+        if (short){
+          l += short;
+          penalties.push({
+            title: short === 1 ? "Missing 1 pick" : "Missing " + short + " picks",
+            detail: "Committed to " + declared + " picks, submitted " + ent.picks.length +
+                    " — every pick short of the commitment is scored as a loss.",
+            cost: short
+          });
+        }
+        if (d.willDouble && !starred){
+          l += 1;
+          penalties.push({
+            title: "Missing double",
+            detail: "Declared a double this week but never starred a game — a promised double that never lands is scored as a loss.",
+            cost: 1
+          });
+        }
         doubleTxt = starred ? "★ " + teamOf(starred) : (d.willDouble ? "promised" : "none");
       } else doubleTxt = starred ? "★ " + teamOf(starred) : "none";
     } else doubleTxt = "defaults";
+
+    const penaltyLosses = penalties.reduce((n, p) => n + p.cost, 0);
     out.push({ name: person.name, submitted: !!ent, w, l, t, doubleTxt, picks: picks,
+      penalties: penalties, penaltyLosses: penaltyLosses,
       pct: (w + l) ? w / (w + l) : 0 });
   }
   return out;
@@ -477,8 +503,18 @@ function personCardHtml(r){
   hist.push({ wk: S.week, rec: r.w + "-" + r.l + "-" + r.t + (S.practice ? " (practice, not counted)" : " (live)") });
   const log = '<p style="color:var(--chalk-dim);font-size:.82rem;padding:10px 16px 0;font-family:Oswald;letter-spacing:.04em">' +
     'Season log: ' + hist.map(h => (isPracticeWeek(h.wk) ? "Practice" : "Wk " + h.wk) + ": <b style=\'color:var(--chalk)\'>" + h.rec + "</b>").join(" &nbsp;&middot;&nbsp; ") + '</p>';
+
+  /* Plain-language summary of anything in the record that isn't a game result */
+  const penNote = r.penaltyLosses
+    ? '<p class="pen-note"><b>' + r.penaltyLosses +
+        (r.penaltyLosses === 1 ? ' loss' : ' losses') + ' added for an incomplete card:</b> ' +
+        escHtml(r.penalties.map(p => p.title.toLowerCase()).join(", ")) +
+        '. See the flagged row' + (r.penalties.length === 1 ? '' : 's') + ' at the bottom of the card.</p>'
+    : "";
+
   const note = log + (r.submitted ? "" :
-    '<p style="color:var(--chalk-dim);font-size:.82rem;padding:10px 16px 0">No submission — scored on the default favorites.</p>');
+    '<p style="color:var(--chalk-dim);font-size:.82rem;padding:10px 16px 0">No submission — scored on the default favorites.</p>') + penNote;
+
   const trs = r.picks.map(pk => {
     const g = lineByQid.get(pk.qid);
     const win = g ? effWinner(g) : "";
@@ -498,8 +534,20 @@ function personCardHtml(r){
       '<td data-label="Pick"><b>' + escHtml(txt) + '</b>' + (pk.isDouble ? " ★" : "") + '</td>' +
       '<td data-label="Result">' + pill + '</td></tr>';
   }).join("");
+
+  /* One row per penalty, so the rows on the card and the record add up */
+  const penRows = (r.penalties || []).map(p =>
+    '<tr class="pen">' +
+      '<td data-label="Game"><span class="pen-dash">&mdash;</span></td>' +
+      '<td data-label="Kickoff" class="pen-dash">&mdash;</td>' +
+      '<td data-label="Matchup"><span class="pen-title">' + escHtml(p.title) + '</span>' +
+        '<span class="pen-why">' + escHtml(p.detail) + '</span></td>' +
+      '<td data-label="Pick"><span class="pen-dash">No pick</span></td>' +
+      '<td data-label="Result"><span class="pill loss">L' + (p.cost > 1 ? "&times;" + p.cost : "") + '</span></td>' +
+    '</tr>').join("");
+
   return note + '<table class="pool picks"><thead><tr><th>Game</th><th>Kickoff</th><th>Matchup</th><th>Pick</th><th>Result</th></tr></thead>' +
-    '<tbody>' + trs + '</tbody></table>';
+    '<tbody>' + trs + penRows + '</tbody></table>';
 }
 
 /* ---------------- controls / admin ---------------- */
