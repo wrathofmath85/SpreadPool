@@ -26,6 +26,12 @@ select#nameIn{appearance:none;-webkit-appearance:none;cursor:pointer;padding-rig
   background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8' fill='none' stroke='%2393a3bd' stroke-width='1.8' stroke-linecap='round'><path d='M1 1.5 L6 6.5 L11 1.5'/></svg>");
   background-repeat:no-repeat;background-position:right 12px center;background-size:11px 8px}
 select#nameIn option{background:var(--field);color:var(--chalk)}
+/* confirmation-email FYI panel (read-only; the address comes from the roster) */
+.emailfyi{display:flex;align-items:center;min-height:44px;padding:11px 13px;border-radius:10px;
+  border:1px dashed var(--line);background:rgba(255,255,255,.03);color:var(--chalk-dim);
+  font-size:.9rem;line-height:1.35;overflow-wrap:anywhere}
+.emailfyi b{color:var(--chalk);font-weight:600}
+.emailfyi.none{border-color:rgba(232,193,75,.5);border-style:solid;color:var(--push)}
 /* test-copy ribbon */
 #testRibbon{position:fixed;top:0;left:0;right:0;z-index:200;text-align:center;pointer-events:none;
   font-family:'Oswald',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.28em;font-size:.68rem;
@@ -53,8 +59,8 @@ body.testing header.mast{padding-top:58px}
         <select id="nameIn"><option value="">Select your name…</option></select>
       </div>
       <div>
-        <label class="lbl" for="emailIn">Email for confirmation</label>
-        <input type="email" id="emailIn" placeholder="you@example.com" autocomplete="email">
+        <label class="lbl">Confirmation email</label>
+        <div class="emailfyi" id="emailFyi">Pick your name to see where your confirmation goes.</div>
       </div>
     </div>
     <div id="loadedBanner"></div>
@@ -606,15 +612,42 @@ function repaintGame(qid){
 
 /* ---------------- identity / prefill ---------------- */
 
+/* The confirmation address is NOT a form field any more. It comes off the
+   roster row, the server re-derives it from Participants on every submit, and
+   this panel just tells you where the receipt is going. Nobody can point
+   someone else's confirmation at their own inbox. */
+function renderEmailFyi(person){
+  const el = $("emailFyi");
+  if (!el) return;
+  if (!person){
+    el.className = "emailfyi";
+    el.textContent = "Pick your name to see where your confirmation goes.";
+    return;
+  }
+  /* emailMasked comes from the hardened roster feed; person.email is the
+     fallback for a deployment that hasn't taken that change yet. */
+  const shown = String(person.emailMasked || person.email || "").trim();
+  const has = (person.hasEmail !== undefined) ? !!person.hasEmail : !!shown;
+  if (!has){
+    el.className = "emailfyi none";
+    el.innerHTML = "No email on file, so no confirmation will be sent. Your picks still save fine &mdash; ask " +
+      escHtml(PAY_CONTACT) + " to add an address.";
+    return;
+  }
+  el.className = "emailfyi";
+  el.innerHTML = "Your confirmation goes to <b>" + escHtml(shown) + "</b>, the address from your registration. " +
+    "Wrong? Tell " + escHtml(PAY_CONTACT) + " and he'll update it.";
+}
+
 let lastLoadedFor = "";
 async function onNameChosen(){
   const name = $("nameIn").value.trim();
   const person = S.roster.find(r => nameKey(r.name) === nameKey(name));
 
+  renderEmailFyi(person);
   applyPaidGate(name, person);                       // runs before anything else
 
   if (!name || nameKey(name) === nameKey(lastLoadedFor)) return;
-  if (person && person.email && !$("emailIn").value) $("emailIn").value = person.email;
   if (!person) return;
   lastLoadedFor = name;
   if (S.blocked){ $("loadedBanner").innerHTML = ""; S.savedQids.clear(); return; }   // nothing to load, board is locked
@@ -853,16 +886,19 @@ async function submitPicks(){
   S.submitting = true;
   $("modalConfirm").disabled = true;
   $("modalConfirm").innerHTML = '<span class="spin"></span>&nbsp;Submitting';
-  const name = $("nameIn").value.trim(), email = $("emailIn").value.trim();
+  const name = $("nameIn").value.trim();
   const picks = [];
   for (const g of S.lines){
     const p = S.picks.get(g.qid);
     if (p) picks.push({ qid: g.qid, side: p.side, choiceText: choiceText(g, p.side), isDouble: p.isDouble });
   }
+  /* No email in the payload. The server looks it up from Participants by name
+     and hands the real address back, so a hand-edited POST can't redirect
+     someone else's confirmation. */
   const payload = {
     action: "submitPicks",
     submissionId: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()),
-    week: S.week, name: name, email: email, picks: picks,
+    week: S.week, name: name, picks: picks,
     numPicks: parseInt($("numPicksIn").value, 10) || picks.length,
     willDouble: $("willDoubleIn").checked || !!doubledPick(),
     doubleQid: doubledPick() || ""
@@ -888,6 +924,10 @@ async function submitPicks(){
         refreshTicket();
       }
       S.savedQids = new Set(payload.picks.map(p => p.qid));
+
+      /* The confirmation address is whatever the SERVER resolved from the
+         roster — never anything typed on this page. */
+      payload.email = String(res.email || "");
 
       $("modalBack").classList.remove("show");
       lockCommitment();
@@ -919,9 +959,11 @@ function showSuccess(res, payload, dropped){
       payload.picks.length + ' picks would have been recorded for ' + escHtml(payload.name) +
       '. Reload this page to run through it again.</div>' + dropNote;
   } else {
+    const to = String((res && res.emailMasked) || "").trim();
     v.innerHTML = '<div class="banner good" style="margin-top:26px"><b>Picks locked.</b> ' +
       saved + ' picks saved for ' + escHtml(payload.name) +
       ' at ' + escHtml(etDateTime(res.timestamp)) + '. Confirmation #' + escHtml(String(res.submissionId).slice(0, 8)) +
+      (to ? '. A receipt is on its way to <b>' + escHtml(to) + '</b>' : '') +
       '. You can change anything by resubmitting before the deadline &mdash; ' +
       '<a href="Summary.html?week=' + S.week + '" style="color:var(--accent)">see the board</a>.</div>' + dropNote;
   }
