@@ -138,9 +138,13 @@ body.testing header.mast{padding-top:58px}
 <script>
 /* ============================================================
    TEST_MODE — leave false on the live form.
-   The test copy (WeeklyEntryFormTEST.html) is byte-identical
+   The test copy (WeeklyEntryFormTest.html) is byte-identical
    except this one line is true. When true the page ignores the
    week's Status and deadline, and submits nothing anywhere.
+
+   NOTE: kickoff locks are NOT bypassed by TEST_MODE. A started
+   game stays locked on the test copy too, because that's the
+   behavior being tested.
    ============================================================ */
 const TEST_MODE = true;
 
@@ -166,7 +170,7 @@ const S = {
   week: null, cfgRow: null, open: false, practice: false,
   lines: [], roster: [],
   picks: new Map(),          // qid -> {side, isDouble}
-  lockedSaved: new Map(),    // saved picks on games already kicked off (always resubmitted)
+  savedQids: new Set(),      // qids already in the sheet for this person/week
   savedAt: "", submitting: false, commitLocked: false,
   paidKnown: false,          // does the roster feed actually carry a Paid column?
   blocked: false, blockedName: ""
@@ -179,7 +183,11 @@ init().catch(e => { $("board").innerHTML = '<div class="banner bad">Could not lo
 async function init(){
   if (POOL_API.indexOf("http") !== 0) throw new Error("POOL_API is not set in pool.js yet.");
   if (TEST_MODE){ document.body.classList.add("testing"); $("testRibbon").style.display = ""; }
-  const cfg = await apiGet({ fn: "config" });
+
+  /* Sync to the server clock BEFORE anything compares a kickoff time.
+     Everything below uses serverNow(), never the device clock. */
+  const [, cfg] = await Promise.all([ syncClock(), apiGet({ fn: "config" }) ]);
+
   const resolved = resolveWeek(cfg.config);
   if (!resolved) throw new Error("No weeks found in Config.");
   S.week = resolved.week;
@@ -196,6 +204,7 @@ async function init(){
     apiGet({ fn: "roster" })
   ]);
   S.lines = normalizeLines(linesRes.lines);
+  S.lines.forEach(g => { g._wasLocked = isLocked(g); });   // baseline: don't toast for games already started at load
   S.roster = rosterRes.roster || [];
   S.paidKnown = rosterHasPaidColumn(S.roster);
 
@@ -210,6 +219,7 @@ async function init(){
   wireDeclaration();
   wireModal();
   wirePayModal();
+  wireWakeChecks();
   if (S.open) { $("ticket").style.display = ""; $("declCard").style.display = ""; tickClock(); setInterval(tickClock, 1000); }
   else document.body.classList.remove("has-ticket");
   refreshTicket();
@@ -230,8 +240,65 @@ function normalizeLines(rows){
     favSide: String(r.favoredside || "").toLowerCase(),
     line: parseLineVal(r.linevalue),
     required: /^y/i.test(String(r.required || "")),
-    locked: !!r.kickoffiso && Date.parse(r.kickoffiso) <= Date.now()
+    /* Store the TIME, not a verdict. The old `locked:` field was computed once
+       at page load and never revisited, so a tab left open past kickoff kept
+       showing a started game as pickable. */
+    kickMs: r.kickoffiso ? Date.parse(String(r.kickoffiso)) : NaN
   })).filter(r => r.qid && r.away && r.home);
+}
+
+/* Live kickoff lock — evaluated every time it's asked, against server time. */
+function isLocked(g){ return !!g && !isNaN(g.kickMs) && g.kickMs <= serverNow(); }
+
+/* ---------------- kickoff sweep ----------------
+   Runs every second while the week is open, and again whenever the tab wakes
+   up. Any game that crosses its kickoff gets repainted as locked, and an
+   unsaved pick on it is removed from the card. Saved picks stay put — the
+   server freezes those to their stored state anyway. */
+
+function sweepLocks(){
+  let changed = false;
+  const cleared = [];
+  for (const g of S.lines){
+    if (!isLocked(g) || g._wasLocked) continue;
+    g._wasLocked = true;
+    if (S.picks.has(g.qid) && !S.savedQids.has(g.qid)){ S.picks.delete(g.qid); cleared.push(g.qid); }
+    repaintGame(g.qid);
+    changed = true;
+  }
+  if (cleared.length){
+    toast(cleared.join(", ") + (cleared.length === 1
+      ? " just kicked off — that pick was removed."
+      : " just kicked off — those picks were removed."));
+  }
+  if (changed) refreshTicket();
+  return cleared;
+}
+
+/* Picks currently on the card for games that have already started and were
+   NOT part of the saved submission. These can never be written, so they're
+   what the submit gate refuses. */
+function lateQids(){
+  const out = [];
+  for (const q of S.picks.keys()){
+    const g = S.lines.find(x => x.qid === q);
+    if (g && isLocked(g) && !S.savedQids.has(q)) out.push(q);
+  }
+  return out;
+}
+
+function describeQid(q){
+  const g = S.lines.find(x => x.qid === q);
+  return g ? q + " — " + g.away + " at " + g.home : q;
+}
+
+/* A phone that suspends a tab also suspends setInterval, so a card can come
+   back to life hours after kickoff. Re-check the moment the tab is visible
+   again, on window focus, and on a back/forward-cache restore. */
+function wireWakeChecks(){
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) sweepLocks(); });
+  window.addEventListener("focus", sweepLocks);
+  window.addEventListener("pageshow", e => { if (e.persisted) sweepLocks(); });
 }
 
 /* ---------------- roster dropdown ----------------
@@ -355,6 +422,7 @@ function testBannerHtml(){
   if (!TEST_MODE) return "";
   return '<div class="banner bad"><b>Test copy &mdash; not the live entry form.</b> ' +
     'It ignores the week\'s Open/Closed status and the deadline so the board can be walked through before it goes out. ' +
+    'Kickoff locks still apply &mdash; started games stay locked here too. ' +
     '<b>Nothing here is saved</b>: no rows are written to the sheet and no confirmation email is sent.</div>';
 }
 
@@ -372,18 +440,29 @@ function paidDiagHtml(){
       (unpaid.length > 8 ? ' …and ' + (unpaid.length - 8) + ' more' : '') : '') + '.</div>';
 }
 
+/* Test-page only: shows how far off the visitor's device clock is. */
+function clockDiagHtml(){
+  if (!TEST_MODE) return "";
+  if (!CLOCK_SYNCED) return '<div class="banner warn"><b>Clock not synced.</b> ' +
+    'The <code>fn=ping</code> call failed, so kickoff locks are using this device\'s clock.</div>';
+  const off = Math.round(CLOCK_SKEW_MS / 1000);
+  return '<div class="banner good"><b>Clock synced.</b> This device is ' +
+    (Math.abs(off) < 2 ? 'in step with' : Math.abs(off) + 's ' + (off > 0 ? 'behind' : 'ahead of')) +
+    ' the server. Kickoff locks use server time.</div>';
+}
+
 function renderStatus(){
   const el = $("statusBanner");
   if (S.open) {
     const dl = (S.cfgRow.deadlineISO && !TEST_MODE) ? " Picks lock <b>" + escHtml(etDateTime(S.cfgRow.deadlineISO)) + "</b>." : "";
     $("mastSub").innerHTML = (TEST_MODE ? "TEST COPY. " : "") + (S.practice ? "Optional practice round. " : "") +
       "Pick against the spread. Full card: " + MIN_PICKS + "&ndash;" + MAX_PICKS + " games with 3+ NFL and 3+ college. Submit anytime &mdash; even a partial set." + dl;
-    el.innerHTML = testBannerHtml() + paidDiagHtml() + practiceBannerHtml() + (S.blocked ? unpaidBannerHtml() : "");
+    el.innerHTML = testBannerHtml() + clockDiagHtml() + paidDiagHtml() + practiceBannerHtml() + (S.blocked ? unpaidBannerHtml() : "");
   } else {
     $("mastSub").textContent = S.practice
       ? "The practice round is closed."
       : "This week is not accepting picks.";
-    el.innerHTML = paidDiagHtml() + practiceBannerHtml() +
+    el.innerHTML = clockDiagHtml() + paidDiagHtml() + practiceBannerHtml() +
       '<div class="banner warn"><b>' + weekLabel(S.week) + ' is closed.</b> The board below is read-only. ' +
       'Check the <a href="Summary.html?week=' + S.week + '" style="color:var(--accent)">pick summary</a> for results.</div>' +
       (S.blocked ? unpaidBannerHtml() : "");
@@ -422,7 +501,11 @@ function renderBoard(){
     }
   }
   board.innerHTML = html || '<div class="state-msg">No games posted for ' + weekLabel(S.week).toLowerCase() + ' yet.</div>';
-  board.addEventListener("click", onBoardClick);
+  /* Assignment, not addEventListener: renderBoard() runs again after the paid
+     gate flips and after picks are prefilled, and addEventListener was stacking
+     a second handler each time — which made every click toggle the pick on and
+     straight back off. */
+  board.onclick = onBoardClick;
 }
 
 function tagFor(g, side){
@@ -436,7 +519,8 @@ function tagFor(g, side){
 
 function gameHtml(g){
   const p = S.picks.get(g.qid);
-  const dis = (!S.open || g.locked || S.blocked) ? "disabled" : "";
+  const kicked = isLocked(g);
+  const dis = (!S.open || kicked || S.blocked) ? "disabled" : "";
   const btn = side => {
     const nm = side === "away" ? g.away : g.home;
     const sel = p && p.side === side ? " selected" : "";
@@ -446,14 +530,14 @@ function gameHtml(g){
   const star = p
     ? '<button class="starbtn side-extra' + (p.isDouble ? " on" : "") + '" data-star="' + g.qid + '" title="Double this game" ' + dis + '>★</button>'
     : '<span class="side-extra" style="width:44px"></span>';
-  return '<div class="game' + (p ? " picked" : "") + (g.locked ? " locked" : "") + '" id="game-' + g.qid + '">' +
+  return '<div class="game' + (p ? " picked" : "") + (kicked ? " locked" : "") + '" id="game-' + g.qid + '">' +
     '<div class="game-meta">' +
       '<span class="qid">' + g.qid + '</span>' +
       (g.kickoffISO ? '<span>' + escHtml(etTime(g.kickoffISO)) + '</span>' : '') +
       (g.tv ? '<span>' + escHtml(g.tv) + '</span>' : '') +
       (g.loc ? '<span>' + escHtml(g.loc) + '</span>' : '') +
       (g.required ? '<span class="pill req">Required</span>' : '') +
-      (g.locked ? '<span class="pill kicked">Locked — kicked off</span>' : '') +
+      (kicked ? '<span class="pill kicked">Locked — kicked off</span>' : '') +
     '</div>' +
     '<div class="game-row">' + btn("away") + '<span class="at">at</span>' + btn("home") + star + '</div>' +
   '</div>';
@@ -465,6 +549,10 @@ function onBoardClick(e){
   const tb = e.target.closest(".teambtn");
   if (tb && !tb.disabled){
     const qid = tb.dataset.qid, side = tb.dataset.side;
+    const g = S.lines.find(x => x.qid === qid);
+    /* Final guard: if this game kicked off between the last repaint and this
+       click, refuse it here rather than letting it into the card. */
+    if (isLocked(g)){ sweepLocks(); toast(qid + " has already kicked off."); return; }
     const cur = S.picks.get(qid);
     if (cur && cur.side === side) S.picks.delete(qid);              // tap again to clear
     else {
@@ -529,11 +617,12 @@ async function onNameChosen(){
   if (person && person.email && !$("emailIn").value) $("emailIn").value = person.email;
   if (!person) return;
   lastLoadedFor = name;
-  if (S.blocked){ $("loadedBanner").innerHTML = ""; return; }   // nothing to load, board is locked
+  if (S.blocked){ $("loadedBanner").innerHTML = ""; S.savedQids.clear(); return; }   // nothing to load, board is locked
   try {
     const res = await apiGet({ fn: "mypicks", week: S.week, name: name });
-    if (!res.picks || !res.picks.length){ $("loadedBanner").innerHTML = ""; return; }
+    if (!res.picks || !res.picks.length){ $("loadedBanner").innerHTML = ""; S.savedQids.clear(); return; }
     S.picks.clear();
+    S.savedQids = new Set(res.picks.map(p => String(p.qid)));
     let latest = "";
     for (const p of res.picks){
       S.picks.set(String(p.qid), { side: String(p.side || "").toLowerCase(), isDouble: String(p.isdouble).toUpperCase() === "TRUE" });
@@ -640,9 +729,13 @@ function refreshTicket(){
 }
 
 function tickClock(){
+  sweepLocks();                                  // kickoff locks, once a second
   const dl = S.cfgRow && S.cfgRow.deadlineISO;
   $("tClock").textContent = TEST_MODE ? "test" : (dl ? countdownText(dl) : "open");
-  if (!TEST_MODE && dl && Date.parse(dl) <= Date.now()){ S.open = false; renderStatus(); $("ticket").style.display = "none"; }
+  if (!TEST_MODE && dl && Date.parse(dl) <= serverNow()){
+    S.open = false; renderStatus(); renderBoard(); refreshTicket();
+    $("ticket").style.display = "none";
+  }
 }
 
 /* ---------------- review + submit ---------------- */
@@ -662,6 +755,10 @@ function validate(){
   if (S.blocked) errs.push(escHtml(S.blockedName) + " isn't marked as paid — the " + ENTRY_FEE + " entry fee has to be in before picks can be submitted.");
   if (!S.picks.size) errs.push("You haven't picked any games.");
   if (S.picks.size > MAX_PICKS) errs.push("Maximum " + MAX_PICKS + " picks — remove " + (S.picks.size - MAX_PICKS) + ".");
+
+  const late = lateQids();
+  if (late.length) errs.push((late.length === 1 ? "This game has" : "These games have") +
+    " already kicked off and can't be picked: " + escHtml(late.map(describeQid).join("; ")) + ".");
 
   const declared = parseInt($("numPicksIn").value, 10) || 0;
   if (S.commitLocked){
@@ -689,6 +786,7 @@ function validate(){
 
 function openReview(){
   if (S.blocked){ openPayModal(S.blockedName); return; }
+  sweepLocks();                       // never list a game that just kicked off
   const { errs, warns } = validate();
   const declared = parseInt($("numPicksIn").value, 10) || 0;
   const dq = doubledPick();
@@ -714,7 +812,7 @@ function openReview(){
     if (!p) continue;
     items.push('<div style="display:flex;justify-content:space-between;gap:12px;padding:7px 2px;border-bottom:1px solid rgba(40,64,107,.4);font-size:.92rem">' +
       '<span><span style="color:var(--accent);font-family:Oswald">' + g.qid + '</span> &nbsp;' + escHtml(choiceText(g, p.side)) +
-      (p.isDouble ? ' <span class="pill req">★ Double</span>' : '') + (g.locked ? ' <span class="pill kicked">locked</span>' : '') +
+      (p.isDouble ? ' <span class="pill req">★ Double</span>' : '') + (isLocked(g) ? ' <span class="pill kicked">locked</span>' : '') +
       '</span><span style="color:var(--chalk-dim)">over ' + escHtml(p.side === "away" ? g.home : g.away) + '</span></div>');
   }
   $("modalList").innerHTML = items.join("");
@@ -730,6 +828,27 @@ function choiceText(g, side){
 
 async function submitPicks(){
   if (S.submitting) return;
+
+  /* ---- kickoff gate ----------------------------------------------------
+     Last stop before the POST, so it also catches a kickoff that passed
+     while this modal sat open. Nothing is sent, nothing is emailed; the
+     offending picks are stripped so the next tap on Submit just works. */
+  const late = lateQids();
+  if (late.length){
+    for (const q of late){ S.picks.delete(q); repaintGame(q); }
+    refreshTicket();
+    $("modalWarnings").innerHTML =
+      '<div class="err"><b>Nothing was submitted.</b> ' +
+      (late.length === 1 ? 'This game has' : 'These games have') +
+      ' already kicked off, so ' + (late.length === 1 ? 'it was' : 'they were') +
+      ' removed from your card: ' + escHtml(late.map(describeQid).join("; ")) +
+      '. You now have <b>' + S.picks.size + '</b> pick' + (S.picks.size === 1 ? '' : 's') +
+      ' — hit <b>Submit picks</b> again to send ' + (S.picks.size === 1 ? 'it' : 'them') +
+      ', or "Keep editing" to replace ' + (late.length === 1 ? 'it' : 'them') + '.</div>' +
+      $("modalWarnings").innerHTML;
+    return;
+  }
+
   if (S.blocked){ $("modalBack").classList.remove("show"); openPayModal(S.blockedName); return; }
   S.submitting = true;
   $("modalConfirm").disabled = true;
@@ -752,15 +871,27 @@ async function submitPicks(){
     if (TEST_MODE){
       /* dry run: nothing is POSTed, nothing is emailed */
       await new Promise(r => setTimeout(r, 500));
-      const res = { timestamp: new Date().toISOString(), submissionId: payload.submissionId };
+      const res = { timestamp: new Date().toISOString(), submissionId: payload.submissionId, inserted: picks.length, dropped: [] };
       $("modalBack").classList.remove("show");
       lockCommitment();
-      showSuccess(res, payload);
+      showSuccess(res, payload, []);
     } else {
       const res = await apiPost(payload);
+
+      /* The server has the final say on started games. If it refused any,
+         drop them from the card AND from the email payload, so the
+         confirmation only ever lists what actually landed in the sheet. */
+      const dropped = Array.isArray(res.dropped) ? res.dropped.map(String) : [];
+      if (dropped.length){
+        payload.picks = payload.picks.filter(p => dropped.indexOf(p.qid) === -1);
+        for (const q of dropped){ S.picks.delete(q); repaintGame(q); }
+        refreshTicket();
+      }
+      S.savedQids = new Set(payload.picks.map(p => p.qid));
+
       $("modalBack").classList.remove("show");
       lockCommitment();
-      showSuccess(res, payload);
+      showSuccess(res, payload, dropped);
       sendEmail(payload, res).catch(() => {});
     }
   } catch(e){
@@ -772,19 +903,27 @@ async function submitPicks(){
   }
 }
 
-function showSuccess(res, payload){
+function showSuccess(res, payload, dropped){
   const v = $("successView");
   v.style.display = "";
+  const saved = (res && typeof res.inserted === "number") ? res.inserted : payload.picks.length;
+  const dropNote = (dropped && dropped.length)
+    ? '<div class="banner bad" style="margin-top:12px"><b>' + dropped.length + ' pick' +
+      (dropped.length === 1 ? " was" : "s were") + " not saved.</b> " +
+      escHtml(dropped.map(describeQid).join("; ")) +
+      (dropped.length === 1 ? " had" : " had") + " already kicked off. " +
+      "If that leaves you short of your commitment, pick a replacement game and submit again.</div>"
+    : "";
   if (TEST_MODE){
     v.innerHTML = '<div class="banner warn" style="margin-top:26px"><b>Dry run complete &mdash; nothing was saved.</b> ' +
       payload.picks.length + ' picks would have been recorded for ' + escHtml(payload.name) +
-      '. Reload this page to run through it again.</div>';
+      '. Reload this page to run through it again.</div>' + dropNote;
   } else {
     v.innerHTML = '<div class="banner good" style="margin-top:26px"><b>Picks locked.</b> ' +
-      payload.picks.length + ' picks saved for ' + escHtml(payload.name) +
+      saved + ' picks saved for ' + escHtml(payload.name) +
       ' at ' + escHtml(etDateTime(res.timestamp)) + '. Confirmation #' + escHtml(String(res.submissionId).slice(0, 8)) +
       '. You can change anything by resubmitting before the deadline &mdash; ' +
-      '<a href="Summary.html?week=' + S.week + '" style="color:var(--accent)">see the board</a>.</div>';
+      '<a href="Summary.html?week=' + S.week + '" style="color:var(--accent)">see the board</a>.</div>' + dropNote;
   }
   v.scrollIntoView({ behavior: "smooth", block: "center" });
 }
@@ -792,6 +931,7 @@ function showSuccess(res, payload){
 async function sendEmail(payload, res){
   if (TEST_MODE) return;
   if (!EMAILJS.publicKey || !payload.email) return;
+  if (!payload.picks.length) return;         // everything was refused — no receipt
   if (!window.emailjs){
     await new Promise((ok, no) => { const s = document.createElement("script");
       s.src = "https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js";
@@ -809,7 +949,7 @@ async function sendEmail(payload, res){
         (p.isDouble ? ' <span style="background-color:#e8c14b;color:#171003;font-size:10px;font-weight:bold;letter-spacing:1px;padding:2px 8px;border-radius:99px;">&#9733; DOUBLE</span>' : '') + '</td>' +
       '<td style="' + rowStyle + 'color:#93a3bd;text-align:right;">over ' + escHtml(opp) + '</td></tr>';
   }).join("");
-  const dq = payload.doubleQid;
+  const dq = payload.doubleQid && payload.picks.some(p => p.qid === payload.doubleQid) ? payload.doubleQid : "";
   const doubleText = dq ? "&#9733; " + escHtml(doubledTeamName(dq)) : (payload.willDouble ? "Promised" : "None");
   const summaryUrl = new URL("Summary.html?week=" + payload.week, location.href).href;
   await window.emailjs.send(EMAILJS.serviceId, EMAILJS.templateId, {
@@ -817,7 +957,7 @@ async function sendEmail(payload, res){
     player: payload.name,
     week: isPracticeWeek(payload.week) ? "0 — Practice (not scored)" : String(payload.week),
     total_picks: String(payload.picks.length),
-    num_picks: String(payload.numPicks),
+    num_picks: String((res && res.numPicks) || payload.numPicks),
     double_text: doubleText,
     pick_rows: pickRows,
     submitted_at: etDateTime(res && res.timestamp ? res.timestamp : new Date().toISOString()),

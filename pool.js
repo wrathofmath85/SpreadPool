@@ -55,6 +55,39 @@ async function apiPost(payload) {
   return data;
 }
 
+/* ---------------- clock ----------------
+   Every deadline and kickoff comparison runs against SERVER time, never the
+   visitor's device clock. A phone whose clock is 20 minutes slow used to see
+   a kicked-off game as still open; now it can't.
+
+   syncClock() is a single fn=ping round trip. It measures the round trip and
+   splits it, so the offset isn't skewed by a slow connection. Call it once at
+   page load, before anything compares a time. If it fails we quietly fall back
+   to the device clock — a wrong lock time is better than a page that won't
+   load. */
+
+let CLOCK_SKEW_MS = 0;
+let CLOCK_SYNCED  = false;
+
+async function syncClock(){
+  try {
+    const t0 = Date.now();
+    const res = await apiGet({ fn: "ping" });
+    const t1 = Date.now();
+    const server = Date.parse(res.now);
+    if (!isNaN(server)){
+      CLOCK_SKEW_MS = server - (t0 + (t1 - t0) / 2);
+      CLOCK_SYNCED = true;
+    }
+  } catch(e){
+    console.warn("Clock sync failed — falling back to this device's clock.", e);
+  }
+  return CLOCK_SKEW_MS;
+}
+
+/* Use this everywhere instead of Date.now() for anything the pool enforces. */
+function serverNow(){ return Date.now() + CLOCK_SKEW_MS; }
+
 /* ---------------- week resolution ---------------- */
 
 function qsParam(name) { return new URLSearchParams(location.search).get(name); }
@@ -99,7 +132,7 @@ function resolveWeek(configRows) {
     if (open.length) row = open[open.length - 1];
   }
   if (!row) {
-    const now = Date.now();
+    const now = serverNow();
     const begun = rows.filter(r => r.beginMs != null && r.beginMs <= now);
     row = begun.length ? begun[begun.length - 1] : rows[0];
   }
@@ -116,7 +149,7 @@ function weekIsOpenClient(row) {
   if (!row || row.status !== "open") return false;
   if (row.deadlineISO) {
     const dl = Date.parse(row.deadlineISO);
-    if (!isNaN(dl) && Date.now() >= dl) return false;
+    if (!isNaN(dl) && serverNow() >= dl) return false;
   }
   return true;
 }
@@ -150,7 +183,7 @@ function escHtml(s) {
 }
 
 function countdownText(targetISO) {
-  const ms = Date.parse(targetISO) - Date.now();
+  const ms = Date.parse(targetISO) - serverNow();
   if (isNaN(ms)) return "";
   if (ms <= 0) return "0:00";
   const d = Math.floor(ms / 86400000),
