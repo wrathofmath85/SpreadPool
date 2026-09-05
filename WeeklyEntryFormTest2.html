@@ -1091,11 +1091,12 @@ function openReview(){
     : (isFullCard()
         ? "Full card — submitting <b>locks you in at " + S.picks.size + " picks</b> and <b>" + doubleWord + "</b> for the week."
         : "Partial card — submitting <b>locks your declaration: " + declared + " picks</b> and <b>" + doubleWord + "</b>. Come back to finish before the deadline.");
-  /* Say the confirmation-number rule out loud at the moment of submitting —
-     this is where people decide whether to keep the email. */
-  const codeLine = '<div class="warn"><b>Keep your confirmation number.</b> Submitting issues a new one and it ' +
-    'lands in your confirmation email. <b>You\'ll need it to come back and change these picks</b>, and only the ' +
-    'newest one works — your picks won\'t load from your name alone, so nobody else can see them before reveal time.</div>';
+  /* No number here on purpose. The only number worth printing is the NEW one
+     this submission will issue, and that doesn't exist until the write lands —
+     printing the number they came in with would point at one that's about to be
+     retired. The new one shows up on the success screen and in the email. */
+  const codeLine = '<div class="warn">If you want to come back and make changes to your picks, you will need ' +
+    'your confirmation # (Found in your confirmation email).</div>';
   $("modalWarnings").innerHTML = boxesHtml +
     '<div class="err"><b>Live test copy.</b> Confirming here is a real submission for ' + escHtml(weekLabel(S.week).toLowerCase()) +
       ' — sheet rows are written, a confirmation email is sent, and a new confirmation number is issued.</div>' +
