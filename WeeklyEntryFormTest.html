@@ -32,6 +32,23 @@ select#nameIn option{background:var(--field);color:var(--chalk)}
   font-size:.9rem;line-height:1.35;overflow-wrap:anywhere}
 .emailfyi b{color:var(--chalk);font-weight:600}
 .emailfyi.none{border-color:rgba(232,193,75,.5);border-style:solid;color:var(--push)}
+/* --- confirmation-number gate (new) --- */
+.hint-line{color:var(--chalk-dim);font-size:.82rem;margin-top:8px}
+.hint-line b{color:var(--chalk)}
+#codeCard{border-color:rgba(232,193,75,.55)}
+#codeCard.unlocked{border-color:rgba(79,206,133,.55)}
+input#codeIn{font-family:'Oswald',sans-serif;font-weight:600;letter-spacing:.22em;text-transform:uppercase;font-size:1.05rem}
+.code-actions{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}
+@media(max-width:640px){.code-actions{align-items:stretch}.code-actions .btn{width:100%}}
+/* the big confirmation number on the success screen */
+.confbox{margin-top:14px;border:2px solid var(--accent);background:rgba(244,88,31,.10);
+  border-radius:14px;padding:16px 18px;text-align:center}
+.confbox .lbl{font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.26em;
+  font-size:.68rem;font-weight:600;color:var(--chalk-dim)}
+.confbox .code{font-family:'Anton',sans-serif;font-size:clamp(2rem,8vw,2.9rem);line-height:1.05;
+  letter-spacing:.16em;color:var(--accent);margin:6px 0 4px;overflow-wrap:anywhere}
+.confbox .why{font-size:.86rem;color:var(--chalk-dim);max-width:44ch;margin:0 auto}
+.confbox .why b{color:var(--chalk)}
 /* test-copy ribbon */
 #testRibbon{position:fixed;top:0;left:0;right:0;z-index:200;text-align:center;pointer-events:none;
   font-family:'Oswald',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.28em;font-size:.68rem;
@@ -63,7 +80,28 @@ body.testing header.mast{padding-top:58px}
         <div class="emailfyi" id="emailFyi">Pick your name to see where your confirmation goes.</div>
       </div>
     </div>
+    <p class="hint-line">Already submitted this week? <b>Have your confirmation # handy</b> &mdash; it's in the
+      confirmation email from your latest submission, and you'll need it to see or change your picks.
+      Nobody's picks load from a name alone.</p>
     <div id="loadedBanner"></div>
+  </section>
+
+  <!-- confirmation-number gate (shown only when this person already has a card) -->
+  <section class="card card-pad" id="codeCard" style="display:none;margin-top:14px">
+    <div class="section-head" style="margin:0 0 12px"><h2>Confirmation number</h2><span class="rule"></span></div>
+    <div id="codeWhy" style="font-size:.93rem;margin-bottom:14px"></div>
+    <div class="field-row">
+      <div>
+        <label class="lbl" for="codeIn">Confirmation # from your latest confirmation email</label>
+        <input type="text" id="codeIn" placeholder="e.g. 3F7A91C2" autocomplete="off" spellcheck="false" maxlength="40">
+      </div>
+      <div class="code-actions">
+        <button class="btn primary" id="codeBtn">Unlock my card</button>
+      </div>
+    </div>
+    <div id="codeMsg"></div>
+    <p class="hint-line">Only the number from your <b>most recent</b> submission works &mdash; every submission
+      issues a new one. Lost the email? Ask <span id="codeContact">Dan</span> and he can read it off the sheet.</p>
   </section>
 
   <div id="statusBanner"></div>
@@ -151,11 +189,16 @@ body.testing header.mast{padding-top:58px}
    NOTE: kickoff locks are NOT bypassed by TEST_MODE. A started
    game stays locked on the test copy too, because that's the
    behavior being tested.
+
+   NOTE: the confirmation-number gate is NOT bypassed either.
+   fn=status and fn=mypicks are read-only calls against the real
+   sheet, so the test copy exercises the real unlock flow with
+   real codes. Only the write (and the email) is skipped.
    ============================================================ */
 const TEST_MODE = true;
 
 /* Optional EmailJS confirmation — fill these to re-enable, leave blank to skip.
-   Template receives: to_email, player, week, pick_list, commitment */
+   Template receives: to_email, player, week, pick_rows, confirmation, … */
 const EMAILJS = { publicKey: "YB5J-75APa-V6Giku", serviceId: "service_uwt5e0k", templateId: "template_o8du7pt" };
 
 /* ---------------- entry fee / payment reminder ----------------
@@ -179,7 +222,18 @@ const S = {
   savedQids: new Set(),      // qids already in the sheet for this person/week
   savedAt: "", submitting: false, commitLocked: false,
   paidKnown: false,          // does the roster feed actually carry a Paid column?
-  blocked: false, blockedName: ""
+  blocked: false, blockedName: "",
+
+  /* ---- confirmation-number gate ----
+     needCode  : this person already has a card this week, so the confirmation
+                 number is required before anything can be seen or changed
+     unlocked  : the code checked out (or none was needed)
+     code      : the code we'll send with the POST
+     codeMode  : "" | "required" | "optional"  — drives the card's copy.
+                 "optional" is the fail-soft path when fn=status itself
+                 errored: we can't prove they have a card, so we don't block,
+                 and the server refuses an un-coded resubmit anyway. */
+  needCode: false, unlocked: false, code: "", codeMode: "", savedCount: 0, savedWhen: ""
 };
 
 const $ = id => document.getElementById(id);
@@ -219,10 +273,12 @@ async function init(){
 
   fillNameSelect();
   $("nameIn").addEventListener("change", onNameChosen);
+  $("codeContact").textContent = PAY_CONTACT;
 
   renderStatus();
   renderBoard();
   wireDeclaration();
+  wireCodeCard();
   wireModal();
   wirePayModal();
   wireWakeChecks();
@@ -255,6 +311,9 @@ function normalizeLines(rows){
 
 /* Live kickoff lock — evaluated every time it's asked, against server time. */
 function isLocked(g){ return !!g && !isNaN(g.kickMs) && g.kickMs <= serverNow(); }
+
+/* The card is frozen while we're waiting on a confirmation number. */
+function cardLocked(){ return S.needCode && !S.unlocked; }
 
 /* ---------------- kickoff sweep ----------------
    Runs every second while the week is open, and again whenever the tab wakes
@@ -428,7 +487,8 @@ function testBannerHtml(){
   if (!TEST_MODE) return "";
   return '<div class="banner bad"><b>Test copy &mdash; not the live entry form.</b> ' +
     'It ignores the week\'s Open/Closed status and the deadline so the board can be walked through before it goes out. ' +
-    'Kickoff locks still apply &mdash; started games stay locked here too. ' +
+    'Kickoff locks still apply &mdash; started games stay locked here too, and so does the confirmation-number gate ' +
+    '(those are read-only checks against the real sheet). ' +
     '<b>Nothing here is saved</b>: no rows are written to the sheet and no confirmation email is sent.</div>';
 }
 
@@ -526,7 +586,7 @@ function tagFor(g, side){
 function gameHtml(g){
   const p = S.picks.get(g.qid);
   const kicked = isLocked(g);
-  const dis = (!S.open || kicked || S.blocked) ? "disabled" : "";
+  const dis = (!S.open || kicked || S.blocked || cardLocked()) ? "disabled" : "";
   const btn = side => {
     const nm = side === "away" ? g.away : g.home;
     const sel = p && p.side === side ? " selected" : "";
@@ -552,6 +612,7 @@ function gameHtml(g){
 function onBoardClick(e){
   /* a disabled button swallows the click, so this is the belt to that suspenders */
   if (S.blocked){ openPayModal(S.blockedName); return; }
+  if (cardLocked()){ promptForCode(); return; }
   const tb = e.target.closest(".teambtn");
   if (tb && !tb.disabled){
     const qid = tb.dataset.qid, side = tb.dataset.side;
@@ -610,7 +671,7 @@ function repaintGame(qid){
   if (g && node) node.outerHTML = gameHtml(g);
 }
 
-/* ---------------- identity / prefill ---------------- */
+/* ---------------- identity ---------------- */
 
 /* The confirmation address is NOT a form field any more. It comes off the
    roster row, the server re-derives it from Participants on every submit, and
@@ -630,8 +691,8 @@ function renderEmailFyi(person){
   const has = (person.hasEmail !== undefined) ? !!person.hasEmail : !!shown;
   if (!has){
     el.className = "emailfyi none";
-    el.innerHTML = "No email on file, so no confirmation will be sent. Your picks still save fine &mdash; ask " +
-      escHtml(PAY_CONTACT) + " to add an address.";
+    el.innerHTML = "No email on file, so no confirmation will be sent &mdash; and no confirmation number either. " +
+      "Ask " + escHtml(PAY_CONTACT) + " to add an address before you submit, or he'll have to read your number off the sheet.";
     return;
   }
   el.className = "emailfyi";
@@ -639,40 +700,181 @@ function renderEmailFyi(person){
     "Wrong? Tell " + escHtml(PAY_CONTACT) + " and he'll update it.";
 }
 
+/* ---------------- confirmation-number gate ----------------
+
+   Selecting a name no longer loads anybody's picks. All it does is ask the
+   API whether a card EXISTS for that person this week (fn=status returns a
+   yes/no, a count and a timestamp — never the picks). If one does, the board
+   stays frozen until the confirmation number from their most recent
+   submission is entered, which is also the only way fn=mypicks will hand the
+   picks over. Same rule on the server for writes, so this isn't just a
+   screen-level courtesy. */
+
+function normCodeIn(s){ return String(s || "").toUpperCase().replace(/[^A-Z0-9]/g, ""); }
+
+function resetPersonState(){
+  S.picks.clear();
+  S.savedQids.clear();
+  S.savedAt = "";
+  S.needCode = false; S.unlocked = false; S.code = "";
+  S.codeMode = ""; S.savedCount = 0; S.savedWhen = "";
+  unlockCommitment();
+  $("numPicksIn").value = "";
+  $("willDoubleIn").checked = false;
+  $("loadedBanner").innerHTML = "";
+  $("successView").style.display = "none";
+  $("successView").innerHTML = "";
+  hideCodeCard();
+}
+
+function hideCodeCard(){
+  $("codeCard").style.display = "none";
+  $("codeCard").classList.remove("unlocked");
+  $("codeIn").value = "";
+  $("codeMsg").innerHTML = "";
+}
+
+function setCodeMsg(kind, html){
+  $("codeMsg").innerHTML = html
+    ? '<div class="banner ' + kind + '" style="margin-bottom:0">' + html + '</div>'
+    : "";
+}
+
+function showCodeCard(mode, info){
+  S.codeMode = mode;
+  const card = $("codeCard");
+  card.style.display = "";
+  card.classList.remove("unlocked");
+  if (mode === "required"){
+    const when = info && info.updatedAt ? etDateTime(info.updatedAt) : "";
+    const n = info && info.count ? info.count : 0;
+    $("codeWhy").innerHTML =
+      '<b>You already have a card for ' + escHtml(weekLabel(S.week).toLowerCase()) + '.</b> ' +
+      (n ? n + ' pick' + (n === 1 ? '' : 's') + ' saved' : 'Picks saved') +
+      (when ? ' ' + escHtml(when) : '') + '. ' +
+      'They stay hidden until you enter your confirmation number &mdash; that\'s what keeps anyone else from ' +
+      'peeking at your card before reveal time. Enter it and your picks load, ready to change.';
+  } else {
+    $("codeWhy").innerHTML =
+      '<b>Couldn\'t check whether you already have a card this week.</b> ' +
+      'If you\'ve already submitted, enter your confirmation number to load those picks and change them. ' +
+      'If this is your first submission this week, ignore this and pick away.';
+  }
+}
+
+function promptForCode(){
+  toast("Enter your confirmation # to change your saved picks.");
+  const c = $("codeCard");
+  if (c.style.display !== "none"){
+    c.scrollIntoView({ behavior: "smooth", block: "center" });
+    setTimeout(() => $("codeIn").focus(), 350);
+  }
+}
+
+function wireCodeCard(){
+  $("codeBtn").addEventListener("click", tryUnlock);
+  $("codeIn").addEventListener("keydown", e => { if (e.key === "Enter"){ e.preventDefault(); tryUnlock(); } });
+}
+
 let lastLoadedFor = "";
 async function onNameChosen(){
   const name = $("nameIn").value.trim();
   const person = S.roster.find(r => nameKey(r.name) === nameKey(name));
 
+  resetPersonState();
   renderEmailFyi(person);
   applyPaidGate(name, person);                       // runs before anything else
+  renderBoard(); refreshTicket();
 
-  if (!name || nameKey(name) === nameKey(lastLoadedFor)) return;
-  if (!person) return;
+  if (!name || !person) return;
+  if (S.blocked) return;                             // nothing to check, board is locked
   lastLoadedFor = name;
-  if (S.blocked){ $("loadedBanner").innerHTML = ""; S.savedQids.clear(); return; }   // nothing to load, board is locked
+
   try {
-    const res = await apiGet({ fn: "mypicks", week: S.week, name: name });
-    if (!res.picks || !res.picks.length){ $("loadedBanner").innerHTML = ""; S.savedQids.clear(); return; }
-    S.picks.clear();
-    S.savedQids = new Set(res.picks.map(p => String(p.qid)));
-    let latest = "";
-    for (const p of res.picks){
-      S.picks.set(String(p.qid), { side: String(p.side || "").toLowerCase(), isDouble: String(p.isdouble).toUpperCase() === "TRUE" });
-      if (String(p.updatedat || "") > latest) latest = String(p.updatedat || "");
+    const res = await apiGet({ fn: "status", week: S.week, name: name });
+    if ($("nameIn").value.trim() !== name) return;   // they switched names mid-flight
+    if (res.submitted && res.codeRequired !== false){
+      S.needCode = true; S.unlocked = false;
+      S.savedCount = res.count || 0; S.savedWhen = res.updatedAt || "";
+      showCodeCard("required", res);
+    } else if (res.submitted){
+      /* Legacy card with no SubmissionID on file — nothing to check against,
+         so the server would let it through anyway. Load it and say so. */
+      S.needCode = false; S.unlocked = true; S.code = "";
+      await loadSavedPicks("");
+    } else {
+      S.needCode = false; S.unlocked = true;
+      $("loadedBanner").innerHTML = '<div class="banner">First submission for ' +
+        escHtml(weekLabel(S.week).toLowerCase()) + ' &mdash; no confirmation number needed. ' +
+        'You\'ll get one in your confirmation email, and you\'ll need it if you come back to make changes.</div>';
     }
-    const d = res.declaration;
-    if (d){
-      if (d.numpicks) $("numPicksIn").value = parseInt(d.numpicks, 10) || "";
-      $("willDoubleIn").checked = String(d.willdouble).toUpperCase() === "TRUE";
-      if (d.numpicks) lockCommitment();
-    } else unlockCommitment();
-    S.savedAt = latest;
+  } catch(e){
+    console.warn("status check failed", e);
+    /* Fail soft: don't wall off somebody who may never have submitted. The
+       server still refuses a resubmit without the code, so nothing leaks. */
+    S.needCode = false; S.unlocked = true;
+    showCodeCard("optional", null);
+  }
+  renderBoard(); refreshTicket();
+}
+
+async function tryUnlock(){
+  const name = $("nameIn").value.trim();
+  const code = normCodeIn($("codeIn").value);
+  if (!name){ setCodeMsg("bad", "Pick your name first."); return; }
+  if (!code){ setCodeMsg("bad", "Enter the confirmation # from your latest confirmation email."); return; }
+
+  const btn = $("codeBtn");
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span>&nbsp;Checking';
+  try {
+    await loadSavedPicks(code);
+    S.code = code; S.unlocked = true;
+    $("codeCard").classList.add("unlocked");
+    setCodeMsg("good", "<b>Card unlocked.</b> Your saved picks are loaded below — change whatever you like and submit again. " +
+      "Resubmitting replaces the whole card and issues a <b>new</b> confirmation number.");
+  } catch(e){
+    S.unlocked = false;
+    setCodeMsg("bad", "<b>That number didn't match.</b> Use the confirmation # from your <b>most recent</b> " +
+      "confirmation email for " + escHtml(weekLabel(S.week).toLowerCase()) + " — older ones stop working the " +
+      "moment you resubmit. Still stuck? Ask " + escHtml(PAY_CONTACT) + " to look it up.");
+  } finally {
+    btn.disabled = false; btn.textContent = "Unlock my card";
     renderBoard(); refreshTicket();
-    $("loadedBanner").innerHTML = '<div class="banner good">Loaded your <b>' + res.picks.length +
-      '</b> saved picks' + (latest ? ' from ' + escHtml(etDateTime(latest)) : '') +
-      '. Resubmitting replaces them.</div>';
-  } catch(e){ console.warn("prefill failed", e); }
+  }
+}
+
+/* Pulls the saved card. Throws if the code is wrong — the caller reports it. */
+async function loadSavedPicks(code){
+  const name = $("nameIn").value.trim();
+  const q = { fn: "mypicks", week: S.week, name: name };
+  if (code) q.code = code;
+  const res = await apiGet(q);
+
+  S.picks.clear();
+  S.savedQids = new Set();
+  if (!res.picks || !res.picks.length){
+    $("loadedBanner").innerHTML = "";
+    return;
+  }
+  S.savedQids = new Set(res.picks.map(p => String(p.qid)));
+  let latest = "";
+  for (const p of res.picks){
+    S.picks.set(String(p.qid), {
+      side: String(p.side || "").toLowerCase(),
+      isDouble: String(p.isdouble).toUpperCase() === "TRUE"
+    });
+    if (String(p.updatedat || "") > latest) latest = String(p.updatedat || "");
+  }
+  const d = res.declaration;
+  if (d){
+    if (d.numpicks) $("numPicksIn").value = parseInt(d.numpicks, 10) || "";
+    $("willDoubleIn").checked = String(d.willdouble).toUpperCase() === "TRUE";
+    if (d.numpicks) lockCommitment();
+  } else unlockCommitment();
+  S.savedAt = latest;
+  $("loadedBanner").innerHTML = '<div class="banner good">Loaded your <b>' + res.picks.length +
+    '</b> saved picks' + (latest ? ' from ' + escHtml(etDateTime(latest)) : '') +
+    '. Resubmitting replaces them.</div>';
 }
 
 /* ---------------- ticket / declaration ---------------- */
@@ -745,8 +947,9 @@ function refreshTicket(){
   const rb = $("reviewBtn");
   if (rb){
     rb.disabled = S.blocked;
-    rb.textContent = S.blocked ? "Entry fee due" : "Review & submit";
-    rb.title = S.blocked ? "Picks unlock once your " + ENTRY_FEE + " entry fee is recorded" : "";
+    rb.textContent = S.blocked ? "Entry fee due" : (cardLocked() ? "Enter confirmation #" : "Review & submit");
+    rb.title = S.blocked ? "Picks unlock once your " + ENTRY_FEE + " entry fee is recorded"
+             : (cardLocked() ? "Your saved card is locked until you enter your confirmation number" : "");
   }
   const n = $("numPicksIn");
   if (!S.commitLocked){
@@ -759,6 +962,8 @@ function refreshTicket(){
         n.value = Math.min(MAX_PICKS, Math.max(MIN_PICKS, S.picks.size));
     }
   }
+  /* Nothing on the declaration card is editable while the card is sealed */
+  if (cardLocked()){ n.disabled = true; $("willDoubleIn").disabled = true; }
 }
 
 function tickClock(){
@@ -786,6 +991,7 @@ function validate(){
   else if (!S.roster.some(r => nameKey(r.name) === nameKey(name)))
     warns.push('"' + escHtml(name) + '" isn\'t on the roster — double-check the spelling.');
   if (S.blocked) errs.push(escHtml(S.blockedName) + " isn't marked as paid — the " + ENTRY_FEE + " entry fee has to be in before picks can be submitted.");
+  if (cardLocked()) errs.push("You already have a card this week — enter the confirmation # from your latest confirmation email to change it.");
   if (!S.picks.size) errs.push("You haven't picked any games.");
   if (S.picks.size > MAX_PICKS) errs.push("Maximum " + MAX_PICKS + " picks — remove " + (S.picks.size - MAX_PICKS) + ".");
 
@@ -819,6 +1025,7 @@ function validate(){
 
 function openReview(){
   if (S.blocked){ openPayModal(S.blockedName); return; }
+  if (cardLocked()){ promptForCode(); return; }
   sweepLocks();                       // never list a game that just kicked off
   const { errs, warns } = validate();
   const declared = parseInt($("numPicksIn").value, 10) || 0;
@@ -832,9 +1039,15 @@ function openReview(){
     : (isFullCard()
         ? "Full card — submitting <b>locks you in at " + S.picks.size + " picks</b> and <b>" + doubleWord + "</b> for the week."
         : "Partial card — submitting <b>locks your declaration: " + declared + " picks</b> and <b>" + doubleWord + "</b>. Come back to finish before the deadline.");
+  /* Say the confirmation-number rule out loud at the moment of submitting —
+     this is where people decide whether to keep the email. */
+  const codeLine = '<div class="warn"><b>Keep your confirmation number.</b> Submitting issues a new one and it ' +
+    'lands in your confirmation email. <b>You\'ll need it to come back and change these picks</b>, and only the ' +
+    'newest one works — your picks won\'t load from your name alone, so nobody else can see them before reveal time.</div>';
   $("modalWarnings").innerHTML = boxesHtml +
-    (TEST_MODE ? '<div class="err"><b>Test copy.</b> Confirming here saves nothing — no sheet row, no email.</div>' : "") +
+    (TEST_MODE ? '<div class="err"><b>Test copy.</b> Confirming here saves nothing — no sheet row, no email, no new confirmation number.</div>' : "") +
     '<div class="warn" style="border-color:var(--line);background:rgba(255,255,255,.04)">' + lockLine + '</div>' +
+    codeLine +
     errs.map(e => '<div class="err">' + e + '</div>').join("") +
     warns.map(w => '<div class="warn">' + w + '</div>').join("");
   $("modalSub").innerHTML = weekLabel(S.week) + " &middot; <b>" + S.picks.size + "</b> picks" +
@@ -883,6 +1096,7 @@ async function submitPicks(){
   }
 
   if (S.blocked){ $("modalBack").classList.remove("show"); openPayModal(S.blockedName); return; }
+  if (cardLocked()){ $("modalBack").classList.remove("show"); promptForCode(); return; }
   S.submitting = true;
   $("modalConfirm").disabled = true;
   $("modalConfirm").innerHTML = '<span class="spin"></span>&nbsp;Submitting';
@@ -894,20 +1108,24 @@ async function submitPicks(){
   }
   /* No email in the payload. The server looks it up from Participants by name
      and hands the real address back, so a hand-edited POST can't redirect
-     someone else's confirmation. */
+     someone else's confirmation.
+     confirmationCode proves this is the same person who submitted the card
+     already on file; the server rejects the write without it. */
   const payload = {
     action: "submitPicks",
     submissionId: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()),
     week: S.week, name: name, picks: picks,
     numPicks: parseInt($("numPicksIn").value, 10) || picks.length,
     willDouble: $("willDoubleIn").checked || !!doubledPick(),
-    doubleQid: doubledPick() || ""
+    doubleQid: doubledPick() || "",
+    confirmationCode: S.code || ""
   };
   try {
     if (TEST_MODE){
       /* dry run: nothing is POSTed, nothing is emailed */
       await new Promise(r => setTimeout(r, 500));
-      const res = { timestamp: new Date().toISOString(), submissionId: payload.submissionId, inserted: picks.length, dropped: [] };
+      const res = { timestamp: new Date().toISOString(), submissionId: payload.submissionId,
+                    confirmation: confirmFrom(payload.submissionId), inserted: picks.length, dropped: [] };
       $("modalBack").classList.remove("show");
       lockCommitment();
       showSuccess(res, payload, []);
@@ -929,13 +1147,32 @@ async function submitPicks(){
          roster — never anything typed on this page. */
       payload.email = String(res.email || "");
 
+      /* A new confirmation number was just minted. Hold on to it so a second
+         edit in this same session doesn't need re-typing, and so the card
+         above shows what's now current. */
+      const newCode = confirmFrom(res.confirmation || res.submissionId || payload.submissionId);
+      S.code = newCode; S.needCode = true; S.unlocked = true;
+      noteNewCode(newCode);
+
       $("modalBack").classList.remove("show");
       lockCommitment();
       showSuccess(res, payload, dropped);
       sendEmail(payload, res).catch(() => {});
     }
   } catch(e){
-    $("modalWarnings").innerHTML = '<div class="err">Submission failed: ' + escHtml(e.message) + '</div>' + $("modalWarnings").innerHTML;
+    const msg = String(e && e.message || e);
+    /* A rejected confirmation number is its own kind of failure — put them
+       back in front of the code box instead of a generic error. */
+    if (/confirmation number/i.test(msg)){
+      S.needCode = true; S.unlocked = false; S.code = "";
+      $("modalBack").classList.remove("show");
+      showCodeCard("required", { count: S.savedCount, updatedAt: S.savedWhen });
+      setCodeMsg("bad", "<b>Nothing was saved.</b> " + escHtml(msg));
+      renderBoard(); refreshTicket();
+      promptForCode();
+    } else {
+      $("modalWarnings").innerHTML = '<div class="err">Submission failed: ' + escHtml(msg) + '</div>' + $("modalWarnings").innerHTML;
+    }
   } finally {
     S.submitting = false;
     $("modalConfirm").disabled = false;
@@ -943,10 +1180,25 @@ async function submitPicks(){
   }
 }
 
+/* The confirmation number is the first 8 characters of the SubmissionID,
+   normalized the same way the server normalizes it. */
+function confirmFrom(v){ return normCodeIn(v).slice(0, 8); }
+
+function noteNewCode(code){
+  $("codeCard").style.display = "";
+  $("codeCard").classList.add("unlocked");
+  $("codeIn").value = code;
+  $("codeWhy").innerHTML = '<b>Your card is unlocked in this browser tab.</b> ' +
+    'The number below is your current one — it replaced the old one the moment you submitted.';
+  setCodeMsg("good", "<b>New confirmation #: " + escHtml(code) + "</b> — this is the one you'll need next time. " +
+    "It's in the confirmation email too.");
+}
+
 function showSuccess(res, payload, dropped){
   const v = $("successView");
   v.style.display = "";
   const saved = (res && typeof res.inserted === "number") ? res.inserted : payload.picks.length;
+  const code = confirmFrom(res && (res.confirmation || res.submissionId) || payload.submissionId);
   const dropNote = (dropped && dropped.length)
     ? '<div class="banner bad" style="margin-top:12px"><b>' + dropped.length + ' pick' +
       (dropped.length === 1 ? " was" : "s were") + " not saved.</b> " +
@@ -954,18 +1206,26 @@ function showSuccess(res, payload, dropped){
       (dropped.length === 1 ? " had" : " had") + " already kicked off. " +
       "If that leaves you short of your commitment, pick a replacement game and submit again.</div>"
     : "";
+  const confBox = '<div class="confbox">' +
+    '<div class="lbl">Confirmation #</div>' +
+    '<div class="code">' + escHtml(code) + '</div>' +
+    '<div class="why"><b>You need this number to change your picks.</b> It\'s included in your confirmation ' +
+    'email. A new one is issued every time you submit &mdash; only the newest works.</div></div>';
+
   if (TEST_MODE){
     v.innerHTML = '<div class="banner warn" style="margin-top:26px"><b>Dry run complete &mdash; nothing was saved.</b> ' +
       payload.picks.length + ' picks would have been recorded for ' + escHtml(payload.name) +
-      '. Reload this page to run through it again.</div>' + dropNote;
+      '. The number below is what a real submission would have issued &mdash; it is not on file, so it will not ' +
+      'unlock anything. Reload this page to run through it again.</div>' + confBox + dropNote;
   } else {
     const to = String((res && res.emailMasked) || "").trim();
     v.innerHTML = '<div class="banner good" style="margin-top:26px"><b>Picks locked.</b> ' +
       saved + ' picks saved for ' + escHtml(payload.name) +
-      ' at ' + escHtml(etDateTime(res.timestamp)) + '. Confirmation #' + escHtml(String(res.submissionId).slice(0, 8)) +
+      ' at ' + escHtml(etDateTime(res.timestamp)) +
       (to ? '. A receipt is on its way to <b>' + escHtml(to) + '</b>' : '') +
       '. You can change anything by resubmitting before the deadline &mdash; ' +
-      '<a href="Summary.html?week=' + S.week + '" style="color:var(--accent)">see the board</a>.</div>' + dropNote;
+      '<a href="Summary.html?week=' + S.week + '" style="color:var(--accent)">see the board</a>.</div>' +
+      confBox + dropNote;
   }
   v.scrollIntoView({ behavior: "smooth", block: "center" });
 }
@@ -994,6 +1254,7 @@ async function sendEmail(payload, res){
   const dq = payload.doubleQid && payload.picks.some(p => p.qid === payload.doubleQid) ? payload.doubleQid : "";
   const doubleText = dq ? "&#9733; " + escHtml(doubledTeamName(dq)) : (payload.willDouble ? "Promised" : "None");
   const summaryUrl = new URL("Summary.html?week=" + payload.week, location.href).href;
+  const entryUrl = new URL(location.pathname.split("/").pop() || "WeeklyEntryForm.html", location.href).href;
   await window.emailjs.send(EMAILJS.serviceId, EMAILJS.templateId, {
     to_email: payload.email,
     player: payload.name,
@@ -1003,8 +1264,9 @@ async function sendEmail(payload, res){
     double_text: doubleText,
     pick_rows: pickRows,
     submitted_at: etDateTime(res && res.timestamp ? res.timestamp : new Date().toISOString()),
-    confirmation: String(res && res.submissionId ? res.submissionId : payload.submissionId).slice(0, 8),
-    summary_url: summaryUrl
+    confirmation: confirmFrom(res && (res.confirmation || res.submissionId) || payload.submissionId),
+    summary_url: summaryUrl,
+    entry_url: entryUrl
   });
 }
 </script>
