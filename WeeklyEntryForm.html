@@ -32,6 +32,38 @@ select#nameIn option{background:var(--field);color:var(--chalk)}
   font-size:.9rem;line-height:1.35;overflow-wrap:anywhere}
 .emailfyi b{color:var(--chalk);font-weight:600}
 .emailfyi.none{border-color:rgba(232,193,75,.5);border-style:solid;color:var(--push)}
+/* --- sticky-footer requirement chips ---
+   The four things a legal card needs, live, in the one place that's always
+   on screen. Amber "2/3" while short, green "✓ 3" once met. The Picks chip
+   counts against the live commitment (which is itself derived from the other
+   three), so Picks going green means the whole card is legal. */
+.reqs{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.reqchip{display:inline-flex;align-items:center;gap:7px;padding:5px 11px;border-radius:999px;
+  border:1px solid var(--line);background:rgba(255,255,255,.04);white-space:nowrap;
+  font-family:'Oswald',sans-serif;font-weight:600;font-size:.66rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--chalk-dim);transition:border-color .15s,background .15s,color .15s}
+.reqchip b{font-size:.92rem;font-weight:700;letter-spacing:.02em;color:var(--chalk)}
+.reqchip.short{border-color:rgba(232,193,75,.45);background:rgba(232,193,75,.07);color:var(--push)}
+.reqchip.short b{color:var(--push)}
+.reqchip.ok{border-color:rgba(79,206,133,.55);background:rgba(79,206,133,.12);color:var(--win)}
+.reqchip.ok b{color:var(--win)}
+/* past the top of the range — this league has crowded out the other one */
+.reqchip.over{border-color:rgba(255,107,94,.6);background:rgba(255,107,94,.10);color:var(--danger)}
+.reqchip.over b{color:var(--danger)}
+/* the summary chip leads with the accent until the card is actually legal */
+.reqchip.total.short{border-color:rgba(244,88,31,.55);background:rgba(244,88,31,.10);color:var(--accent)}
+.reqchip.total.short b{color:var(--accent)}
+@media(max-width:640px){
+  .reqchip{padding:4px 9px;gap:5px;font-size:.6rem;letter-spacing:.08em}
+  .reqchip b{font-size:.86rem}
+}
+/* The chips make this footer taller than pool.css budgets for, and pool.css is
+   shared with the summary page — so the extra clearance is overridden here
+   instead. These come after the stylesheet link, so they win. */
+body.has-ticket{padding-bottom:104px}
+@media(max-width:900px){ body.has-ticket{padding-bottom:142px} }
+@media(max-width:640px){ body.has-ticket{padding-bottom:176px} }
+
 /* --- confirmation-number gate (new) --- */
 .hint-line{color:var(--chalk-dim);font-size:.82rem;margin-top:8px}
 .hint-line b{color:var(--chalk)}
@@ -139,7 +171,7 @@ body.testing header.mast{padding-top:58px}
 <!-- sticky ticket -->
 <div class="ticket" id="ticket" style="display:none">
   <div class="ticket-in">
-    <div class="stat">Picks<b id="tPicks">0</b></div>
+    <div class="reqs" id="reqRow"></div>
     <div class="stat">Double<b id="tDouble">—</b></div>
     <div class="stat">Deadline<b id="tClock" class="hot">—</b></div>
     <div class="spacer"></div>
@@ -1040,10 +1072,89 @@ function doubledTeamName(qid){
   return p.side === "away" ? g.away : g.home;
 }
 
+/* ---------------- footer requirement chips ----------------
+   One chip per thing a legal card needs. Every denominator is derived, never
+   hardcoded: the league targets shrink on a thin board, the Required chip
+   counts whatever is actually flagged this week (and disappears if none is),
+   and Picks counts against the live commitment. Because the commitment is
+   itself picks + what's still owed, the Picks chip can only go green when the
+   other three already have — it's the summary, not a fifth rule. */
+/* Each chip is a live range, not a fixed target, because the league limits
+   move as the card fills:
+
+     Picks     7-12 (the week's legal card), or the locked number once they
+               have submitted once — after that the commitment IS the range.
+     NFL       3 up to 12 minus whatever college is holding. College sits at
+               its 3-game floor until they pick a 4th, and every college pick
+               past 3 takes one off the NFL ceiling: 3-9, then 3-8, 3-7...
+     College   the same rule mirrored.
+     Required  however many games are flagged this week, all of them needed.
+
+   Everything is also clamped by what's actually on the board, so a thin week
+   can't advertise a ceiling it doesn't have. */
+
+function leagueReqMin(lg){
+  const reqN = S.lines.filter(g => g.required && g.league === lg).length;
+  return Math.max(leagueTarget(lg), Math.min(reqN, leagueAvail(lg)));
+}
+function leagueReqMax(lg){
+  const other = lg === "NFL" ? "CFB" : "NFL";
+  /* the other league is holding its floor, or its actual count if that's more */
+  const otherFloor = Math.max(leagueReqMin(other), leagueCount(other));
+  /* Once the commitment is locked THAT is the ceiling, not the 12-pick rule —
+     a card capped at 7 with 5 college already on it has room for 2 more, not 7. */
+  const ceiling = S.commitLocked ? effCap() : MAX_PICKS;
+  return Math.max(leagueReqMin(lg), Math.min(leagueAvail(lg), ceiling - otherFloor));
+}
+
+function reqChips(){
+  const locked = S.commitLocked;
+  const cap = locked ? effCap() : 0;
+  const lo = Math.min(MIN_PICKS, pickableTotal());
+  const hi = Math.min(MAX_PICKS, pickableTotal());
+  const out = [{
+    key: "total", cls: "total", label: "Picks", have: S.picks.size,
+    min: locked ? cap : lo, max: locked ? cap : hi,
+    /* Landing inside the range is not the same as being done: the count can
+       sit at 8 of 7-12 while a league is still short. Ticking there would put
+       a green check on a card the form is about to reject, so this chip waits
+       for the other three. */
+    ok:   (locked ? S.picks.size >= cap : S.picks.size >= lo) && totalGap() === 0,
+    over: locked ? S.picks.size > cap : S.picks.size > hi
+  }];
+  [["NFL", "NFL"], ["CFB", "College"]].forEach(pair => {
+    const lg = pair[0];
+    if (!leagueAvail(lg)) return;              // league not on the board this week
+    const have = leagueCount(lg), min = leagueReqMin(lg), max = leagueReqMax(lg);
+    out.push({ key: lg, label: pair[1], have: have, min: min, max: max,
+               ok: have >= min && have <= max, over: have > max });
+  });
+  const reqAll = S.lines.filter(g => g.required);
+  if (reqAll.length){
+    const have = reqAll.filter(g => S.picks.has(g.qid)).length;
+    out.push({ key: "req", label: "Required", have: have,
+               min: reqAll.length, max: reqAll.length,
+               ok: have >= reqAll.length, over: false });
+  }
+  return out;
+}
+
+function rangeText(min, max){ return min === max ? String(min) : min + "\u2013" + max; }
+
+function renderReqRow(){
+  const el = $("reqRow");
+  if (!el) return;
+  el.innerHTML = reqChips().map(c => {
+    const cls  = c.over ? " over" : (c.ok ? " ok" : " short");
+    const body = c.ok ? "\u2713 " + c.have : c.have + "/" + rangeText(c.min, c.max);
+    const tip  = c.label + ": " + c.have + " of " + rangeText(c.min, c.max) +
+                 (c.over ? " \u2014 too many" : c.ok ? " \u2014 met" : " \u2014 still short");
+    return '<span class="reqchip' + (c.cls ? " " + c.cls : "") + cls +
+      '" title="' + escHtml(tip) + '">' + escHtml(c.label) + '<b>' + body + '</b></span>';
+  }).join("");
+}
 function refreshTicket(){
-  /* The target is always known now — locked from the first submission, or
-     computed from what's on the card — so the ticket always shows "made / of". */
-  $("tPicks").textContent = S.picks.size + " / " + (S.commitLocked ? effCap() : requiredTotal());
+  renderReqRow();
   const dq = doubledPick();
   $("tDouble").textContent = dq ? "★ " + doubledTeamName(dq) : ($("willDoubleIn").checked ? "Promised" : "None");
   const rb = $("reviewBtn");
