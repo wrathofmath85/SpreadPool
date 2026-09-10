@@ -64,6 +64,23 @@ body.has-ticket{padding-bottom:104px}
 @media(max-width:900px){ body.has-ticket{padding-bottom:142px} }
 @media(max-width:640px){ body.has-ticket{padding-bottom:176px} }
 
+/* --- commitment field ---
+   The number is no longer a readout. It arrives pre-filled with the minimum
+   the rules make you promise, and the player can type any number from that
+   floor up to MAX_PICKS. Raised is amber, so "I chose this" looks different
+   from "the form worked this out". */
+.commitbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:7px}
+.commitrange{font-family:'Oswald',sans-serif;font-size:.68rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--chalk-dim)}
+.commitrange b{color:var(--chalk);font-size:.82rem;letter-spacing:.02em}
+.linkbtn{background:none;border:0;padding:0;cursor:pointer;color:var(--accent);
+  font-family:'Oswald',sans-serif;font-size:.68rem;font-weight:600;letter-spacing:.12em;
+  text-transform:uppercase;text-decoration:underline;text-underline-offset:3px}
+.linkbtn:hover{color:var(--chalk)}
+input#numPicksIn{font-family:'Oswald',sans-serif;font-weight:600;font-size:1.06rem}
+input#numPicksIn.raised{border-color:rgba(232,193,75,.65);background:rgba(232,193,75,.06)}
+input#numPicksIn:disabled{opacity:.8}
+
 /* --- confirmation-number gate (new) --- */
 .hint-line{color:var(--chalk-dim);font-size:.82rem;margin-top:8px}
 .hint-line b{color:var(--chalk)}
@@ -149,10 +166,14 @@ body.testing header.mast{padding-top:58px}
     <div class="field-row">
       <div>
         <label class="lbl" for="numPicksIn">Total picks you're committing to this week</label>
-        <input type="number" id="numPicksIn" min="7" max="12" step="1" disabled>
+        <input type="number" id="numPicksIn" min="7" max="12" step="1" inputmode="numeric" autocomplete="off">
+        <div class="commitbar" id="commitBar">
+          <span class="commitrange" id="commitRange"></span>
+          <button type="button" class="linkbtn" id="commitReset" style="display:none">Back to the minimum</button>
+        </div>
         <p id="commitNote" style="display:none;color:var(--push);font-size:.82rem;margin-top:6px">Locked from your first submission — this is also your maximum number of picks.</p>
         <p id="autoNote" style="font-size:.82rem;margin-top:6px"></p>
-        <p style="color:var(--chalk-dim);font-size:.82rem;margin-top:6px">This is worked out for you, not typed: it's the picks you've made <b>plus everything the rules still require</b> &mdash; 3+ NFL, 3+ college, every required game &mdash; and never less than 7. Pick a full legal card and it lands on your pick count. Submit a partial set and it commits you to finishing: unmade picks count as losses. Either way it locks at your first submission and becomes your cap.</p>
+        <p style="color:var(--chalk-dim);font-size:.82rem;margin-top:6px">The form fills in the <b>lowest</b> number you're allowed to promise &mdash; the picks you've made plus everything the rules still require (3+ NFL, 3+ college, every required game), never under 7. You can't go below it, but you can <b>type a bigger number, up to 12</b>. Do that if you're only picking Thursday tonight and coming back for the weekend: the number locks at your first submission and becomes your cap, so whatever you'll want by Sunday has to be in it. Picks you never make count as losses.</p>
       </div>
       <div>
         <label class="lbl">Double</label>
@@ -276,6 +297,10 @@ const S = {
   picks: new Map(),          // qid -> {side, isDouble}
   savedQids: new Set(),      // qids already in the sheet for this person/week
   savedAt: "", submitting: false, commitLocked: false,
+  /* What the player typed into the commitment box, or null while they're
+     letting the form pick the number. Always re-clamped to the live floor
+     and ceiling by declaredTotal() — never trusted raw. */
+  userCommit: null,
   paidKnown: false,          // does the roster feed actually carry a Paid column?
   blocked: false, blockedName: "",
 
@@ -800,6 +825,7 @@ function resetPersonState(){
   S.needCode = false; S.unlocked = false; S.code = "";
   S.codeMode = ""; S.savedCount = 0; S.savedWhen = "";
   unlockCommitment();
+  S.userCommit = null;
   $("numPicksIn").value = "";
   $("willDoubleIn").checked = false;
   $("loadedBanner").innerHTML = "";
@@ -969,19 +995,57 @@ function lockCommitment(){
 }
 function unlockCommitment(){
   S.commitLocked = false;
-  /* numPicksIn stays disabled — it's a computed readout, never an input. */
+  S.userCommit = null;
+  /* Editable again — refreshTicket() sets the value, the min and the max. */
+  $("numPicksIn").disabled = false;
   $("commitNote").style.display = "none";
   $("willDoubleIn").disabled = false;
   $("doubleNote").style.display = "none";
 }
 
 function wireDeclaration(){
-  $("numPicksIn").addEventListener("input", refreshTicket);
+  const n = $("numPicksIn");
+  n.addEventListener("input", onCommitInput);
+  n.addEventListener("change", settleCommitInput);
+  n.addEventListener("blur", settleCommitInput);
+  $("commitReset").addEventListener("click", () => {
+    S.userCommit = null;
+    $("numPicksIn").value = minCommit();
+    refreshTicket();
+  });
   $("willDoubleIn").addEventListener("change", () => {
     if (!$("willDoubleIn").checked)
       for (const [q, pk] of S.picks) if (pk.isDouble){ pk.isDouble = false; repaintGame(q); }
     refreshTicket();
   });
+}
+
+/* Typing. Take a legal number as it's typed so the notes and chips keep up,
+   but don't rewrite the field mid-keystroke — "1" on the way to "10" would
+   otherwise get snapped back to the floor before the 0 lands. Anything
+   out of range is clamped by declaredTotal() for display and fixed up in
+   the box itself on blur. */
+function onCommitInput(){
+  if (S.commitLocked) return;
+  const raw = $("numPicksIn").value.trim();
+  if (raw === ""){ S.userCommit = null; }
+  else {
+    const v = parseInt(raw, 10);
+    if (isNaN(v)) return;
+    S.userCommit = v;
+  }
+  renderCommitBar(); renderAutoNote(); renderReqRow();
+}
+
+/* Blur / Enter: settle on the real number and put it in the box. Sitting on
+   the floor means "let the form drive it" again, so the number keeps rising
+   with the picks instead of freezing at whatever the floor happened to be. */
+function settleCommitInput(){
+  if (S.commitLocked) return;
+  const v = declaredTotal();
+  S.userCommit = (v > minCommit()) ? v : null;
+  $("numPicksIn").value = v;
+  refreshTicket();
 }
 
 function effCap(){
@@ -997,10 +1061,17 @@ function leagueCount(lg){ let n = 0; for (const q of S.picks.keys()) if (leagueO
 
 /* ---------------- what this card owes ----------------
 
-   The commitment is DERIVED, not typed. It is the picks on the card plus
-   everything the rules still require, floored at MIN_PICKS:
+   The derived number is the FLOOR of the commitment, not the commitment
+   itself. It is the picks on the card plus everything the rules still
+   require, floored at MIN_PICKS:
 
-       commitment = max(MIN_PICKS, picks + gap)
+       floor = max(MIN_PICKS, picks + gap)
+
+   The player may promise MORE than that floor, up to MAX_PICKS — that's what
+   declaredTotal() settles. They can never promise less. Going over is the
+   Thursday-night case: two Thursday picks and a promise of 10 leaves room to
+   come back Friday for the other eight, which a floor-only commitment of 7
+   would have made impossible once the first submission locked it.
 
    Pick a full legal card and gap is 0, so it lands exactly on the pick count
    — the old "a full card locks at its count" behavior falls out of the same
@@ -1051,6 +1122,25 @@ function requiredTotal(){ return Math.min(MAX_PICKS, pickableTotal(), rawTotal()
 /* True when the rules ask for more picks than the week can actually hold. */
 function overMax(){ return rawTotal() > requiredTotal(); }
 
+/* ---------------- the commitment itself ----------------
+   minCommit()     the lowest legal promise right now (the derived floor)
+   maxCommit()     the highest, clamped to what the week can actually hold
+   declaredTotal() what they're actually committing to: their number if they
+                   typed one, the floor if they didn't, always re-clamped
+                   between the two — so a promise of 10 made at 9am is still
+                   10 at noon, and a floor that climbs past it drags it up.
+   Once the commitment is LOCKED the sheet's number is the only answer. */
+function minCommit(){ return requiredTotal(); }
+function maxCommit(){ return Math.max(minCommit(), Math.min(MAX_PICKS, pickableTotal())); }
+function declaredTotal(){
+  if (S.commitLocked) return effCap();
+  const lo = minCommit(), hi = maxCommit();
+  const want = (S.userCommit == null) ? lo : S.userCommit;
+  return Math.max(lo, Math.min(hi, want));
+}
+/* They asked for more than the rules make them promise. */
+function commitRaised(){ return !S.commitLocked && declaredTotal() > minCommit(); }
+
 /* Plain-language list of what's still owed, for the notes and the errors. */
 function owedText(){
   const parts = [];
@@ -1063,25 +1153,59 @@ function owedText(){
   return parts.slice(0, -1).join(", ") + " and " + parts[parts.length - 1];
 }
 
+/* The line under the box: what the legal range is, and a way back down to the
+   floor once they've climbed off it. */
+function renderCommitBar(){
+  const bar = $("commitRange"), btn = $("commitReset"), n = $("numPicksIn");
+  if (!bar) return;
+  if (S.commitLocked){
+    bar.innerHTML = "Locked at <b>" + effCap() + "</b> from your first submission.";
+    if (btn) btn.style.display = "none";
+    if (n) n.classList.remove("raised");
+    return;
+  }
+  const lo = minCommit(), hi = maxCommit();
+  bar.innerHTML = (lo >= hi)
+    ? "Fixed at <b>" + lo + "</b> &mdash; that's everything this week can hold."
+    : "Minimum <b>" + lo + "</b> &middot; maximum <b>" + hi + "</b> &mdash; type any number in between";
+  if (btn) btn.style.display = commitRaised() ? "" : "none";
+  if (n) n.classList.toggle("raised", commitRaised());
+}
+
 function renderAutoNote(){
   const el = $("autoNote");
   if (!el) return;
   if (S.commitLocked){ el.innerHTML = ""; return; }
-  const gap = totalGap(), total = requiredTotal();
+  const gap = totalGap(), floor = minCommit(), total = declaredTotal(), extra = total - floor;
   if (overMax()){
     el.style.color = "var(--danger)";
     el.innerHTML = "<b>This card can't be completed.</b> Covering " + escHtml(owedText()) + " would take " +
       rawTotal() + " picks, past what's available this week. Swap picks around instead of adding more.";
     return;
   }
+  /* They've reached past the floor on purpose — say what that costs them. */
+  if (extra > 0){
+    const owe = total - S.picks.size;
+    el.style.color = "var(--push)";
+    el.innerHTML = "<b>Committing to " + total + "</b> &mdash; " + extra + " more than the " + floor +
+      " you'd owe on this card, because you asked for " + total + ". " +
+      (owe > 0
+        ? "That's <b>" + owe + " more pick" + (owe === 1 ? "" : "s") + " still to make</b>" +
+          (gap ? ", including " + escHtml(owedText()) : "") +
+          " &mdash; every one you never make counts as a loss, so come back before the deadline."
+        : "Your card already covers it.");
+    return;
+  }
   if (!S.picks.size){
     el.style.color = "var(--chalk-dim)";
-    el.innerHTML = "Start picking and this fills itself in.";
+    el.innerHTML = "Start picking and this fills itself in. Only here for the Thursday game? " +
+      "Type the number you'll actually want by Sunday &mdash; up to " + maxCommit() + " &mdash; before you submit.";
     return;
   }
   if (!gap && S.picks.size >= MIN_PICKS){
     el.style.color = "var(--win)";
-    el.innerHTML = "<b>Full card</b> &mdash; committing to exactly these " + S.picks.size + " picks.";
+    el.innerHTML = "<b>Full card</b> &mdash; committing to exactly these " + S.picks.size + " picks. " +
+      "Coming back for more later this week? Raise this number now; it locks when you submit.";
     return;
   }
   let why = "your " + S.picks.size + " pick" + (S.picks.size === 1 ? "" : "s");
@@ -1089,7 +1213,8 @@ function renderAutoNote(){
   if (total > S.picks.size + gap) why += ", rounded up to the " + MIN_PICKS + "-pick weekly minimum";
   el.style.color = "var(--push)";
   el.innerHTML = "<b>Committing to " + total + "</b> &mdash; " + why +
-    ". Picks you never make count as losses, so come back and finish before the deadline.";
+    ". Picks you never make count as losses, so come back and finish before the deadline." +
+    (maxCommit() > total ? " Want room for more? Raise the number above before you submit." : "");
 }
 
 /* The four "full card" boxes. skip=true means the rule doesn't apply this week. */
@@ -1156,11 +1281,13 @@ function leagueReqMax(lg){
 function reqChips(){
   const locked = S.commitLocked;
   const cap = locked ? effCap() : 0;
-  const lo = Math.min(MIN_PICKS, pickableTotal());
+  /* Floor of the chip: the week's legal minimum, or the bigger number they
+     promised if they raised it — a promise of 10 makes 7 a losing card. */
+  const lo = commitRaised() ? declaredTotal() : Math.min(MIN_PICKS, pickableTotal());
   const hi = Math.min(MAX_PICKS, pickableTotal());
   const out = [{
     key: "total", cls: "total", label: "Picks", have: S.picks.size,
-    min: locked ? cap : lo, max: locked ? cap : hi,
+    min: locked ? cap : lo, max: locked ? cap : Math.max(lo, hi),
     /* Landing inside the range is not the same as being done: the count can
        sit at 8 of 7-12 while a league is still short. Ticking there would put
        a green check on a card the form is about to reject, so this chip waits
@@ -1210,10 +1337,20 @@ function refreshTicket(){
     rb.title = S.blocked ? "Picks unlock once your " + ENTRY_FEE + " entry fee is recorded"
              : (cardLocked() ? "Your saved card is locked until you enter your confirmation number" : "");
   }
-  /* The commitment is computed, never typed — the field is a readout. */
+  /* The commitment: pre-filled with the floor, editable up to the max, frozen
+     once it's locked (or while the card is sealed / the entry fee is due). */
   const n = $("numPicksIn");
-  n.disabled = true;
-  if (!S.commitLocked) n.value = requiredTotal();
+  if (S.commitLocked){
+    n.disabled = true;
+  } else {
+    n.disabled = !S.open || S.blocked || cardLocked();
+    n.min = minCommit();
+    n.max = maxCommit();
+    /* Never fight the keyboard: the box is only rewritten when it isn't the
+       thing being typed into. settleCommitInput() handles it on the way out. */
+    if (document.activeElement !== n) n.value = declaredTotal();
+  }
+  renderCommitBar();
   renderAutoNote();
   /* Nothing on the declaration card is editable while the card is sealed */
   if (cardLocked()) $("willDoubleIn").disabled = true;
@@ -1262,7 +1399,7 @@ function validate(){
      count, but it re-opens a gap, and there's no room left to fill it. */
   const gap = totalGap();
   const need = S.picks.size + gap;
-  const cap = S.commitLocked ? effCap() : requiredTotal();
+  const cap = declaredTotal();
 
   if (S.commitLocked){
     if (S.picks.size > cap) errs.push("You're locked at " + cap + " picks — remove " + (S.picks.size - cap) + ".");
@@ -1289,19 +1426,28 @@ function openReview(){
   if (cardLocked()){ promptForCode(); return; }
   sweepLocks();                       // never list a game that just kicked off
   const { errs, warns } = validate();
-  const declared = S.commitLocked ? effCap() : requiredTotal();
+  const declared = declaredTotal();
   const dq = doubledPick();
   const doubleWord = dq ? "a double on " + escHtml(doubledTeamName(dq)) : ($("willDoubleIn").checked ? "a double (not placed yet)" : "no double");
   const boxesHtml = '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">' +
     cardBoxes().filter(b => !b.skip).map(b =>
       '<span class="pill ' + (b.ok ? "win" : "locked") + '">' + (b.ok ? "✓ " : "○ ") + b.label + '</span>').join("") + '</div>';
+  const owe = declared - S.picks.size;
   const lockLine = S.commitLocked
     ? "Your locked commitment: <b>" + declared + " picks</b>, <b>" + doubleWord + "</b>."
-    : (isFullCard()
-        ? "Full card — submitting <b>locks you in at " + S.picks.size + " picks</b> and <b>" + doubleWord + "</b> for the week."
-        : "Partial card — submitting <b>locks you in at " + declared + " picks</b> (your " + S.picks.size +
-          " plus the " + escHtml(owedText()) + " the rules require) and <b>" + doubleWord +
-          "</b>. Come back and finish before the deadline.");
+    : (owe <= 0
+        ? "Full card — submitting <b>locks you in at " + declared + " picks</b> and <b>" + doubleWord + "</b> for the week."
+        : "Submitting <b>locks you in at " + declared + " picks</b> and <b>" + doubleWord + "</b>. You've made <b>" +
+          S.picks.size + "</b>, so <b>" + owe + " more</b> " + (owe === 1 ? "is" : "are") + " still owed" +
+          (totalGap() ? " (" + escHtml(owedText()) + ")" : "") +
+          " — come back and make them before the deadline or they count as losses.");
+  /* The one thing that can't be undone after this button: the cap. Say it
+     here, where somebody submitting two Thursday picks will actually see it. */
+  const raiseHint = (!S.commitLocked && declared < maxCommit())
+    ? '<div class="warn">Coming back later this week for more games? <b>Raise your commitment before you submit.</b> ' +
+      'It locks at <b>' + declared + '</b> the moment you confirm and that becomes your maximum for the week — ' +
+      'you can go as high as <b>' + maxCommit() + '</b> now, and not after.</div>'
+    : "";
   /* No number here on purpose. The only number worth printing is the NEW one
      this submission will issue, and that doesn't exist until the write lands —
      printing the number they came in with would point at one that's about to be
@@ -1312,6 +1458,7 @@ function openReview(){
     '<div class="err"><b>Live test copy.</b> Confirming here is a real submission for ' + escHtml(weekLabel(S.week).toLowerCase()) +
       ' — sheet rows are written, a confirmation email is sent, and a new confirmation number is issued.</div>' +
     '<div class="warn" style="border-color:var(--line);background:rgba(255,255,255,.04)">' + lockLine + '</div>' +
+    raiseHint +
     codeLine +
     errs.map(e => '<div class="err">' + e + '</div>').join("") +
     warns.map(w => '<div class="warn">' + w + '</div>').join("");
@@ -1380,7 +1527,7 @@ async function submitPicks(){
     action: "submitPicks",
     submissionId: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()),
     week: S.week, name: name, picks: picks,
-    numPicks: S.commitLocked ? effCap() : requiredTotal(),
+    numPicks: declaredTotal(),
     willDouble: $("willDoubleIn").checked || !!doubledPick(),
     doubleQid: doubledPick() || "",
     confirmationCode: S.code || ""
