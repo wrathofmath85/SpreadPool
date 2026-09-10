@@ -246,9 +246,9 @@ function gameHtml(g, c){
   const w = effWinner(g), simmed = S.overrides.has(g.qid);
   const total = c.away + c.home;
   const aPct = total ? Math.round(100 * c.away / total) : 0;
-  const scoreTxt = (g.awayScore !== "" && g.awayScore != null && g.homeScore !== "" && g.homeScore != null &&
-                    !isNaN(parseInt(g.awayScore, 10)))
-    ? '<span style="color:var(--chalk)">' + parseInt(g.awayScore, 10) + '&ndash;' + parseInt(g.homeScore, 10) + '</span>' : '';
+  /* final score, shown beside each team once the game has a score on file */
+  const hasScore = (g.awayScore !== "" && g.awayScore != null && g.homeScore !== "" && g.homeScore != null &&
+                    !isNaN(parseInt(g.awayScore, 10)) && !isNaN(parseInt(g.homeScore, 10)));
   const resPill = w
     ? (simmed ? '<span class="pill sim">Sim: ' + winnerLabel(g, w) + '</span>'
               : '<span class="pill win">' + winnerLabel(g, w) + '</span>')
@@ -257,6 +257,13 @@ function gameHtml(g, c){
     if (!w) return "";
     if (w === "tie") return " result-loss";
     return w === side ? " result-win" : " result-loss";
+  };
+  /* tag = the team's score (blank until the game is final), plus the double star */
+  const tagHtml = side => {
+    const sc = hasScore ? String(parseInt(side === "away" ? g.awayScore : g.homeScore, 10)) : "";
+    const star = sideHasStar(g.qid, side) ? "★" : "";
+    const txt = (sc && star) ? (sc + " " + star) : (sc || star);
+    return txt ? '<span class="tag">' + txt + '</span>' : '';
   };
   const chips = '<div class="chips">' +
         chipBtn(g, "away", w) + chipBtn(g, "tie", w) + chipBtn(g, "home", w) +
@@ -268,14 +275,14 @@ function gameHtml(g, c){
       (g.kickoffISO ? '<span>' + escHtml(etTime(g.kickoffISO)) + '</span>' : '') +
       (g.tv ? '<span>' + escHtml(g.tv) + '</span>' : '') +
       (g.spreadText ? '<span style="color:var(--chalk)">' + escHtml(g.spreadText) + '</span>' : '') +
-      scoreTxt + '<span style="flex:1"></span>' + resPill +
+      '<span style="flex:1"></span>' + resPill +
     '</div>' +
     '<div class="game-row" style="grid-template-columns:1fr auto 1fr">' +
-      '<div class="teambtn' + teamCls("away") + '" style="cursor:default"><span>' + escHtml(g.away) + '</span><span class="tag">' + c.away + (c.stars && sideHasStar(g.qid, "away") ? " ★" : "") + '</span></div>' +
+      '<div class="teambtn' + teamCls("away") + '" style="cursor:default"><span>' + escHtml(g.away) + '</span>' + tagHtml("away") + '</div>' +
       '<span class="at">at</span>' +
-      '<div class="teambtn' + teamCls("home") + '" style="cursor:default"><span>' + escHtml(g.home) + '</span><span class="tag">' + c.home + (c.stars && sideHasStar(g.qid, "home") ? " ★" : "") + '</span></div>' +
+      '<div class="teambtn' + teamCls("home") + '" style="cursor:default"><span>' + escHtml(g.home) + '</span>' + tagHtml("home") + '</div>' +
     '</div>' +
-    (total ? '<div class="dist"><span>' + aPct + '%</span><div class="bar"><span class="a" style="width:' + aPct + '%"></span><span class="h" style="width:' + (100 - aPct) + '%"></span></div><span>' + (100 - aPct) + '%</span></div>' : '') +
+    (total ? '<div class="dist"><span>' + c.away + '</span><div class="bar"><span class="a" style="width:' + aPct + '%"></span><span class="h" style="width:' + (100 - aPct) + '%"></span></div><span>' + c.home + '</span></div>' : '') +
     chips +
   '</div>';
 }
