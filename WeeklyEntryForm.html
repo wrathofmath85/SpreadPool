@@ -250,9 +250,18 @@ body.testing header.mast{padding-top:58px}
    ============================================================ */
 const TEST_MODE = false;
 
-/* Optional EmailJS confirmation — fill these to re-enable, leave blank to skip.
-   Template receives: to_email, player, week, pick_rows, confirmation, … */
-const EMAILJS = { publicKey: "YB5J-75APa-V6Giku", serviceId: "service_uwt5e0k", templateId: "template_o8du7pt" };
+/* The confirmation receipt is NOT sent from this page any more.
+   It used to be: sendEmail() fired here, from the player's browser, AFTER the
+   success screen rendered, with every error swallowed. That meant a saved card
+   and no email whenever the EmailJS library was blocked, the connection was
+   slow, or — most often — the player did the reasonable thing and closed the
+   tab the moment it said "Picks locked". None of those ever reached EmailJS,
+   so there wasn't even a failed send to look at.
+
+   submitPicks in Code.gs sends it now, before it answers this page, and tells
+   us what happened in res.emailSent / res.emailStatus. Nothing here has to
+   stay open for it. See emailProblemHtml() below for what we do when it
+   didn't go out. */
 
 /* ---------------- entry fee / payment reminder ----------------
    Edit these four cards and the fee if anything ever changes. */
@@ -1519,7 +1528,6 @@ async function submitPicks(){
       $("modalBack").classList.remove("show");
       lockCommitment();
       showSuccess(res, payload, dropped);
-      sendEmail(payload, res).catch(() => {});
     }
   } catch(e){
     const msg = String(e && e.message || e);
@@ -1581,55 +1589,46 @@ function showSuccess(res, payload, dropped){
       'unlock anything. Reload this page to run through it again.</div>' + confBox + dropNote;
   } else {
     const to = String((res && res.emailMasked) || "").trim();
+    /* The server already tried to send by the time this renders, so the
+       receipt line is a fact now, not a promise. */
+    const sent = !!(res && res.emailSent);
     v.innerHTML = '<div class="banner good" style="margin-top:26px"><b>Picks locked.</b> ' +
       saved + ' picks saved for ' + escHtml(payload.name) +
-      ' at ' + escHtml(etDateTime(res.timestamp)) +
-      (to ? '. A receipt is on its way to <b>' + escHtml(to) + '</b>' : '') +
-      '. You can change anything by resubmitting before the deadline &mdash; ' +
+      ' at ' + escHtml(etDateTime(res.timestamp)) + '.' +
+      (sent ? (to ? ' A receipt is on its way to <b>' + escHtml(to) + '</b>.' : ' A receipt is on its way.') : '') +
+      ' You can change anything by resubmitting before the deadline &mdash; ' +
       '<a href="Summary.html?week=' + S.week + '" style="color:var(--accent)">see the board</a>.</div>' +
-      confBox + dropNote;
+      emailProblemHtml(res) + confBox + dropNote;
   }
   v.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
-async function sendEmail(payload, res){
-  if (TEST_MODE) return;
-  if (!EMAILJS.publicKey || !payload.email) return;
-  if (!payload.picks.length) return;         // everything was refused — no receipt
-  if (!window.emailjs){
-    await new Promise((ok, no) => { const s = document.createElement("script");
-      s.src = "https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js";
-      s.onload = ok; s.onerror = no; document.head.appendChild(s); });
-    window.emailjs.init({ publicKey: EMAILJS.publicKey });
+/* Shown only when the receipt did NOT go out.
+
+   This matters more than it looks. The confirmation number is the only way
+   back into a submitted card, and it lives in exactly two places: that email
+   and the box right below this banner. No email means the number on screen is
+   the only copy they will ever have, so say so while they are still looking
+   at it — the alternative is a text message to Dan on Sunday morning.
+
+   An older API deployment doesn't report a status at all; in that case say
+   nothing rather than crying wolf. */
+function emailProblemHtml(res){
+  if (!res || res.emailSent) return "";
+  const st = String(res.emailStatus || "").toLowerCase();
+  if (!st) return "";                       // API predates the server-side send
+
+  const writeItDown = 'Your picks are saved either way &mdash; but <b>write the confirmation ' +
+    'number below down now</b>, because it is the only way to change them.';
+
+  if (st === "no-address"){
+    return '<div class="banner warn" style="margin-top:14px"><b>No email address on file, ' +
+      'so no receipt was sent.</b> ' + writeItDown + ' Ask ' + escHtml(PAY_CONTACT) +
+      ' to add your address and next week\'s will come through.</div>';
   }
-  // pre-rendered table rows for the template's {{{pick_rows}}} slot
-  const rowStyle = 'padding:10px 6px;border-bottom:1px solid #eef1f6;font-family:Arial,Helvetica,sans-serif;font-size:14px;';
-  const pickRows = payload.picks.map(p => {
-    const g = S.lines.find(x => x.qid === p.qid);
-    const opp = g ? (p.side === "away" ? g.home : g.away) : "";
-    return '<tr>' +
-      '<td style="' + rowStyle + 'color:#f4581f;font-weight:bold;width:44px;">' + escHtml(p.qid) + '</td>' +
-      '<td style="' + rowStyle + 'color:#22314e;font-weight:bold;">' + escHtml(p.choiceText) +
-        (p.isDouble ? ' <span style="background-color:#e8c14b;color:#171003;font-size:10px;font-weight:bold;letter-spacing:1px;padding:2px 8px;border-radius:99px;">&#9733; DOUBLE</span>' : '') + '</td>' +
-      '<td style="' + rowStyle + 'color:#93a3bd;text-align:right;">over ' + escHtml(opp) + '</td></tr>';
-  }).join("");
-  const dq = payload.doubleQid && payload.picks.some(p => p.qid === payload.doubleQid) ? payload.doubleQid : "";
-  const doubleText = dq ? "&#9733; " + escHtml(doubledTeamName(dq)) : (payload.willDouble ? "Promised" : "None");
-  const summaryUrl = new URL("Summary.html?week=" + payload.week, location.href).href;
-  const entryUrl = new URL(location.pathname.split("/").pop() || "WeeklyEntryForm.html", location.href).href;
-  await window.emailjs.send(EMAILJS.serviceId, EMAILJS.templateId, {
-    to_email: payload.email,
-    player: payload.name,
-    week: isPracticeWeek(payload.week) ? "0 — Practice (not scored)" : String(payload.week),
-    total_picks: String(payload.picks.length),
-    num_picks: String((res && res.numPicks) || payload.numPicks),
-    double_text: doubleText,
-    pick_rows: pickRows,
-    submitted_at: etDateTime(res && res.timestamp ? res.timestamp : new Date().toISOString()),
-    confirmation: confirmFrom(res && (res.confirmation || res.submissionId) || payload.submissionId),
-    summary_url: summaryUrl,
-    entry_url: entryUrl
-  });
+  return '<div class="banner warn" style="margin-top:14px"><b>Your picks saved, but the ' +
+    'receipt email did not go out.</b> ' + writeItDown + ' Let ' + escHtml(PAY_CONTACT) +
+    ' know so he can look into it.</div>';
 }
 </script>
 </body>
