@@ -32,6 +32,7 @@
         <button class="btn small" id="modeSeason">Season</button>
         <span style="width:10px"></span>
         <button class="btn small primary" id="sortRecord">Record</button>
+        <button class="btn small" id="sortWins">Wins</button>
         <button class="btn small" id="sortAlpha">A&ndash;Z</button>
       </span>
     </div>
@@ -417,8 +418,14 @@ function renderStandings(){
   });
 
   const mode = S.standMode;
+  /* three orders: A–Z by last name, most wins (W first, pct breaks ties),
+     or record (pct first, W breaks ties — the default) */
   if (S.sortMode === "alpha"){
     rows.sort((a, b) => lastNameKey(a.name).localeCompare(lastNameKey(b.name)));
+  } else if (S.sortMode === "wins"){
+    rows.sort(mode === "week"
+      ? ((a, b) => b.w - a.w || b.pct - a.pct || a.name.localeCompare(b.name))
+      : ((a, b) => b.sw - a.sw || b.spct - a.spct || a.name.localeCompare(b.name)));
   } else {
     rows.sort(mode === "week"
       ? ((a, b) => b.pct - a.pct || b.w - a.w || a.name.localeCompare(b.name))
@@ -428,12 +435,14 @@ function renderStandings(){
   $("modeWeek").classList.toggle("primary", mode === "week");
   $("modeSeason").classList.toggle("primary", mode === "season");
   $("sortRecord").classList.toggle("primary", S.sortMode === "record");
+  $("sortWins").classList.toggle("primary", S.sortMode === "wins");
   $("sortAlpha").classList.toggle("primary", S.sortMode === "alpha");
   $("standMeta").textContent = (mode === "week"
     ? weekLabel(S.week) + (sim ? " — includes " + S.overrides.size + " simulated result(s)" : " — official results only")
     : (S.practice
         ? "Season totals — the practice week is not counted"
         : "Season through week " + S.week + (sim ? " (with simulations)" : ""))) +
+    (S.sortMode === "wins" ? " — ranked by most wins" : "") +
     ". Tap a player to see their " + weekLabel(S.week).toLowerCase() + " card.";
 
   const shown = rows;
@@ -445,15 +454,13 @@ function renderStandings(){
       ? (r.w + r.l ? (100 * r.pct).toFixed(1) + "%" : "—")
       : (r.sw + r.sl ? (100 * r.spct).toFixed(1) + "%" : "—");
     const good = mode === "week" ? r.w >= r.l : r.sw >= r.sl;
-    const dbl = mode === "week"
-      ? '<span style="font-family:Oswald;font-size:.78rem;color:var(--chalk-dim);white-space:nowrap">' + escHtml(r.doubleTxt) + '</span>'
-      : '';
+    /* the row is name / record / percent only — the double lives on the
+       expanded card now, where it has room to say which game it was */
     return '<div class="pcard' + (S.expanded.has(k) ? " openc" : "") + '" data-person="' + escHtml(k) + '">' +
       '<div class="pcard-head">' +
         '<span class="caret">▶</span>' +
-        '<span style="font-family:Oswald;color:var(--chalk-dim);min-width:26px">' + (S.sortMode === "record" ? (i + 1) : "&middot;") + '</span>' +
+        '<span style="font-family:Oswald;color:var(--chalk-dim);min-width:26px">' + (S.sortMode === "alpha" ? "&middot;" : (i + 1)) + '</span>' +
         '<span class="nm">' + escHtml(r.name) + (r.submitted ? "" : ' <span class="pill locked">defaults</span>') + '</span>' +
-        dbl +
         '<span class="rec">' + rec + '</span>' +
         '<span class="pill ' + (good ? "win" : "loss") + '">' + pct + '</span>' +
       '</div>' +
@@ -476,6 +483,10 @@ function personCardHtml(r){
   const log = '<p style="color:var(--chalk-dim);font-size:.82rem;padding:10px 16px 0;font-family:Oswald;letter-spacing:.04em">' +
     'Season log: ' + hist.map(h => (isPracticeWeek(h.wk) ? "Practice" : "Wk " + h.wk) + ": <b style=\'color:var(--chalk)\'>" + h.rec + "</b>").join(" &nbsp;&middot;&nbsp; ") + '</p>';
 
+  /* The double used to sit in the standings row; it lives here now */
+  const dblLine = !r.submitted ? '' : '<p style="color:var(--chalk-dim);font-size:.82rem;padding:6px 16px 0;font-family:Oswald;letter-spacing:.04em">' +
+    weekLabel(S.week) + ' double: <b style="color:var(--chalk)">' + escHtml(r.doubleTxt) + '</b></p>';
+
   /* Plain-language summary of anything in the record that isn't a game result */
   const penNote = r.penaltyLosses
     ? '<p class="pen-note"><b>' + r.penaltyLosses +
@@ -484,7 +495,7 @@ function personCardHtml(r){
         '. See the flagged row' + (r.penalties.length === 1 ? '' : 's') + ' at the bottom of the card.</p>'
     : "";
 
-  const note = log + (r.submitted ? "" :
+  const note = log + dblLine + (r.submitted ? "" :
     '<p style="color:var(--chalk-dim);font-size:.82rem;padding:10px 16px 0">No submission — scored on the default favorites.</p>') + penNote;
 
   const trs = r.picks.map(pk => {
@@ -528,7 +539,8 @@ function wireControls(){
   $("modeWeek").addEventListener("click", () => { S.standMode = "week"; renderStandings(); });
   $("modeSeason").addEventListener("click", () => { S.standMode = "season"; renderStandings(); });
   $("sortRecord").addEventListener("click", () => { S.sortMode = "record"; renderStandings(); });
-  $("sortAlpha").addEventListener("click", () => { S.sortMode = "alpha"; renderStandings(); });
+  $("sortWins").addEventListener("click",   () => { S.sortMode = "wins";   renderStandings(); });
+  $("sortAlpha").addEventListener("click",  () => { S.sortMode = "alpha";  renderStandings(); });
   $("clearSimBtn").addEventListener("click", () => { S.overrides.clear(); updateSimBanner(); render(false); });
   $("standRows").addEventListener("click", e => {
     const card = e.target.closest(".pcard[data-person]");
