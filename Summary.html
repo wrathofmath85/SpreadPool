@@ -23,6 +23,7 @@
   <div id="revealed" style="display:none">
 
     <div id="practiceBanner"></div>
+    <div id="fetchBanner"></div>
     <div id="simBanner"></div>
 
     <!-- standings (week/season toggle, expandable player rows) -->
@@ -53,20 +54,21 @@
     <div class="stat" id="tSeasonStat">Pool &mdash; Season<b id="tSeasonRec">&mdash;</b></div>
     <div class="spacer"></div>
     <button class="btn small ghost" id="clearSimBtn" style="display:none">Reset what-ifs</button>
-    <button class="btn small" id="adminBtn">Admin</button>
+    <button class="btn small" id="updBtn">Update scores</button>
   </div>
 </div>
 
-<!-- admin password modal -->
+<!-- admin code modal -->
 <div class="modal-back" id="pwBack">
-  <div class="modal" style="max-width:440px">
-    <h3>Results password</h3>
-    <p class="sub">Set outcomes with the chips (they appear in admin mode), then submit. Everyone sees them as official.</p>
+  <div class="modal" style="max-width:460px">
+    <h3>Update scores</h3>
+    <p class="sub" id="pwSub">Pulls final scores from ESPN and fills in the against-the-spread
+      winners, using the spread on the sheet. Games already decided by hand are left alone.</p>
     <div id="pwErr"></div>
-    <input type="password" id="pwIn" placeholder="Password" autocomplete="off">
+    <input type="password" id="pwIn" placeholder="Admin code" autocomplete="off">
     <div class="actions">
       <button class="btn ghost" id="pwCancel">Cancel</button>
-      <button class="btn primary" id="pwOk">Unlock admin</button>
+      <button class="btn primary" id="pwOk">Fetch scores</button>
     </div>
   </div>
 </div>
@@ -81,10 +83,9 @@ const S = {
   week: null, cfgRow: null, practice: false,
   lines: [], picks: [], decls: [], roster: [], weekly: [],
   revealed: false,
-  overrides: new Map(),   // qid -> 'away'|'home'|'tie'  (simulated / admin-pending)
-  adminMode: false, adminPw: "",
+  overrides: new Map(),   // qid -> 'away'|'home'|'tie'  (what-if only, this screen only)
+  fetchMsg: "",           // sticky result banner from the last score fetch
   standMode: "week", sortMode: "record", expanded: new Set(),
-
 };
 const $ = id => document.getElementById(id);
 
@@ -128,7 +129,7 @@ async function loadAll(first){
     numPicks: parseInt(d.numpicks, 10) || 0,
     willDouble: String(d.willdouble).toUpperCase() === "TRUE"
   }));
-  // drop overrides for games that now have an official result
+  // drop what-ifs for games that now have an official result
   for (const g of S.lines) if (g.winnerSide) S.overrides.delete(g.qid);
   render(first);
 }
@@ -170,7 +171,7 @@ function render(first){
       const t = setInterval(() => {
         const el = $("gateClock"); if (!el){ clearInterval(t); return; }
         el.textContent = countdownText(S.cfgRow.revealISO);
-        if (Date.parse(S.cfgRow.revealISO) <= Date.now()){ clearInterval(t); loadAll(false); }
+        if (Date.parse(S.cfgRow.revealISO) <= serverNow()){ clearInterval(t); loadAll(false); }
       }, 1000);
     }
     document.body.classList.remove("has-ticket");
@@ -186,6 +187,7 @@ function render(first){
   renderStandings();
   updateFooter();
   updateSimBanner();
+  $("fetchBanner").innerHTML = S.fetchMsg;
   document.body.classList.add("has-ticket");
   $("poolTicket").style.display = "";
   $("tWkNum").textContent = weekLabelShort(S.week);
@@ -266,6 +268,8 @@ function gameHtml(g, c){
     const txt = (sc && star) ? (sc + " " + star) : (sc || star);
     return txt ? '<span class="tag">' + txt + '</span>' : '';
   };
+  /* What-if chips. Official results are locked — nothing on this page can
+     move them any more; scores come from the server's ESPN pull. */
   const chips = '<div class="chips">' +
         chipBtn(g, "away", w) + chipBtn(g, "tie", w) + chipBtn(g, "home", w) +
         (S.overrides.has(g.qid) ? '<button class="chip" data-clear="' + g.qid + '">clear</button>' : '') +
@@ -293,7 +297,7 @@ function winnerLabel(g, w){ return w === "tie" ? "Push" : escHtml(w === "away" ?
 function chipBtn(g, side, w){
   const on = w === side ? " on" + (side === "tie" ? " tie" : "") : "";
   const lbl = side === "tie" ? "Push" : (side === "away" ? g.away : g.home);
-  const dis = (!S.adminMode && g.winnerSide) ? "disabled" : "";   // what-if can't move official results
+  const dis = g.winnerSide ? "disabled" : "";   // a decided game can't be what-if'd
   return '<button class="chip' + on + '" data-qid="' + g.qid + '" data-w="' + side + '" ' + dis + '>' + escHtml(lbl) + '</button>';
 }
 
@@ -306,7 +310,6 @@ function onChip(e){
   const g = S.lines.find(x => x.qid === qid);
   const cur = effWinner(g);
   if (cur === w) S.overrides.delete(qid); else S.overrides.set(qid, w);
-  if (!S.overrides.get(qid) && g.winnerSide && S.overrides.has(qid)) S.overrides.delete(qid);
   updateSimBanner();
   render(false);
 }
@@ -533,7 +536,7 @@ function personCardHtml(r){
     '<tbody>' + trs + penRows + '</tbody></table>';
 }
 
-/* ---------------- controls / admin ---------------- */
+/* ---------------- controls ---------------- */
 
 function wireControls(){
   $("modeWeek").addEventListener("click", () => { S.standMode = "week"; renderStandings(); });
@@ -549,53 +552,102 @@ function wireControls(){
     if (S.expanded.has(k)) S.expanded.delete(k); else S.expanded.add(k);
     renderStandings();
   });
-  $("adminBtn").addEventListener("click", () => {
-    if (S.adminMode) return submitResults();
-    $("pwErr").innerHTML = ""; $("pwIn").value = "";
-    $("pwBack").classList.add("show"); $("pwIn").focus();
-  });
-  $("pwCancel").addEventListener("click", () => $("pwBack").classList.remove("show"));
-  $("pwOk").addEventListener("click", () => {
-    const pw = $("pwIn").value;
-    if (!pw){ $("pwErr").innerHTML = '<div class="err">Enter the password.</div>'; return; }
-    S.adminPw = pw; S.adminMode = true;
-    $("pwBack").classList.remove("show");
-    $("adminBtn").textContent = "Submit official results";
-    $("adminBtn").classList.add("primary");
-    updateSimBanner(); render(false);
-  });
+
+  $("updBtn").addEventListener("click", openUpdateModal);
+  $("pwCancel").addEventListener("click", closeUpdateModal);
+  $("pwOk").addEventListener("click", runFetchScores);
+  $("pwIn").addEventListener("keydown", e => { if (e.key === "Enter") runFetchScores(); });
+  $("pwBack").addEventListener("click", e => { if (e.target === $("pwBack")) closeUpdateModal(); });
 }
 
 function updateSimBanner(){
   const el = $("simBanner");
-  if (S.adminMode) el.innerHTML = '<div class="banner warn"><b>Admin mode.</b> Set each game\'s outcome with the chips, then hit ' +
-    '"Submit official results". Wrong password will be rejected on submit. Chips you set are simulated until then.</div>';
-  else if (S.overrides.size) el.innerHTML = '<div class="banner"><span class="pill sim">Simulation</span>&nbsp; ' + S.overrides.size +
-    ' what-if result(s) applied — standings and the footer record update live, on your screen only. Use "Reset what-ifs" in the footer to clear.</div>';
+  if (S.overrides.size) el.innerHTML = '<div class="banner"><span class="pill sim">What-if</span>&nbsp; ' + S.overrides.size +
+    ' hypothetical result(s) applied — standings and the footer record update live, on your screen only. ' +
+    'Nobody else sees this. Use "Reset what-ifs" in the footer to clear.</div>';
   else el.innerHTML = "";
 }
 
-async function submitResults(){
-  const results = [];
-  for (const g of S.lines){
-    const o = S.overrides.get(g.qid);
-    if (o && o !== g.winnerSide) results.push({ qid: g.qid, winnerSide: o });
-  }
-  if (!results.length){ $("simBanner").innerHTML = '<div class="banner warn">No new outcomes set — click chips first.</div>'; return; }
-  $("adminBtn").disabled = true;
-  $("adminBtn").innerHTML = '<span class="spin"></span>&nbsp;Submitting';
+/* ---------------- score update (admin code -> server-side ESPN pull) ----------------
+   The board no longer sets results itself. The admin code is handed to the
+   API, which runs the same routine as the Sheet's "Fetch scores & fill
+   winners": finals from ESPN, ATS winners computed from the spread on the
+   sheet. Anything it can't settle is reported by QID and gets fixed on the
+   Lines tab, not here. */
+
+function openUpdateModal(){
+  $("pwErr").innerHTML = "";
+  $("pwIn").value = "";
+  $("pwIn").disabled = false;
+  $("pwSub").innerHTML = 'Pulls final scores from ESPN for <b>' + escHtml(weekLabel(S.week)) +
+    '</b> and fills in the against-the-spread winners, using the spread on the sheet. ' +
+    'Games already decided by hand are left alone.';
+  $("pwOk").disabled = false;
+  $("pwOk").innerHTML = "Fetch scores";
+  $("pwBack").classList.add("show");
+  $("pwIn").focus();
+}
+
+function closeUpdateModal(){ $("pwBack").classList.remove("show"); }
+
+async function runFetchScores(){
+  const pw = $("pwIn").value;
+  if (!pw){ $("pwErr").innerHTML = '<div class="err">Enter the admin code.</div>'; $("pwIn").focus(); return; }
+
+  $("pwErr").innerHTML = '<div class="warn">Asking ESPN for finals — this can take 10&ndash;20 seconds. ' +
+    'Leave this open.</div>';
+  $("pwOk").disabled = true;
+  $("pwIn").disabled = true;
+  $("pwOk").innerHTML = '<span class="spin"></span>&nbsp;Fetching';
+  $("updBtn").disabled = true;
+
   try {
-    await apiPost({ action: "setResults", password: S.adminPw, week: S.week, results: results });
-    S.overrides.clear();
-    await loadAll(false);
-    $("simBanner").innerHTML = '<div class="banner good"><b>' + results.length + ' result(s) locked in.</b> The board below is official.</div>';
+    const res = await apiPost({ action: "fetchScores", password: pw, week: S.week });
+    closeUpdateModal();
+    S.fetchMsg = fetchResultHtml(res);
+    await loadAll(false);          /* re-render off the freshly written sheet */
   } catch(e){
-    $("simBanner").innerHTML = '<div class="banner bad">Results not saved: ' + escHtml(e.message) + '</div>';
-    if (/password/i.test(e.message)){ S.adminMode = false; $("adminBtn").textContent = "Admin"; $("adminBtn").classList.remove("primary"); }
+    /* stay open so the code can be retried without reopening */
+    $("pwErr").innerHTML = '<div class="err">' + escHtml(e.message) + '</div>';
+    $("pwIn").disabled = false;
+    $("pwIn").focus();
+    $("pwIn").select();
   } finally {
-    $("adminBtn").disabled = false;
-    if (S.adminMode) $("adminBtn").textContent = "Submit official results";
+    $("pwOk").disabled = false;
+    $("pwOk").innerHTML = "Fetch scores";
+    $("updBtn").disabled = false;
   }
+}
+
+/* The result banner. Sticky — stored on S.fetchMsg so the 3-minute auto
+   refresh doesn't wipe it out from under you. */
+function fetchResultHtml(r){
+  const n  = x => parseInt(x, 10) || 0;
+  const pl = (c, s) => c + " " + s + (c === 1 ? "" : "s");
+
+  const scored = n(r.scored), filled = n(r.winnersFilled),
+        already = n(r.alreadySet), pending = n(r.pending);
+  const unmatched = r.unmatched || [], noLine = r.noLine || [];
+  const manual = unmatched.concat(noLine);
+
+  const bits = ['<b>' + pl(scored, "final") + ' written</b>', pl(filled, "ATS winner") + ' filled'];
+  if (already) bits.push(already + ' already set, left alone');
+  if (pending) bits.push(pl(pending, "game") + ' not final yet');
+
+  let html = '<div class="banner ' + (manual.length ? "warn" : "good") + '">' +
+    bits.join(' &middot; ') +
+    ' <span style="color:var(--chalk-dim);font-size:.85em">(' + new Date().toLocaleTimeString() + ')</span>';
+
+  if (manual.length){
+    html += '<div style="margin-top:9px;font-size:.9rem">' +
+      pl(manual.length, "game") + " couldn't be scored automatically &mdash; set <b>Winner</b> " +
+      'on the Lines tab for <b style="color:var(--push)">' + escHtml(manual.join(", ")) + '</b>.' +
+      '<div style="color:var(--chalk-dim);font-size:.88em;margin-top:4px">' +
+        (unmatched.length ? escHtml(unmatched.join(", ")) + ' &mdash; no ESPN match (added or renamed by hand). ' : '') +
+        (noLine.length ? escHtml(noLine.join(", ")) + ' &mdash; no spread on the sheet, so there is no ATS result to compute.' : '') +
+      '</div></div>';
+  }
+  return html + '</div>';
 }
 </script>
 </body>
