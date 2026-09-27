@@ -88,6 +88,7 @@ const S = {
   standMode: "week", sortMode: "record", expanded: new Set(),
 };
 const $ = id => document.getElementById(id);
+let lastLoadMs = Date.now();     // when the board last asked the API — used by the auto-refresh
 
 init().catch(e => { $("gateView").innerHTML = '<div class="banner bad">Could not load the board: ' + escHtml(e.message) + '</div>'; });
 
@@ -102,8 +103,9 @@ async function init(){
 
 /* Auto-refresh, but only while someone is actually looking. A tab left open
    in the background used to hit the API every 3 minutes all day; now it sits
-   still until it's visible again, and catches up then if it's stale. */
-let lastLoadMs = Date.now();
+   still until it's visible again, and catches up then if it's stale.
+   (lastLoadMs is declared up top with S — declaring it here, below the
+   init() call, threw "Cannot access 'lastLoadMs' before initialization".) */
 function wireRefresh(){
   const refresh = () => { lastLoadMs = Date.now(); loadAll(false).catch(() => {}); };
   setInterval(() => { if (!document.hidden) refresh(); }, REFRESH_MS);
