@@ -94,22 +94,48 @@ init().catch(e => { $("gateView").innerHTML = '<div class="banner bad">Could not
 async function init(){
   if (POOL_API.indexOf("http") !== 0) throw new Error("POOL_API is not set in pool.js yet.");
   wireControls();
-  await loadAll(true);
-  setInterval(() => loadAll(false).catch(() => {}), REFRESH_MS);
+  /* The clock sync runs alongside the board fetch, not before it, so it adds
+     no wait. It only feeds the reveal countdown. */
+  await Promise.all([ syncClock(), loadAll(true) ]);
+  wireRefresh();
 }
 
+/* Auto-refresh, but only while someone is actually looking. A tab left open
+   in the background used to hit the API every 3 minutes all day; now it sits
+   still until it's visible again, and catches up then if it's stale. */
+let lastLoadMs = Date.now();
+function wireRefresh(){
+  const refresh = () => { lastLoadMs = Date.now(); loadAll(false).catch(() => {}); };
+  setInterval(() => { if (!document.hidden) refresh(); }, REFRESH_MS);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && Date.now() - lastLoadMs >= REFRESH_MS) refresh();
+  });
+}
+
+/* ONE request. The first load asks for ?week=N if the URL has one, otherwise
+   "auto" — the API picks the week exactly the way resolveWeek() does and sends
+   back which one it chose, plus every Config row. There used to be a separate
+   fn=config call before this, which doubled the wait on every page load. */
 async function loadAll(first){
-  const cfg = first ? await apiGet({ fn: "config" }) : null;
+  lastLoadMs = Date.now();
+  let wk = S.week;
   if (first){
-    const r = resolveWeek(cfg.config);
-    if (!r) throw new Error("No weeks in Config.");
-    S.week = r.week; S.cfgRow = r.row;
+    const raw = qsParam("week");
+    wk = (raw !== null && raw.trim() !== "" && !isNaN(parseInt(raw, 10))) ? parseInt(raw, 10) : "auto";
+  }
+  const all = await apiGet({ fn: "all", week: wk });
+  if (first){
+    if (all.week == null) throw new Error("No weeks in Config.");
+    S.week = parseInt(all.week, 10);
+    S.cfgRow = normConfigRows(all.config).find(r => r.week === S.week) || { week: S.week };
     S.practice = isPracticeWeek(S.week);          /* week 0 — live scoring, zero season effect */
     $("wkNum").textContent = S.week;
     if (S.practice) $("mastTitle").innerHTML = '<span class="yr practice">Practice</span> Board';
     document.title = weekLabel(S.week) + " Board — 2026 Spread Pool";
+  } else if (all.config){
+    /* pick up a reveal time that was edited since the page opened */
+    S.cfgRow = normConfigRows(all.config).find(r => r.week === S.week) || S.cfgRow;
   }
-  const all = await apiGet({ fn: "all", week: S.week });
   S.lines  = normalizeLines(all.lines);
   S.roster = all.roster || [];
   /* season-only: the API strips practice-week rows out of weeklyResults, so
@@ -211,6 +237,10 @@ function updateFooter(){
   $("tSeasonRec").textContent = sw + "-" + sl + "-" + st;
   $("clearSimBtn").style.display = S.overrides.size ? "" : "none";
 }
+
+/* Win % — a push counts as half a win: 9-3-1 = 9.5 / 13 = 73.1%.
+   Same formula as PE_pct_ in PoolEmail.gs, so the board and the email agree. */
+function winPct(w, l, t){ const n = w + l + t; return n ? (w + t / 2) / n : 0; }
 
 function effWinner(g){ return S.overrides.get(g.qid) || g.winnerSide || ""; }
 
@@ -385,7 +415,7 @@ function scoreWeek(){
     const penaltyLosses = penalties.reduce((n, p) => n + p.cost, 0);
     out.push({ name: person.name, submitted: !!ent, w, l, t, doubleTxt, picks: picks,
       penalties: penalties, penaltyLosses: penaltyLosses,
-      pct: (w + l) ? w / (w + l) : 0 });
+      pct: winPct(w, l, t) });
   }
   return out;
 }
@@ -417,7 +447,7 @@ function renderStandings(){
     const past = season.get(k) || { w: 0, l: 0, t: 0 };
     const add = live || r;
     const sw = past.w + add.w, sl = past.l + add.l, st = past.t + add.t;
-    return Object.assign({}, r, { sw, sl, st, spct: (sw + sl) ? sw / (sw + sl) : 0 });
+    return Object.assign({}, r, { sw, sl, st, spct: winPct(sw, sl, st) });
   });
 
   const mode = S.standMode;
@@ -454,8 +484,8 @@ function renderStandings(){
     const k = nameKey(r.name);
     const rec = mode === "week" ? r.w + "-" + r.l + "-" + r.t : r.sw + "-" + r.sl + "-" + r.st;
     const pct = mode === "week"
-      ? (r.w + r.l ? (100 * r.pct).toFixed(1) + "%" : "—")
-      : (r.sw + r.sl ? (100 * r.spct).toFixed(1) + "%" : "—");
+      ? (r.w + r.l + r.t ? (100 * r.pct).toFixed(1) + "%" : "—")
+      : (r.sw + r.sl + r.st ? (100 * r.spct).toFixed(1) + "%" : "—");
     const good = mode === "week" ? r.w >= r.l : r.sw >= r.sl;
     /* the row is name / record / percent only — the double lives on the
        expanded card now, where it has room to say which game it was */

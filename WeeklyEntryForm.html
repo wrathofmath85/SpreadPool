@@ -310,14 +310,23 @@ async function init(){
   if (POOL_API.indexOf("http") !== 0) throw new Error("POOL_API is not set in pool.js yet.");
   if (TEST_MODE){ document.body.classList.add("testing"); $("testRibbon").style.display = ""; }
 
-  /* Sync to the server clock BEFORE anything compares a kickoff time.
-     Everything below uses serverNow(), never the device clock. */
-  const [, cfg] = await Promise.all([ syncClock(), apiGet({ fn: "config" }) ]);
+  /* Two requests, side by side, and that's the whole load:
+       fn=ping   the server clock, kept on its own so the round trip it
+                 measures is short and the skew estimate stays tight
+       fn=entry  Config + the week's Lines + the roster in one bundle
+                 (cached on the server; ?week=N if the URL has one,
+                 otherwise the server picks the week the same way
+                 resolveWeek() does and says which one it chose)
+     It used to be two ROUNDS of two calls — ping+config, then lines+roster —
+     so every visitor waited on four cold starts, two at a time.
+     Nothing below compares a kickoff time until both are back. */
+  const rawWk = qsParam("week");
+  const wantWk = (rawWk !== null && rawWk.trim() !== "" && !isNaN(parseInt(rawWk, 10))) ? parseInt(rawWk, 10) : "auto";
+  const [, bundle] = await Promise.all([ syncClock(), apiGet({ fn: "entry", week: wantWk }) ]);
 
-  const resolved = resolveWeek(cfg.config);
-  if (!resolved) throw new Error("No weeks found in Config.");
-  S.week = resolved.week;
-  S.cfgRow = resolved.row;
+  if (bundle.week == null) throw new Error("No weeks found in Config.");
+  S.week = parseInt(bundle.week, 10);
+  S.cfgRow = normConfigRows(bundle.config).find(r => r.week === S.week) || { week: S.week };
   /* TEST_MODE forces the board open no matter what Config says */
   S.open = TEST_MODE ? true : weekIsOpenClient(S.cfgRow);
   S.practice = isPracticeWeek(S.week);        /* week 0 — optional, never scored */
@@ -325,13 +334,9 @@ async function init(){
   if (S.practice) $("mastTitle").innerHTML = '<span class="yr practice">Practice</span> Entry';
   document.title = (TEST_MODE ? "TEST — " : "") + weekLabel(S.week) + " Entry — 2026 Spread Pool";
 
-  const [linesRes, rosterRes] = await Promise.all([
-    apiGet({ fn: "lines", week: S.week }),
-    apiGet({ fn: "roster" })
-  ]);
-  S.lines = normalizeLines(linesRes.lines);
+  S.lines = normalizeLines(bundle.lines);
   S.lines.forEach(g => { g._wasLocked = isLocked(g); });   // baseline: don't toast for games already started at load
-  S.roster = rosterRes.roster || [];
+  S.roster = bundle.roster || [];
   S.paidKnown = rosterHasPaidColumn(S.roster);
 
   if (!S.paidKnown) console.warn("Roster feed has no Paid field — the paid gate is OFF (failing open). " +
