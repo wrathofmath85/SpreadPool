@@ -169,9 +169,13 @@ function normalizeLines(rows){
     kickoffISO: String(r.kickoffiso || ""), tv: String(r.tv || ""),
     spreadText: String(r.spreadtext || ""),
     favSide: String(r.favoredside || "").toLowerCase(),
+    lineValue: parseFloat(r.linevalue),
     isDefault: /^y/i.test(String(r.default || "")),
     awayScore: r.awayscore, homeScore: r.homescore,
-    winnerSide: String(r.winnerside || "").toLowerCase()
+    winnerSide: String(r.winnerside || "").toLowerCase(),
+    /* written every 5 min by LiveScores.gs while a game is on */
+    liveAway: r.liveaway, liveHome: r.livehome,
+    gameStatus: String(r.gamestatus || "").trim()
   })).filter(r => r.qid && r.away && r.home);
 }
 
@@ -209,8 +213,10 @@ function render(first){
   $("gateView").innerHTML = "";
   $("revealed").style.display = "";
   const officialCount = S.lines.filter(g => g.winnerSide).length;
+  const nLive = liveCount();
   $("mastSub").innerHTML = new Set(S.picks.map(p => nameKey(p.name))).size + " cards in &middot; " +
-    officialCount + " of " + S.lines.length + " results official";
+    officialCount + " of " + S.lines.length + " results official" +
+    (nLive ? ' &middot; <b>' + nLive + ' live</b>' : '');
   renderGames();
   renderStandings();
   updateFooter();
@@ -245,6 +251,27 @@ function updateFooter(){
 function winPct(w, l, t){ const n = w + l + t; return n ? (w + t / 2) / n : 0; }
 
 function effWinner(g){ return S.overrides.get(g.qid) || g.winnerSide || ""; }
+
+/* ---------------- live games ----------------
+   A game is "live" when the sheet has a live score but no official result
+   yet. Live scores never count toward any record — only Winner/WinnerSide
+   do. They just show the score, the clock, and who's covering right now. */
+function isNum(v){ return v !== "" && v != null && !isNaN(parseInt(v, 10)); }
+function isLive(g){
+  return !g.winnerSide && isNum(g.liveAway) && isNum(g.liveHome) && !/^final/i.test(g.gameStatus);
+}
+/* Same math as atsResult_ in LiveScores.gs: 'away' | 'home' | 'tie' | '' */
+function atsSide(g, a, h){
+  a = parseInt(a, 10); h = parseInt(h, 10);
+  if (isNaN(a) || isNaN(h)) return "";
+  let m;
+  if (g.favSide === "pk") m = h - a;
+  else if (g.favSide === "home" && !isNaN(g.lineValue)) m = (h - g.lineValue) - a;
+  else if (g.favSide === "away" && !isNaN(g.lineValue)) m = h - (a - g.lineValue);
+  else return "";
+  return m > 0 ? "home" : m < 0 ? "away" : "tie";
+}
+function liveCount(){ return S.lines.filter(isLive).length; }
 
 function renderGames(){
   const el = $("gamesBoard");
@@ -282,20 +309,28 @@ function gameHtml(g, c){
   const total = c.away + c.home;
   const aPct = total ? Math.round(100 * c.away / total) : 0;
   /* final score, shown beside each team once the game has a score on file */
-  const hasScore = (g.awayScore !== "" && g.awayScore != null && g.homeScore !== "" && g.homeScore != null &&
-                    !isNaN(parseInt(g.awayScore, 10)) && !isNaN(parseInt(g.homeScore, 10)));
+  const hasScore = isNum(g.awayScore) && isNum(g.homeScore);
+  const live = !hasScore && isLive(g);
+  const cover = live ? atsSide(g, g.liveAway, g.liveHome) : "";
+  /* a postponed / delayed / canceled game says so instead of sitting blank */
+  const oddStatus = !w && !hasScore && !live && /postpon|cancel|delay|suspend/i.test(g.gameStatus);
   const resPill = w
     ? (simmed ? '<span class="pill sim">Sim: ' + winnerLabel(g, w) + '</span>'
               : '<span class="pill win">' + winnerLabel(g, w) + '</span>')
-    : '';
+    : live
+      ? '<span class="pill live">' + escHtml(g.gameStatus || "Live") +
+        (cover ? ' &middot; ' + (cover === "tie" ? "Push" : escHtml(cover === "away" ? g.away : g.home) + " covering") : '') +
+        '</span>'
+      : oddStatus ? '<span class="pill closed">' + escHtml(g.gameStatus) + '</span>' : '';
   const teamCls = side => {
-    if (!w) return "";
+    if (!w) return (cover && cover === side) ? " covering" : "";
     if (w === "tie") return " result-loss";
     return w === side ? " result-win" : " result-loss";
   };
   /* tag = the team's score (blank until the game is final), plus the double star */
   const tagHtml = side => {
-    const sc = hasScore ? String(parseInt(side === "away" ? g.awayScore : g.homeScore, 10)) : "";
+    const sc = hasScore ? String(parseInt(side === "away" ? g.awayScore : g.homeScore, 10))
+             : live     ? String(parseInt(side === "away" ? g.liveAway : g.liveHome, 10)) : "";
     const star = sideHasStar(g.qid, side) ? "★" : "";
     const txt = (sc && star) ? (sc + " " + star) : (sc || star);
     return txt ? '<span class="tag">' + txt + '</span>' : '';
