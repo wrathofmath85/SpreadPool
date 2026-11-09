@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+<rect width="512" height="512" fill="#0B1730"/>
+<g transform="translate(36,104) scale(1.1) translate(0,-90)">
+<defs>
+<clipPath id="aboveWater"><rect x="0" y="0" width="400" height="248"/></clipPath>
+<clipPath id="ballB"><path d="M80,200 C120,124 280,124 320,200 C280,276 120,276 80,200 Z"/></clipPath>
+</defs>
+<ellipse cx="200" cy="250" rx="168" ry="44" fill="none" stroke="#FFFFFF" stroke-opacity="0.22" stroke-width="5"/>
+<ellipse cx="200" cy="250" rx="126" ry="32" fill="none" stroke="#FFFFFF" stroke-opacity="0.45" stroke-width="6"/>
+<g clip-path="url(#aboveWater)">
+<g transform="rotate(-30 200 200)">
+<path d="M80,200 C120,124 280,124 320,200 C280,276 120,276 80,200 Z" fill="#F4581F"/>
+<g clip-path="url(#ballB)">
+<path d="M80,200 C120,276 280,276 320,200 C280,232 120,232 80,200 Z" fill="#C83803"/>
+<rect x="114" y="110" width="10" height="180" fill="#FFFFFF"/>
+<rect x="276" y="110" width="10" height="180" fill="#FFFFFF"/>
+</g>
+<g stroke="#FFFFFF" stroke-width="7" stroke-linecap="round">
+<line x1="160" y1="178" x2="240" y2="178"/>
+<line x1="172" y1="168" x2="172" y2="188"/>
+<line x1="190" y1="168" x2="190" y2="188"/>
+<line x1="208" y1="168" x2="208" y2="188"/>
+<line x1="226" y1="168" x2="226" y2="188"/>
+</g>
+</g>
+</g>
+<path d="M92,250 C122,236 152,264 182,250 C212,236 242,264 272,250 C292,241 300,246 308,250" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round"/>
+<ellipse cx="200" cy="252" rx="78" ry="16" fill="none" stroke="#F4581F" stroke-opacity="0.6" stroke-width="4"/>
+</g>
+<text x="261.5" y="400" text-anchor="middle" font-family="Barlow Condensed" font-weight="700" font-size="44" letter-spacing="11" fill="#F4581F">SPREAD POOL</text>
+</svg>
