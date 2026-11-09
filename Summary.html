@@ -271,7 +271,21 @@ function atsSide(g, a, h){
   else return "";
   return m > 0 ? "home" : m < 0 ? "away" : "tie";
 }
-function liveCount(){ return S.lines.filter(isLive).length; }
+/* Kicked off, not decided, no score on the sheet yet — the gap between
+   kickoff and the first 5-minute live-score update. Uses server time, and
+   gives up after 5 hours so a game nobody scored doesn't say "now playing"
+   forever. */
+const NOW_PLAYING_MS = 5 * 3600000;
+function isUnderway(g){
+  if (g.winnerSide || (isNum(g.awayScore) && isNum(g.homeScore))) return false;
+  if (/postpon|cancel|delay|suspend/i.test(g.gameStatus)) return false;
+  if (isLive(g)) return true;
+  const ko = Date.parse(g.kickoffISO);
+  if (isNaN(ko)) return false;
+  const since = serverNow() - ko;
+  return since >= 0 && since < NOW_PLAYING_MS;
+}
+function liveCount(){ return S.lines.filter(isUnderway).length; }
 
 function renderGames(){
   const el = $("gamesBoard");
@@ -311,6 +325,7 @@ function gameHtml(g, c){
   /* final score, shown beside each team once the game has a score on file */
   const hasScore = isNum(g.awayScore) && isNum(g.homeScore);
   const live = !hasScore && isLive(g);
+  const underway = !w && isUnderway(g);     // live, or kicked off with no score yet
   const cover = live ? atsSide(g, g.liveAway, g.liveHome) : "";
   /* a postponed / delayed / canceled game says so instead of sitting blank */
   const oddStatus = !w && !hasScore && !live && /postpon|cancel|delay|suspend/i.test(g.gameStatus);
@@ -318,9 +333,10 @@ function gameHtml(g, c){
     ? (simmed ? '<span class="pill sim">Sim: ' + winnerLabel(g, w) + '</span>'
               : '<span class="pill win">' + winnerLabel(g, w) + '</span>')
     : live
-      ? '<span class="pill live">' + escHtml(g.gameStatus || "Live") +
+      ? '<span class="pill live">Live' + (g.gameStatus ? ' &middot; ' + escHtml(g.gameStatus) : '') +
         (cover ? ' &middot; ' + (cover === "tie" ? "Push" : escHtml(cover === "away" ? g.away : g.home) + " covering") : '') +
         '</span>'
+      : underway  ? '<span class="pill live">Now playing</span>'
       : oddStatus ? '<span class="pill closed">' + escHtml(g.gameStatus) + '</span>' : '';
   const teamCls = side => {
     if (!w) return (cover && cover === side) ? " covering" : "";
@@ -341,7 +357,7 @@ function gameHtml(g, c){
         chipBtn(g, "away", w) + chipBtn(g, "tie", w) + chipBtn(g, "home", w) +
         (S.overrides.has(g.qid) ? '<button class="chip" data-clear="' + g.qid + '">clear</button>' : '') +
       '</div>';
-  return '<div class="game" id="sg-' + g.qid + '">' +
+  return '<div class="game' + (underway ? ' is-live' : '') + '" id="sg-' + g.qid + '">' +
     '<div class="game-meta">' +
       '<span class="qid">' + g.qid + '</span>' +
       (g.kickoffISO ? '<span>' + escHtml(etTime(g.kickoffISO)) + '</span>' : '') +
