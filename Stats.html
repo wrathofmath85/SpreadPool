@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Player Stats — 2026 Spread Pool</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@400;500;600;700&family=Archivo:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="pool.css">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-title" content="Spread Pool">
+<meta name="theme-color" content="#0B1730">
+<script src="install.js" defer data-name="Spread Pool" data-icon="apple-touch-icon.png" data-accent="#f4581f" data-on-accent="#ffffff" data-bg="#102039" data-auto="0"></script>
+<style>
+/* ---------- leaders ---------- */
+.leaders{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.lead{padding:14px 16px}
+.lead h3{font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.16em;font-size:.74rem;font-weight:600;color:var(--accent);margin:0 0 2px}
+.lead .min{font-size:.72rem;color:var(--chalk-dim);margin-bottom:8px}
+.lead ol{list-style:none;margin:0;padding:0}
+.lead li{display:flex;align-items:baseline;gap:10px;padding:4px 0;font-size:.92rem}
+.lead li .rk{font-family:'Oswald',sans-serif;color:var(--chalk-dim);width:14px}
+.lead li .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lead li .rec{font-family:'Oswald',sans-serif;color:var(--chalk-dim);font-size:.82rem}
+.lead li .pc{font-family:'Oswald',sans-serif;font-weight:600;min-width:46px;text-align:right}
+.lead li:first-child .pc{color:var(--win)}
+.lead .none{color:var(--chalk-dim);font-size:.85rem}
+
+/* ---------- controls ---------- */
+.ctrls{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 12px}
+.ctrls input,.ctrls select{flex:1 1 200px;width:auto}
+
+/* ---------- stats table ---------- */
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:18px}
+table.stats{border-collapse:separate;border-spacing:0;width:100%;min-width:900px}
+table.stats th,table.stats td{padding:10px 12px;border-bottom:1px solid rgba(40,64,107,.45);white-space:nowrap;text-align:right}
+table.stats thead th{position:sticky;top:0;background:var(--surface);font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.12em;font-size:.68rem;font-weight:600;color:var(--chalk-dim);border-bottom:1px solid var(--line);cursor:pointer;user-select:none}
+table.stats thead th.on{color:var(--accent)}
+table.stats thead th .arr{display:inline-block;width:10px}
+table.stats th.player,table.stats td.player{text-align:left;position:sticky;left:0;z-index:1;background:var(--bg-2);max-width:170px;overflow:hidden;text-overflow:ellipsis}
+table.stats thead th.player{z-index:2;background:var(--surface)}
+table.stats td.player .rkn{display:inline-block;min-width:24px;color:var(--chalk-dim);font-family:'Oswald',sans-serif;font-size:.8rem}
+table.stats td .r{font-family:'Oswald',sans-serif;font-size:.95rem;display:block}
+table.stats td .p{font-size:.72rem;color:var(--chalk-dim);display:block}
+table.stats td.sorted .r{color:var(--chalk);font-weight:600}
+table.stats td.dash{color:var(--chalk-dim)}
+table.stats tr.me td{background:rgba(244,88,31,.10)}
+table.stats tr.me td.player{background:#2a1e22}
+table.stats tr.pool td{background:var(--surface);font-weight:600}
+table.stats tr.pool td.player{background:var(--surface);color:var(--accent);font-family:'Oswald',sans-serif;text-transform:uppercase;letter-spacing:.1em;font-size:.8rem}
+table.stats td.good .p{color:var(--win)}
+@media(max-width:640px){
+  .leaders{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:10px;padding-bottom:6px;-webkit-overflow-scrolling:touch}
+  .lead{flex:0 0 80%;scroll-snap-align:start}
+  table.stats th,table.stats td{padding:9px 9px}
+  table.stats th.player,table.stats td.player{max-width:124px;min-width:110px;font-size:.88rem;white-space:normal;line-height:1.25}
+}
+.foot-note{color:var(--chalk-dim);font-size:.8rem;line-height:1.55;margin:14px 2px 0}
+.progress{height:4px;border-radius:4px;background:var(--line);overflow:hidden;margin:18px auto 0;max-width:320px}
+.progress span{display:block;height:100%;width:0;background:var(--accent);transition:width .25s}
+</style>
+</head>
+<body>
+
+<header class="mast wrap">
+  <div class="kicker"><a href="index.html">2026 Spread Pool</a></div>
+  <h1 class="mast-title">Player <span class="yr">Stats</span></h1>
+  <p class="mast-sub" id="mastSub">Loading…</p>
+  <div class="progress" id="prog"><span id="progBar"></span></div>
+</header>
+
+<main class="wrap" id="main">
+  <div id="errBox"></div>
+
+  <div id="content" style="display:none">
+    <div class="section-head"><h2>Leaders</h2><span class="rule"></span><span class="count" id="leadNote"></span></div>
+    <div class="leaders" id="leaders"></div>
+
+    <div class="section-head"><h2>Every Player</h2><span class="rule"></span><span class="count" id="playerCount"></span></div>
+    <div class="ctrls">
+      <input type="text" inputmode="search" id="search" placeholder="Search players…" autocomplete="off">
+      <select id="meSel"><option value="">Highlight me…</option></select>
+    </div>
+    <div class="card tbl-wrap">
+      <table class="stats" id="statsTbl">
+        <thead><tr id="headRow"></tr></thead>
+        <tbody id="statsBody"></tbody>
+      </table>
+    </div>
+    <p class="foot-note">
+      <b>Season</b> is the official record from the standings: doubles count twice, and incomplete-card penalties are included.
+      Every other column counts <b>each pick once</b>, from the cards people actually submitted. Weeks on defaults are left out
+      and tallied in the <b>Defaults</b> column instead. <b>Favorites</b> and <b>Underdogs</b> skip pick'em games. A push counts as half a win.
+      The practice week isn't included. A week's picks show up here once they're revealed, and games count once they're graded.
+      Tap a column header to sort.
+    </p>
+  </div>
+</main>
+
+<footer class="site">2026 Spread Pool<span class="dot">&bull;</span><a href="index.html" style="color:var(--chalk-dim)">Home</a><span class="dot">&bull;</span><a href="Summary.html" style="color:var(--chalk-dim)">The Board</a></footer>
+
+<script src="pool.js"></script>
+<script>
+/* ============================================================
+   PLAYER STATS
+   Built entirely from endpoints the API already has:
+     fn=all&week=auto   Config rows, the current week, season results, roster
+     fn=lines&week=N    that week's games and results (cached server-side)
+     fn=picks&week=N    that week's cards, ONLY once they're revealed
+   The reveal gate lives on the server, so this page can never show a
+   card before the Board does.
+   ============================================================ */
+
+const CATS = [
+  { key: "season", label: "Season",    lead: false },
+  { key: "nfl",    label: "NFL",       lead: true  },
+  { key: "cfb",    label: "College",   lead: true  },
+  { key: "dbl",    label: "Doubles",   lead: true  },
+  { key: "req",    label: "Required",  lead: true  },
+  { key: "fav",    label: "Favorites", lead: true  },
+  { key: "dog",    label: "Underdogs", lead: true  }
+];
+const FETCH_AT_ONCE = 4;
+const ME_KEY = "spreadpool_stats_me";
+
+const S = { players: [], weeksCounted: [], graded: 0, sortKey: "season", sortDir: -1, q: "", me: "" };
+const $ = id => document.getElementById(id);
+
+init().catch(e => {
+  $("mastSub").textContent = "";
+  $("prog").style.display = "none";
+  $("errBox").innerHTML = '<div class="banner bad">Could not load stats: ' + escHtml(e.message) + '</div>';
+});
+
+async function init(){
+  if (POOL_API.indexOf("http") !== 0) throw new Error("POOL_API is not set in pool.js yet.");
+  try { S.me = localStorage.getItem(ME_KEY) || ""; } catch (e) {}
+
+  const all = await apiGet({ fn: "all", week: "auto" });
+  const cur = parseInt(all.week, 10);
+  const weeks = normConfigRows(all.config)
+    .map(r => r.week)
+    .filter(w => !isPracticeWeek(w) && w <= cur);
+
+  /* The current week came back with fn=all, so it doesn't need fetching again */
+  const data = new Map();
+  if (!isPracticeWeek(cur)) {
+    data.set(cur, { lines: all.lines || [], picks: (all.picksBundle || {}).revealed ? (all.picksBundle.picks || []) : null });
+  }
+  const todo = weeks.filter(w => !data.has(w));
+  let done = 0;
+  const bump = () => {
+    done++;
+    $("progBar").style.width = Math.round(100 * done / Math.max(1, todo.length)) + "%";
+    $("mastSub").textContent = "Loading week " + Math.min(done + 1, todo.length) + " of " + todo.length + "…";
+  };
+  await runLimited(todo, FETCH_AT_ONCE, async w => {
+    const [ln, pk] = await Promise.all([ apiGet({ fn: "lines", week: w }), apiGet({ fn: "picks", week: w }) ]);
+    data.set(w, { lines: ln.lines || [], picks: pk.revealed ? (pk.picks || []) : null });
+    bump();
+  });
+
+  build(all, weeks, data);
+  $("prog").style.display = "none";
+  $("content").style.display = "";
+  wire();
+  render();
+}
+
+/* run fn over items, at most n in flight */
+async function runLimited(items, n, fn){
+  let i = 0;
+  const worker = async () => { while (i < items.length) { const it = items[i++]; await fn(it); } };
+  await Promise.all(Array.from({ length: Math.min(n, items.length) }, worker));
+}
+
+/* ---------------- crunch ---------------- */
+
+function blank(){ return { w: 0, l: 0, t: 0 }; }
+function tally(rec, res){ if (res === "w") rec.w++; else if (res === "l") rec.l++; else rec.t++; }
+function games(r){ return r.w + r.l + r.t; }
+
+function build(all, weeks, data){
+  const P = new Map();
+  const ensure = (name, roster) => {
+    const k = nameKey(name);
+    if (!k) return null;
+    if (!P.has(k)) {
+      const p = { key: k, name: String(name).trim(), first: "", last: "", defaults: 0 };
+      CATS.forEach(c => p[c.key] = blank());
+      P.set(k, p);
+    }
+    const p = P.get(k);
+    if (roster) { p.name = roster.name || p.name; p.first = roster.firstName || ""; p.last = roster.lastName || ""; }
+    return p;
+  };
+  (all.roster || []).forEach(r => ensure(r.name, r));
+
+  /* official season record — the API already strips the practice week */
+  (all.weeklyResults || []).forEach(r => {
+    const p = ensure(r.name);
+    if (!p) return;
+    p.season.w += parseInt(r.w, 10) || 0;
+    p.season.l += parseInt(r.l, 10) || 0;
+    p.season.t += parseInt(r.t, 10) || 0;
+  });
+
+  let graded = 0;
+  const counted = [];
+  weeks.forEach(w => {
+    const d = data.get(w);
+    if (!d || !d.picks) return;                       // not revealed yet
+    const lines = new Map(d.lines.map(l => [String(l.qid), l]));
+    const anyGraded = d.lines.some(l => String(l.winnerside || "").trim());
+    if (!anyGraded) return;                           // nothing to count yet
+    counted.push(w);
+
+    const submitted = new Set();
+    d.picks.forEach(pk => {
+      const p = ensure(pk.name);
+      if (!p) return;
+      submitted.add(p.key);
+      const ln = lines.get(String(pk.qid));
+      if (!ln) return;
+      const win = String(ln.winnerside || "").trim().toLowerCase();
+      if (!win) return;                               // not graded yet
+      const side = String(pk.side || "").trim().toLowerCase();
+      const res = win === "tie" ? "t" : win === side ? "w" : "l";
+      graded++;
+      const lg = String(ln.league || "").trim().toUpperCase();
+      if (lg === "NFL") tally(p.nfl, res);
+      else if (lg === "CFB") tally(p.cfb, res);
+      if (String(pk.isdouble).toUpperCase() === "TRUE") tally(p.dbl, res);
+      if (/^y/i.test(String(ln.required || ""))) tally(p.req, res);
+      const fav = String(ln.favoredside || "").trim().toLowerCase();
+      if (fav === "away" || fav === "home") tally(side === fav ? p.fav : p.dog, res);
+    });
+
+    /* on the roster, no card this week = on defaults */
+    (all.roster || []).forEach(r => { const k = nameKey(r.name); if (k && !submitted.has(k)) P.get(k).defaults++; });
+  });
+
+  S.players = Array.from(P.values());
+  S.weeksCounted = counted;
+  S.graded = graded;
+}
+
+/* ---------------- formatting ---------------- */
+
+/* push = half a win, same as the Board and the results email */
+function winPct(w, l, t){ const n = w + l + t; return n ? (w + t / 2) / n : 0; }
+function recTxt(r){ return r.w + "-" + r.l + "-" + r.t; }
+function pctTxt(r){ return games(r) ? (100 * winPct(r.w, r.l, r.t)).toFixed(1) + "%" : ""; }
+function lastNameKey(p){
+  const last = p.last || String(p.name).trim().split(/\s+/).pop();
+  return (last + " " + (p.first || p.name)).toLowerCase();
+}
+
+/* pct first, then wins; players with no games in the column always sink */
+function cmpCat(key, dir){
+  return (a, b) => {
+    const A = a[key], B = b[key];
+    const ga = games(A) > 0, gb = games(B) > 0;
+    if (ga !== gb) return ga ? -1 : 1;
+    const d = (winPct(A.w, A.l, A.t) - winPct(B.w, B.l, B.t)) || (A.w - B.w);
+    return dir * d || lastNameKey(a).localeCompare(lastNameKey(b));
+  };
+}
+function sorter(){
+  const k = S.sortKey, dir = S.sortDir;
+  if (k === "name") return (a, b) => dir * lastNameKey(a).localeCompare(lastNameKey(b));
+  if (k === "defaults") return (a, b) => dir * (a.defaults - b.defaults) || lastNameKey(a).localeCompare(lastNameKey(b));
+  return cmpCat(k, dir);
+}
+
+/* ---------------- render ---------------- */
+
+function render(){
+  const wks = S.weeksCounted;
+  $("mastSub").innerHTML = wks.length
+    ? "Through " + (wks.length === 1 ? "Week " + wks[0] : "Weeks " + wks[0] + "&ndash;" + wks[wks.length - 1]) +
+      " &middot; <b>" + S.graded.toLocaleString() + "</b> graded picks"
+    : "No revealed, graded weeks yet &mdash; check back after the first week's games.";
+  renderLeaders();
+  renderTable();
+}
+
+function renderLeaders(){
+  const cats = CATS.filter(c => c.lead);
+  let html = "";
+  cats.forEach(c => {
+    const withGames = S.players.filter(p => games(p[c.key]) > 0);
+    const counts = withGames.map(p => games(p[c.key])).sort((a, b) => a - b);
+    const median = counts.length ? counts[Math.floor(counts.length / 2)] : 0;
+    const min = Math.max(1, Math.ceil(median / 2));      // keeps a 2-0 fluke off the board
+    const top = withGames.filter(p => games(p[c.key]) >= min).sort(cmpCat(c.key, -1)).slice(0, 3);
+    html += '<div class="card lead"><h3>' + c.label + '</h3>' +
+      '<div class="min">' + (counts.length ? "min " + min + " pick" + (min === 1 ? "" : "s") : "&nbsp;") + '</div>' +
+      (top.length
+        ? '<ol>' + top.map((p, i) => '<li><span class="rk">' + (i + 1) + '</span><span class="nm">' + escHtml(p.name) +
+            '</span><span class="rec">' + recTxt(p[c.key]) + '</span><span class="pc">' + pctTxt(p[c.key]) + '</span></li>').join("") + '</ol>'
+        : '<div class="none">No graded picks yet.</div>') +
+      '</div>';
+  });
+  $("leaders").innerHTML = html;
+  $("leadNote").textContent = "by win %";
+}
+
+function renderTable(){
+  const cols = [{ key: "name", label: "Player" }].concat(CATS).concat([{ key: "defaults", label: "Defaults" }]);
+  $("headRow").innerHTML = cols.map(c => {
+    const on = S.sortKey === c.key;
+    return '<th data-sort="' + c.key + '" class="' + (c.key === "name" ? "player " : "") + (on ? "on" : "") + '">' +
+      c.label + '<span class="arr">' + (on ? (S.sortDir < 0 ? "↓" : "↑") : "") + '</span></th>';
+  }).join("");
+
+  const q = S.q.trim().toLowerCase();
+  const rows = S.players.slice().sort(sorter());
+  const shown = q ? rows.filter(p => p.name.toLowerCase().indexOf(q) !== -1) : rows;
+
+  /* pool-wide totals across everyone */
+  const pool = { name: "Pool", defaults: 0 };
+  CATS.forEach(c => pool[c.key] = blank());
+  S.players.forEach(p => {
+    CATS.forEach(c => { pool[c.key].w += p[c.key].w; pool[c.key].l += p[c.key].l; pool[c.key].t += p[c.key].t; });
+    pool.defaults += p.defaults;
+  });
+
+  const cell = (r, key) => {
+    if (!games(r)) return '<td class="dash' + (S.sortKey === key ? " sorted" : "") + '">&mdash;</td>';
+    const good = winPct(r.w, r.l, r.t) > 0.5 && games(r) >= 4;
+    return '<td class="' + (S.sortKey === key ? "sorted " : "") + (good ? "good" : "") + '"><span class="r">' + recTxt(r) +
+           '</span><span class="p">' + pctTxt(r) + '</span></td>';
+  };
+  const rowHtml = (p, rank, cls) =>
+    '<tr class="' + cls + '"><td class="player"><span class="rkn">' + rank + '</span>' + escHtml(p.name) + '</td>' +
+    CATS.map(c => cell(p[c.key], c.key)).join("") +
+    '<td' + (S.sortKey === "defaults" ? ' class="sorted"' : '') + '><span class="r">' + (p.defaults || "&mdash;") + '</span></td></tr>';
+
+  /* "me" is pinned under the pool row, and keeps its spot in the list too */
+  const me = S.me ? S.players.find(p => p.key === S.me) : null;
+  const rankOf = new Map(rows.map((p, i) => [p.key, i + 1]));
+  let html = rowHtml(pool, "", "pool");
+  if (me && !q) html += rowHtml(me, rankOf.get(me.key), "me");
+  html += shown.map(p => rowHtml(p, rankOf.get(p.key), p.key === S.me ? "me" : "")).join("");
+  $("statsBody").innerHTML = html;
+  $("playerCount").textContent = shown.length + (q ? " of " + rows.length : "") + " players";
+}
+
+/* ---------------- controls ---------------- */
+
+function wire(){
+  $("headRow").addEventListener("click", e => {
+    const th = e.target.closest("th[data-sort]");
+    if (!th) return;
+    const k = th.dataset.sort;
+    if (S.sortKey === k) S.sortDir = -S.sortDir;
+    else { S.sortKey = k; S.sortDir = k === "name" ? 1 : -1; }
+    renderTable();
+  });
+  $("search").addEventListener("input", e => { S.q = e.target.value; renderTable(); });
+
+  const sel = $("meSel");
+  S.players.slice().sort((a, b) => lastNameKey(a).localeCompare(lastNameKey(b))).forEach(p => {
+    const o = document.createElement("option");
+    o.value = p.key; o.textContent = p.name;
+    if (p.key === S.me) o.selected = true;
+    sel.appendChild(o);
+  });
+  sel.addEventListener("change", () => {
+    S.me = sel.value;
+    try { if (S.me) localStorage.setItem(ME_KEY, S.me); else localStorage.removeItem(ME_KEY); } catch (e) {}
+    renderTable();
+  });
+}
+</script>
+</body>
+</html>
