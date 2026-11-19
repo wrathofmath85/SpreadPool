@@ -98,7 +98,7 @@ const S = {
 const $ = id => document.getElementById(id);
 let lastLoadMs = Date.now();     // when the board last asked the API — used by the auto-refresh
 
-/* TEST page: sent with every load; Apps Script releases picks early when it matches */
+/* TEST page: sent as &preview= — Code.gs previewAllowed_() decides whether gatedPicks() releases picks early */
 const PEEK_KEY = "summarytest";
 
 init().catch(e => { $("gateView").innerHTML = '<div class="banner bad">Could not load the board: ' + escHtml(e.message) + '</div>'; });
@@ -136,7 +136,7 @@ async function loadAll(first){
     const raw = qsParam("week");
     wk = (raw !== null && raw.trim() !== "" && !isNaN(parseInt(raw, 10))) ? parseInt(raw, 10) : "auto";
   }
-  const all = await apiGet({ fn: "all", week: wk, peek: PEEK_KEY });
+  const all = await apiGet({ fn: "all", week: wk, preview: PEEK_KEY });
   if (first){
     if (all.week == null) throw new Error("No weeks in Config.");
     S.week = parseInt(all.week, 10);
@@ -162,7 +162,7 @@ async function loadAll(first){
   $("testBanner").innerHTML = '<b>TEST BOARD</b> &mdash; ignores reveal time. Not linked anywhere; don\'t share. ' +
     (S.serverRevealed || nCards
       ? 'Server sent <b>' + nCards + '</b> cards' + (S.serverRevealed ? ' (week is revealed)' : ' via test key') + '.'
-      : '<b>Server withheld picks</b> &mdash; Apps Script change not deployed yet. ' + (pb.declarations || []).length + ' declarations received.') +
+      : '<b>Server withheld picks</b> &mdash; preview value not accepted by previewAllowed_(). ' + (pb.declarations || []).length + ' declarations received.') +
     '';
 
   S.picks = (pb.picks || []).map(p => ({
