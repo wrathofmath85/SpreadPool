@@ -25,7 +25,7 @@
 </header>
 
 <main class="wrap" id="main">
-  <div class="banner bad" id="testBanner" style="margin-bottom:14px"><b>TEST BOARD</b> &mdash; ignores reveal time. Not linked anywhere; don't share. <a href="#" id="peekReset" style="color:inherit">Change key</a></div>
+  <div class="banner bad" id="testBanner" style="margin-bottom:14px"><b>TEST BOARD</b> &mdash; ignores reveal time. Not linked anywhere; don't share.</div>
   <div id="gateView"></div>
 
   <div id="revealed" style="display:none">
@@ -98,22 +98,8 @@ const S = {
 const $ = id => document.getElementById(id);
 let lastLoadMs = Date.now();     // when the board last asked the API — used by the auto-refresh
 
-/* ---- TEST page: private key for the reveal bypass. Never hardcoded here,
-   because this file is public on GitHub. Stored only in this browser. ---- */
-function peekKey(){
-  let k = "";
-  try { k = localStorage.getItem("spreadPoolPeekKey") || ""; } catch(e){}
-  if (!k){
-    k = (prompt("Test key (PEEK_KEY from Apps Script properties):") || "").trim();
-    try { if (k) localStorage.setItem("spreadPoolPeekKey", k); } catch(e){}
-  }
-  return k;
-}
-function wirePeekReset(){
-  const a = $("peekReset"); if (!a) return;
-  a.onclick = ev => { ev.preventDefault(); try { localStorage.removeItem("spreadPoolPeekKey"); } catch(e){} location.reload(); };
-}
-wirePeekReset();
+/* TEST page: sent with every load; Apps Script releases picks early when it matches */
+const PEEK_KEY = "summarytest";
 
 init().catch(e => { $("gateView").innerHTML = '<div class="banner bad">Could not load the board: ' + escHtml(e.message) + '</div>'; });
 
@@ -150,7 +136,7 @@ async function loadAll(first){
     const raw = qsParam("week");
     wk = (raw !== null && raw.trim() !== "" && !isNaN(parseInt(raw, 10))) ? parseInt(raw, 10) : "auto";
   }
-  const all = await apiGet({ fn: "all", week: wk, peek: peekKey() });
+  const all = await apiGet({ fn: "all", week: wk, peek: PEEK_KEY });
   if (first){
     if (all.week == null) throw new Error("No weeks in Config.");
     S.week = parseInt(all.week, 10);
@@ -176,9 +162,9 @@ async function loadAll(first){
   $("testBanner").innerHTML = '<b>TEST BOARD</b> &mdash; ignores reveal time. Not linked anywhere; don\'t share. ' +
     (S.serverRevealed || nCards
       ? 'Server sent <b>' + nCards + '</b> cards' + (S.serverRevealed ? ' (week is revealed)' : ' via test key') + '.'
-      : '<b>Server withheld picks</b> &mdash; key wrong or backend patch not deployed. ' + (pb.declarations || []).length + ' declarations received.') +
-    ' <a href="#" id="peekReset" style="color:inherit">Change key</a>';
-  wirePeekReset();
+      : '<b>Server withheld picks</b> &mdash; Apps Script change not deployed yet. ' + (pb.declarations || []).length + ' declarations received.') +
+    '';
+
   S.picks = (pb.picks || []).map(p => ({
     name: String(p.name || ""), qid: String(p.qid || ""),
     side: String(p.side || "").toLowerCase(),
